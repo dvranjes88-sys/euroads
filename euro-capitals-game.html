@@ -304,20 +304,13 @@ function initMap() {
     attributionControl: true,
   });
 
-  // OpenStreetMap - funguje vždy bez CORS problémov
+  // CartoDB Positron - clean light basemap, no API key needed
   const osm = L.tileLayer(
-    'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
-    { attribution:'© OpenStreetMap', maxZoom:19 }
-  );
-
-  // Stamen Toner Hybrid - hranice + labels (len overlay, bez pozadia)
-  const labels = L.tileLayer(
-    'https://tiles.stadiamaps.com/tiles/stamen_toner_hybrid/{z}/{x}/{y}{r}.png',
-    { attribution:'© Stadia', maxZoom:20, opacity:0.6 }
+    'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
+    { attribution:'© OpenStreetMap © CARTO', maxZoom:19, subdomains:'abcd' }
   );
 
   osm.addTo(map);
-  labels.addTo(map);
 
   // Tap on map closes/opens dest panel
   map.on('click', () => {
