@@ -1,0 +1,657 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EuroRoads — Complete European Highway Guide</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Anybody:wght@300;400;600;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,400&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg: #F5F3EE; --surface: #FFF; --border: #E2DDD4; --text: #18160F; --muted: #7A7670;
+  --v: #1B4D3E; --vl: #E6F2EE; --t: #7A3200; --tl: #FDF0E6;
+  --f: #0F3460; --fl: #E6EDF8; --enc: #4A1060; --encl: #F5E8FA;
+  --accent: #D4820A; --r: 10px;
+}
+html { scroll-behavior: smooth; }
+body { background:var(--bg); color:var(--text); font-family:'DM Sans',sans-serif; font-size:15px; line-height:1.6; overflow-x:hidden; }
+
+header { background:var(--text); color:#fff; height:58px; display:flex; align-items:center; justify-content:space-between; padding:0 2rem; position:sticky; top:0; z-index:200; border-bottom:3px solid var(--accent); }
+.logo { font-family:'Anybody',sans-serif; font-weight:800; font-size:1.2rem; letter-spacing:-0.02em; }
+.logo span { color:var(--accent); }
+.hm { font-size:.7rem; color:rgba(255,255,255,.4); letter-spacing:.1em; text-transform:uppercase; }
+
+.hero { background:var(--text); color:#fff; padding:2.5rem 2rem 2rem; position:relative; overflow:hidden; }
+.hero::after { content:'🛣️'; position:absolute; font-size:14rem; right:-1rem; top:-2rem; opacity:.04; pointer-events:none; }
+.hero h1 { font-family:'Anybody',sans-serif; font-weight:800; font-size:clamp(1.6rem,4vw,2.8rem); letter-spacing:-0.03em; line-height:1.05; margin-bottom:.6rem; }
+.hero h1 em { color:var(--accent); font-style:normal; }
+.hero p { color:rgba(255,255,255,.5); font-size:.82rem; max-width:500px; margin-bottom:1.5rem; }
+.hstats { display:flex; gap:2rem; flex-wrap:wrap; }
+.hstat-n { font-family:'Anybody',sans-serif; font-weight:800; font-size:1.4rem; color:var(--accent); }
+.hstat-l { font-size:.65rem; color:rgba(255,255,255,.4); letter-spacing:.08em; text-transform:uppercase; }
+
+.tab-bar { display:flex; background:var(--surface); border-bottom:2px solid var(--border); padding:0 2rem; position:sticky; top:58px; z-index:190; overflow-x:auto; gap:.25rem; }
+.tab { padding:.75rem 1.3rem; font-family:'Anybody',sans-serif; font-weight:700; font-size:.72rem; letter-spacing:.04em; text-transform:uppercase; border:none; background:none; cursor:pointer; color:var(--muted); border-bottom:3px solid transparent; margin-bottom:-2px; white-space:nowrap; transition:all .18s; border-radius:6px 6px 0 0; display:flex; align-items:center; gap:.4rem; }
+.tab.active { color:var(--text); border-bottom-color:var(--accent); background:rgba(212,130,10,0.06); }
+.tab:hover:not(.active) { color:var(--text); background:var(--bg); }
+
+main { padding:2rem; max-width:1300px; margin:0 auto; }
+.view { display:none; }
+.view.active { display:block; }
+
+.toolbar { display:flex; gap:.5rem; margin-bottom:1.5rem; flex-wrap:wrap; align-items:center; }
+.fb { padding:.38rem .85rem; border-radius:100px; border:1.5px solid var(--border); background:var(--surface); font-size:.73rem; font-weight:500; cursor:pointer; transition:all .15s; color:var(--muted); white-space:nowrap; }
+.fb:hover, .fb.active { border-color:var(--text); background:var(--text); color:#fff; }
+.fb.fv.active { background:var(--v); border-color:var(--v); }
+.fb.ft.active { background:var(--t); border-color:var(--t); }
+.fb.ff.active { background:var(--f); border-color:var(--f); }
+.sbox { margin-left:auto; display:flex; align-items:center; gap:.4rem; background:var(--surface); border:1.5px solid var(--border); border-radius:100px; padding:.38rem .9rem; }
+.sbox input { border:none; outline:none; font-family:'DM Sans',sans-serif; font-size:.78rem; background:transparent; width:150px; color:var(--text); }
+
+.cc-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(300px,1fr)); gap:.85rem; }
+.cc { background:var(--surface); border:1.5px solid var(--border); border-radius:var(--r); overflow:hidden; transition:all .2s; display:flex; flex-direction:column; }
+.cc:hover { transform:translateY(-3px); box-shadow:0 10px 28px rgba(0,0,0,.09); }
+.cc-top { padding:1rem 1.2rem .8rem; border-bottom:1px solid var(--border); display:flex; align-items:flex-start; gap:.8rem; }
+.cc-fl { font-size:1.9rem; line-height:1; flex-shrink:0; }
+.cc-nm { font-family:'Anybody',sans-serif; font-weight:800; font-size:.95rem; letter-spacing:-.01em; }
+.cc-rg { font-size:.58rem; color:var(--muted); letter-spacing:.08em; text-transform:uppercase; margin-top:.1rem; }
+.tbadge { font-size:.57rem; font-weight:500; letter-spacing:.1em; text-transform:uppercase; padding:.16rem .5rem; border-radius:100px; margin-top:.28rem; display:inline-block; }
+.tbv { background:var(--vl); color:var(--v); }
+.tbt { background:var(--tl); color:var(--t); }
+.tbf { background:var(--fl); color:var(--f); }
+
+.cc-body { padding:.9rem 1.2rem; flex:1; }
+.cc-info { font-size:.75rem; color:var(--muted); line-height:1.7; margin-bottom:.75rem; }
+.prices { display:flex; flex-direction:column; gap:.28rem; margin-bottom:.75rem; }
+.pr { display:flex; justify-content:space-between; font-size:.73rem; }
+.pr-p { color:var(--muted); }
+.pr-v { font-family:'Anybody',sans-serif; font-weight:700; }
+.epill { display:inline-flex; align-items:center; gap:.3rem; font-size:.65rem; color:var(--enc); background:var(--encl); padding:.22rem .6rem; border-radius:100px; margin-bottom:.75rem; font-weight:500; }
+.rules { display:flex; flex-wrap:wrap; gap:.3rem; margin-bottom:.6rem; }
+.rp { font-size:.62rem; padding:.18rem .48rem; border-radius:4px; display:flex; align-items:center; gap:.2rem; }
+.rp-ok { background:#e6f2ee; color:#1B4D3E; }
+.rp-warn { background:#fdf3e3; color:#8A5A00; }
+.rp-bad { background:#fde8e6; color:#9B2D22; }
+
+.cc-foot { padding:0 1.2rem 1rem; }
+.bbuy { width:100%; padding:.58rem; background:var(--text); color:#fff; border:none; border-radius:7px; font-family:'DM Sans',sans-serif; font-size:.73rem; font-weight:500; cursor:pointer; text-decoration:none; display:flex; align-items:center; justify-content:center; gap:.3rem; transition:all .15s; }
+.bbuy:hover { background:#333; }
+.bbuy.na { background:var(--border); color:var(--muted); cursor:default; pointer-events:none; }
+
+/* SPEED TABLE */
+.speed-table-wrap { overflow-x:auto; }
+.speed-table { width:100%; border-collapse:collapse; font-size:.8rem; background:var(--surface); border-radius:var(--r); overflow:hidden; border:1.5px solid var(--border); }
+.speed-table th { background:var(--text); color:#fff; font-family:'Anybody',sans-serif; font-weight:700; font-size:.68rem; letter-spacing:.06em; text-transform:uppercase; padding:.7rem .9rem; text-align:left; white-space:nowrap; }
+.speed-table td { padding:.6rem .9rem; border-bottom:1px solid var(--border); vertical-align:middle; }
+.speed-table tr:last-child td { border-bottom:none; }
+.speed-table tr:hover td { background:var(--bg); }
+.spd { font-family:'Anybody',sans-serif; font-weight:700; }
+.spd.fast { color:var(--t); }
+.spd.slow { color:var(--f); }
+.spd.none { color:var(--muted); font-size:.72rem; font-weight:400; }
+.nc { font-size:.7rem; color:var(--muted); }
+
+/* CALC */
+.cw { display:grid; grid-template-columns:1fr 1fr; gap:1.5rem; align-items:start; }
+.cpanel { background:var(--surface); border:1.5px solid var(--border); border-radius:var(--r); padding:1.6rem; }
+.cpanel h2 { font-family:'Anybody',sans-serif; font-weight:800; font-size:1.1rem; margin-bottom:.3rem; }
+.cpanel p { font-size:.78rem; color:var(--muted); margin-bottom:1.1rem; }
+.ckg { display:grid; grid-template-columns:1fr 1fr; gap:.45rem; margin-bottom:1.1rem; }
+.cck { display:flex; align-items:center; gap:.5rem; padding:.5rem .75rem; border:1.5px solid var(--border); border-radius:8px; cursor:pointer; font-size:.76rem; user-select:none; transition:all .15s; }
+.cck:hover { border-color:#aaa; }
+.cck.sel { border-color:var(--v); background:var(--vl); }
+.cck input { display:none; }
+.bcalc { width:100%; padding:.65rem; background:var(--text); color:#fff; border:none; border-radius:7px; font-size:.8rem; font-weight:500; cursor:pointer; font-family:'DM Sans',sans-serif; }
+.bcalc:hover { background:#333; }
+.cres { background:var(--surface); border:1.5px solid var(--border); border-radius:var(--r); padding:1.6rem; }
+.cres h2 { font-family:'Anybody',sans-serif; font-weight:800; font-size:1.1rem; margin-bottom:1.1rem; }
+.re { text-align:center; padding:3rem 1rem; color:var(--muted); font-size:.83rem; }
+.ri { display:flex; align-items:center; gap:.8rem; border:1.5px solid var(--border); border-radius:8px; padding:.9rem 1rem; margin-bottom:.65rem; }
+.ri-f { font-size:1.6rem; }
+.ri-i { flex:1; }
+.ri-n { font-family:'Anybody',sans-serif; font-weight:700; font-size:.88rem; }
+.ri-a { font-size:.7rem; color:var(--muted); }
+.ri-p { font-family:'Anybody',sans-serif; font-weight:800; font-size:.95rem; color:var(--v); }
+.rtot { border-top:2px solid var(--border); padding-top:.8rem; margin-top:.2rem; display:flex; justify-content:space-between; align-items:center; }
+.rtl { font-size:.7rem; color:var(--muted); text-transform:uppercase; letter-spacing:.08em; }
+.rtv { font-family:'Anybody',sans-serif; font-weight:800; font-size:1.35rem; }
+.rnote { font-size:.68rem; color:var(--muted); margin-top:.65rem; line-height:1.7; }
+
+/* ENC */
+.enc-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(260px,1fr)); gap:1rem; margin-top:1.2rem; }
+.enc-card { background:var(--surface); border:1.5px solid var(--border); border-radius:var(--r); padding:1.3rem; }
+.enc-h { display:flex; align-items:center; gap:.7rem; margin-bottom:.7rem; }
+.enc-ico { width:38px; height:38px; background:var(--encl); border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:1.1rem; flex-shrink:0; }
+.enc-ti { font-family:'Anybody',sans-serif; font-weight:800; font-size:.9rem; }
+.enc-sc { font-size:.65rem; color:var(--enc); font-weight:500; }
+.enc-tl { font-size:.73rem; color:var(--muted); font-style:italic; margin-bottom:.55rem; }
+.enc-d { font-size:.75rem; color:var(--muted); line-height:1.7; margin-bottom:.8rem; }
+.enc-tags { display:flex; flex-wrap:wrap; gap:.3rem; }
+.enc-tag { font-size:.63rem; background:var(--bg); border:1px solid var(--border); padding:.16rem .42rem; border-radius:4px; color:var(--muted); }
+
+.sh { margin-bottom:1.3rem; }
+.sh h2 { font-family:'Anybody',sans-serif; font-weight:800; font-size:1.3rem; letter-spacing:-0.02em; }
+.sh p { font-size:.8rem; color:var(--muted); margin-top:.2rem; }
+
+/* CAMERAS */
+.cam-note { background:var(--accent-l,#FDF3E3); border:1.5px solid #f0d090; border-radius:8px; padding:.7rem 1rem; font-size:.75rem; color:#7A5000; margin-bottom:1.5rem; }
+.cam-section { margin-bottom:2rem; }
+.cam-section-title { font-family:'Anybody',sans-serif; font-weight:800; font-size:1rem; letter-spacing:-0.01em; margin-bottom:.75rem; display:flex; align-items:center; gap:.6rem; }
+.cam-section-title .flags { font-size:1.1rem; }
+.cam-cards { display:grid; grid-template-columns:repeat(auto-fill,minmax(220px,1fr)); gap:.65rem; }
+.cam-card { background:var(--surface); border:1.5px solid var(--border); border-radius:8px; padding:.9rem 1rem; text-decoration:none; color:var(--text); transition:all .18s; display:flex; flex-direction:column; gap:.3rem; }
+.cam-card:hover { border-color:var(--accent); transform:translateY(-2px); box-shadow:0 6px 20px rgba(0,0,0,.08); }
+.cam-name { font-size:.82rem; font-weight:600; }
+.cam-meta { font-size:.68rem; color:var(--muted); }
+.cam-src { font-size:.65rem; color:var(--accent); margin-top:.1rem; }
+.cam-hub { background:var(--surface); border:1.5px solid var(--border); border-radius:10px; padding:1.2rem 1.4rem; margin-bottom:1.5rem; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:1rem; }
+.cam-hub-text h3 { font-family:'Anybody',sans-serif; font-weight:800; font-size:1rem; }
+.cam-hub-text p { font-size:.75rem; color:var(--muted); margin-top:.2rem; }
+.cam-hub-links { display:flex; gap:.6rem; flex-wrap:wrap; }
+.cam-hub-link { padding:.45rem 1rem; border-radius:6px; border:1.5px solid var(--border); font-size:.73rem; font-weight:500; text-decoration:none; color:var(--text); transition:all .15s; }
+.cam-hub-link:hover { background:var(--text); color:#fff; border-color:var(--text); }
+
+@media(max-width:768px){
+  header{padding:0 1.25rem;} .hero{padding:2rem 1.25rem 1.5rem;}
+  .tab-bar{padding:0 1.25rem;} main{padding:1.25rem;}
+  .cw{grid-template-columns:1fr;} .ckg{grid-template-columns:1fr;}
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">Euro<span>Roads</span></div>
+  <div class="hm">All of Europe · 2025</div>
+</header>
+
+<div class="hero">
+  <h1>Every road in <em>Europe</em>,<br>one place.</h1>
+  <p>Vignettes, tolls, speed limits and driving rules for every European country — from Iceland to Turkey, from Portugal to Ukraine.</p>
+  <div class="hstats">
+    <div><div class="hstat-n" id="stat-countries">50</div><div class="hstat-l">Countries</div></div>
+    <div><div class="hstat-n">3</div><div class="hstat-l">Road systems</div></div>
+    <div><div class="hstat-n">7</div><div class="hstat-l">ENC devices</div></div>
+  </div>
+</div>
+
+<div class="tab-bar">
+  <button class="tab active" onclick="switchTab('countries',this)">🗺️ Countries</button>
+  <button class="tab" onclick="switchTab('speed',this)">⚡ Speed Limits</button>
+  <button class="tab" onclick="switchTab('calc',this)">🧮 Route Calculator</button>
+  <button class="tab" onclick="switchTab('enc',this)">📦 ENC Devices</button>
+</div>
+
+<main>
+<div class="view active" id="view-countries">
+  <div class="toolbar">
+    <span style="font-size:.72rem;color:var(--muted);font-weight:500">Filter:</span>
+    <button class="fb active" onclick="filterCC('all',this)">All</button>
+    <button class="fb fv" onclick="filterCC('vignette',this)">🏷️ Vignette</button>
+    <button class="fb ft" onclick="filterCC('toll',this)">🚧 Toll</button>
+    <button class="fb ff" onclick="filterCC('free',this)">🆓 Free</button>
+    <div class="sbox">
+      <span style="color:var(--muted)">🔍</span>
+      <input id="cc-search" type="text" placeholder="Search country…" oninput="searchCC()">
+    </div>
+  </div>
+  <div class="cc-grid" id="country-grid"></div>
+</div>
+
+<div class="view" id="view-speed">
+  <div class="sh"><h2>⚡ Speed Limits by Country</h2><p>Default limits for passenger cars in km/h. Trucks, buses and new drivers have lower limits. Always follow local signs.</p></div>
+  <div class="speed-table-wrap">
+    <table class="speed-table">
+      <thead><tr><th>Country</th><th>🏙️ Urban</th><th>🛣️ Rural</th><th>🚀 Motorway</th><th>🚛 Truck (motorway)</th><th>📝 Notes</th></tr></thead>
+      <tbody id="speed-tbody"></tbody>
+    </table>
+  </div>
+</div>
+
+<div class="view" id="view-calc">
+  <div class="cw">
+    <div class="cpanel">
+      <h2>🧮 Route Calculator</h2>
+      <p>Select countries on your route — see which vignettes to buy before driving.</p>
+      <div class="ckg" id="calc-checks"></div>
+      <button class="bcalc" onclick="doCalc()">Calculate my trip →</button>
+    </div>
+    <div class="cres" id="calc-result">
+      <h2>What you need</h2>
+      <div class="re">👆 Select countries and hit Calculate</div>
+    </div>
+  </div>
+</div>
+
+<div class="view" id="view-enc">
+  <div class="sh"><h2>📦 Electronic Toll Collection</h2><p>ENC devices let you pass toll gates without stopping. Here's what works where.</p></div>
+  <div class="enc-grid" id="enc-grid"></div>
+</div>
+
+</main>
+
+<script>
+const C = [
+  // ── VIGNETTE ──
+  { id:'sk',flag:'🇸🇰',name:'Slovakia',region:'EU',type:'vignette',
+    info:'Electronic vignette (eZnámka). Linked to plate, no sticker. Camera enforced.',
+    prices:[{p:'10 days',v:'€10'},{p:'1 month',v:'€14'},{p:'1 year',v:'€50'}],
+    enc:null,buy:'https://eznamka.sk',bl:'eznamka.sk',
+    rules:[{i:'🚭',t:'Alcohol 0.0‰',c:'bad'},{i:'❄️',t:'Winter tyres req.',c:'warn'},{i:'💡',t:'Lights always on',c:'ok'},{i:'🦺',t:'Vest in car',c:'ok'}]},
+  { id:'cz',flag:'🇨🇿',name:'Czechia',region:'EU',type:'vignette',
+    info:'Electronic vignette (eZnámka CZ). Updated pricing 2024. Linked to plate.',
+    prices:[{p:'1 month',v:'CZK 430'},{p:'1 year',v:'CZK 1,500'}],
+    enc:null,buy:'https://edalnice.cz',bl:'edalnice.cz',
+    rules:[{i:'🚭',t:'Alcohol 0.0‰',c:'bad'},{i:'❄️',t:'Winter tyres req.',c:'warn'},{i:'💡',t:'Lights always on',c:'ok'}]},
+  { id:'at',flag:'🇦🇹',name:'Austria',region:'EU',type:'vignette',
+    info:'Physical or digital vignette. Some mountain tunnels (Brenner, Arlberg, Tauern) charge extra.',
+    prices:[{p:'10 days',v:'€9.90'},{p:'2 months',v:'€29.00'},{p:'1 year',v:'€96.40'}],
+    enc:null,buy:'https://www.asfinag.at/toll/vignette/',bl:'asfinag.at',
+    rules:[{i:'🍺',t:'Alcohol 0.5‰',c:'warn'},{i:'❄️',t:'Winter tyres req.',c:'warn'},{i:'💡',t:'Lights always on',c:'ok'},{i:'🦺',t:'Vest in car',c:'ok'}]},
+  { id:'ch',flag:'🇨🇭',name:'Switzerland',region:'Non-EU',type:'vignette',
+    info:'Annual vignette only (CHF 40). Valid Dec–Jan. Also covers Liechtenstein. No short-term option.',
+    prices:[{p:'1 year',v:'CHF 40'}],
+    enc:null,buy:'https://www.bazg.admin.ch',bl:'bazg.admin.ch',
+    rules:[{i:'🍺',t:'Alcohol 0.5‰',c:'warn'},{i:'💡',t:'Lights always on',c:'ok'},{i:'⛓️',t:'Winter tyres/chains',c:'warn'}]},
+  { id:'hu',flag:'🇭🇺',name:'Hungary',region:'EU',type:'vignette',
+    info:'Electronic vignette (e-matrica). No sticker, linked to plate.',
+    prices:[{p:'10 days',v:'HUF 5,340'},{p:'1 month',v:'HUF 7,500'},{p:'1 year',v:'HUF 22,000'}],
+    enc:null,buy:'https://motorway.hu',bl:'motorway.hu',
+    rules:[{i:'🚭',t:'Alcohol 0.0‰',c:'bad'},{i:'💡',t:'Lights always on',c:'ok'},{i:'🦺',t:'Vest in car',c:'ok'}]},
+  { id:'si',flag:'🇸🇮',name:'Slovenia',region:'EU',type:'vignette',
+    info:'Physical vignette required. Available at border gas stations.',
+    prices:[{p:'7 days',v:'€7.50'},{p:'1 month',v:'€15.00'},{p:'1 year',v:'€30.00'}],
+    enc:null,buy:'https://www.dars.si',bl:'dars.si',
+    rules:[{i:'🍺',t:'Alcohol 0.5‰',c:'warn'},{i:'❄️',t:'Winter tyres req.',c:'warn'},{i:'💡',t:'Lights always on',c:'ok'}]},
+  { id:'ro',flag:'🇷🇴',name:'Romania',region:'EU',type:'vignette',
+    info:'Rovinieta — required on national roads, not just motorways. Camera enforced.',
+    prices:[{p:'1 day',v:'RON 28'},{p:'7 days',v:'RON 38'},{p:'30 days',v:'RON 87'},{p:'1 year',v:'RON 473'}],
+    enc:null,buy:'https://www.roviniete.ro',bl:'roviniete.ro',
+    rules:[{i:'🚭',t:'Alcohol 0.0‰',c:'bad'},{i:'💡',t:'Lights always on',c:'ok'},{i:'🦺',t:'Vest required',c:'ok'}]},
+  { id:'bg',flag:'🇧🇬',name:'Bulgaria',region:'EU',type:'vignette',
+    info:'Electronic e-vignette on all first-class roads and motorways. 140 km/h limit.',
+    prices:[{p:'1 week',v:'BGN 21'},{p:'1 month',v:'BGN 35'},{p:'1 year',v:'BGN 97'}],
+    enc:null,buy:'https://www.bgtoll.bg',bl:'bgtoll.bg',
+    rules:[{i:'🍺',t:'Alcohol 0.5‰',c:'warn'},{i:'💡',t:'Lights always on',c:'ok'},{i:'🦺',t:'Vest in car',c:'ok'}]},
+  { id:'md',flag:'🇲🇩',name:'Moldova',region:'Non-EU',type:'vignette',
+    info:'Vignette required on ALL roads (not just motorways). Very affordable.',
+    prices:[{p:'1 day',v:'~€1.50'},{p:'7 days',v:'~€3'},{p:'1 month',v:'~€6'}],
+    enc:null,buy:null,bl:null,
+    rules:[{i:'🚭',t:'Alcohol 0.0‰',c:'bad'},{i:'💡',t:'Lights always on',c:'ok'}]},
+  { id:'li',flag:'🇱🇮',name:'Liechtenstein',region:'Non-EU',type:'vignette',
+    info:'Swiss vignette valid here too. No separate vignette needed if you have the Swiss one.',
+    prices:[{p:'1 year',v:'CHF 40 (Swiss)'}],
+    enc:null,buy:'https://www.bazg.admin.ch',bl:'bazg.admin.ch (Swiss)',
+    rules:[{i:'🍺',t:'Alcohol 0.8‰',c:'warn'},{i:'💡',t:'Lights on recommended',c:'ok'}]},
+
+  // ── TOLL ──
+  { id:'hr',flag:'🇭🇷',name:'Croatia',region:'EU',type:'toll',
+    info:'Toll gates at entry/exit. ENC (HAC) strongly recommended in summer — huge queues without it.',
+    prices:[{p:'Zagreb–Split',v:'~€20'},{p:'Rijeka–Split',v:'~€15'}],
+    enc:'ENC Croatia (HAC)',buy:'https://hac.hr',bl:'hac.hr',
+    rules:[{i:'🍺',t:'Alcohol 0.5‰',c:'warn'},{i:'💡',t:'Lights always on',c:'ok'},{i:'🦺',t:'Vest in car',c:'ok'}]},
+  { id:'fr',flag:'🇫🇷',name:'France',region:'EU',type:'toll',
+    info:'Extensive toll network on autoroutes. Telepass/Liber-t compatible. Rain: 110 km/h.',
+    prices:[{p:'Paris–Lyon',v:'~€38'},{p:'Paris–Nice',v:'~€70'}],
+    enc:'Telepass / Liber-t',buy:'https://www.telepass.com',bl:'telepass.com',
+    rules:[{i:'🍺',t:'Alcohol 0.5‰',c:'warn'},{i:'🌧️',t:'Rain: 110 km/h',c:'warn'},{i:'📵',t:'No radar detectors',c:'bad'}]},
+  { id:'it',flag:'🇮🇹',name:'Italy',region:'EU',type:'toll',
+    info:'Autostrada toll system. Telepass widely used. Rain: 110 km/h, fog: 80 km/h.',
+    prices:[{p:'Milan–Rome',v:'~€45'},{p:'Rome–Naples',v:'~€12'}],
+    enc:'Telepass',buy:'https://www.telepass.com',bl:'telepass.com',
+    rules:[{i:'🍺',t:'Alcohol 0.5‰',c:'warn'},{i:'💡',t:'Lights outside towns',c:'ok'},{i:'🦺',t:'Vest must be worn',c:'ok'}]},
+  { id:'es',flag:'🇪🇸',name:'Spain',region:'EU',type:'toll',
+    info:'Mix: AP- (toll) and A- (free) motorways. Via-T/Telepass for electronic lanes.',
+    prices:[{p:'Barcelona–Valencia',v:'~€25'}],
+    enc:'Via-T / Telepass',buy:null,bl:null,
+    rules:[{i:'🍺',t:'Alcohol 0.5‰',c:'warn'},{i:'🕶️',t:'Spare glasses req.',c:'warn'},{i:'🦺',t:'Vest on road',c:'ok'}]},
+  { id:'pt',flag:'🇵🇹',name:'Portugal',region:'EU',type:'toll',
+    info:'Many roads electronic-only — no cash booth. Register plate or use Via Verde / Telepass.',
+    prices:[{p:'Lisbon–Porto',v:'~€22'}],
+    enc:'Via Verde / Telepass',buy:'https://www.viaverde.pt',bl:'viaverde.pt',
+    rules:[{i:'🍺',t:'Alcohol 0.5‰',c:'warn'},{i:'🚗',t:'Keep right lane',c:'ok'}]},
+  { id:'pl',flag:'🇵🇱',name:'Poland',region:'EU',type:'toll',
+    info:'A1, A2, A4 motorways tolled. e-TOLL app for electronic payment.',
+    prices:[{p:'Warsaw–Kraków',v:'~PLN 60'}],
+    enc:'e-TOLL (app)',buy:'https://etoll.gov.pl',bl:'etoll.gov.pl',
+    rules:[{i:'🍺',t:'Alcohol 0.2‰',c:'bad'},{i:'❄️',t:'Winter tyres advised',c:'warn'},{i:'💡',t:'Lights always on',c:'ok'}]},
+  { id:'gr',flag:'🇬🇷',name:'Greece',region:'EU',type:'toll',
+    info:'Toll booths on major motorways. Cash or card. e-pass available.',
+    prices:[{p:'Athens–Thessaloniki',v:'~€25'}],
+    enc:'e-pass Greece',buy:null,bl:null,
+    rules:[{i:'🍺',t:'Alcohol 0.5‰',c:'warn'},{i:'💡',t:'Lights outside towns',c:'ok'}]},
+  { id:'ie',flag:'🇮🇪',name:'Ireland',region:'EU',type:'toll',
+    info:'M50 Dublin is electronic-only — no cash. Pay at eflow.ie within 24h or face fine.',
+    prices:[{p:'M50 Dublin',v:'€3.10'},{p:'Other tolls',v:'€1–4'}],
+    enc:'eFlow',buy:'https://www.eflow.ie',bl:'eflow.ie',
+    rules:[{i:'🍺',t:'Alcohol 0.5‰',c:'warn'},{i:'🚗',t:'Left-hand traffic',c:'bad'}]},
+  { id:'no',flag:'🇳🇴',name:'Norway',region:'Non-EU',type:'toll',
+    info:'Extensive electronic toll system + city congestion rings. AutoPASS or plate registration.',
+    prices:[{p:'Oslo toll ring',v:'NOK 10–54/pass'}],
+    enc:'AutoPASS',buy:'https://autopass.no',bl:'autopass.no',
+    rules:[{i:'🍺',t:'Alcohol 0.2‰',c:'bad'},{i:'❄️',t:'Winter tyres req.',c:'warn'},{i:'💡',t:'Lights always on',c:'ok'}]},
+  { id:'rs',flag:'🇷🇸',name:'Serbia',region:'Non-EU',type:'toll',
+    info:'Toll plazas on all motorways. Cash (EUR or RSD) or card.',
+    prices:[{p:'Belgrade–Niš',v:'~€6'},{p:'Belgrade–Novi Sad',v:'~€3'}],
+    enc:null,buy:null,bl:null,
+    rules:[{i:'🍺',t:'Alcohol 0.3‰',c:'warn'},{i:'💡',t:'Lights always on',c:'ok'},{i:'🦺',t:'Vest required',c:'ok'}]},
+  { id:'me',flag:'🇲🇪',name:'Montenegro',region:'Non-EU',type:'toll',
+    info:'Tolls on Bar–Boljare motorway. Cash at booths.',
+    prices:[{p:'Smokovac tunnel',v:'€4'}],
+    enc:null,buy:null,bl:null,
+    rules:[{i:'🍺',t:'Alcohol 0.3‰',c:'warn'},{i:'💡',t:'Lights always on',c:'ok'}]},
+  { id:'ba',flag:'🇧🇦',name:'Bosnia & Herz.',region:'Non-EU',type:'toll',
+    info:'Tolls on A1 motorway. Cash or card.',
+    prices:[{p:'Sarajevo–Mostar',v:'~€4'}],
+    enc:null,buy:null,bl:null,
+    rules:[{i:'🍺',t:'Alcohol 0.3‰',c:'warn'},{i:'💡',t:'Lights always on',c:'ok'},{i:'🦺',t:'Vest in car',c:'ok'}]},
+  { id:'mk',flag:'🇲🇰',name:'N. Macedonia',region:'Non-EU',type:'toll',
+    info:'Toll booths on E-75 and A1. Cash in EUR or MKD.',
+    prices:[{p:'Gevgelija–Skopje',v:'~€5'}],
+    enc:null,buy:null,bl:null,
+    rules:[{i:'🍺',t:'Alcohol 0.5‰',c:'warn'},{i:'💡',t:'Lights always on',c:'ok'}]},
+  { id:'al',flag:'🇦🇱',name:'Albania',region:'Non-EU',type:'toll',
+    info:'Mostly free. Kalimash tunnel (€5) and A1 towards Kosovo tolled.',
+    prices:[{p:'Kalimash tunnel',v:'€5'},{p:'A1 Kosovo road',v:'€5'}],
+    enc:null,buy:null,bl:null,
+    rules:[{i:'🍺',t:'Alcohol 0.1‰',c:'bad'},{i:'💡',t:'Lights always on',c:'ok'}]},
+  { id:'xk',flag:'🇽🇰',name:'Kosovo',region:'Non-EU',type:'toll',
+    info:'Tolls on R7 (Albania border) and R6. Cash in EUR.',
+    prices:[{p:'Pristina–Albania',v:'~€3'}],
+    enc:null,buy:null,bl:null,
+    rules:[{i:'🚭',t:'Alcohol 0.0‰',c:'bad'},{i:'💡',t:'Lights always on',c:'ok'}]},
+  { id:'tr',flag:'🇹🇷',name:'Turkey',region:'Non-EU',type:'toll',
+    info:'HGS transponder required. Istanbul bridges are electronic-only. Tourists get temp pass at PTT.',
+    prices:[{p:'Bosphorus bridge',v:'~TRY 90'}],
+    enc:'HGS (required)',buy:null,bl:null,
+    rules:[{i:'🍺',t:'Alcohol 0.5‰',c:'warn'},{i:'🛂',t:'Green Card required',c:'bad'}]},
+  { id:'ua',flag:'🇺🇦',name:'Ukraine',region:'Non-EU',type:'toll',
+    info:'Tolls on some motorways (M-06 Kyiv–Chop). Currently affected by war — check current situation.',
+    prices:[{p:'M-06 sections',v:'~UAH 40–100'}],
+    enc:null,buy:null,bl:null,
+    rules:[{i:'🍺',t:'Alcohol 0.2‰',c:'bad'},{i:'💡',t:'Lights always on',c:'ok'},{i:'⚠️',t:'Check travel warnings',c:'bad'}]},
+  { id:'by',flag:'🇧🇾',name:'Belarus',region:'Non-EU',type:'toll',
+    info:'BelToll electronic toll system on main motorways. Transponder or pre-pay required.',
+    prices:[{p:'Per km approx.',v:'€0.02–0.06/km'}],
+    enc:'BelToll',buy:null,bl:null,
+    rules:[{i:'🍺',t:'Alcohol 0.0‰',c:'bad'},{i:'🛂',t:'Visa may be required',c:'bad'},{i:'⚠️',t:'Check travel warnings',c:'bad'}]},
+  { id:'ge',flag:'🇬🇪',name:'Georgia',region:'Non-EU',type:'toll',
+    info:'Tolls on David Agmashenebeli motorway. Cash or card.',
+    prices:[{p:'Tbilisi–Kutaisi',v:'~GEL 10'}],
+    enc:null,buy:null,bl:null,
+    rules:[{i:'🍺',t:'Alcohol 0.3‰',c:'warn'},{i:'💡',t:'Lights always on',c:'ok'}]},
+
+  // ── FREE ──
+  { id:'de',flag:'🇩🇪',name:'Germany',region:'EU',type:'free',
+    info:'Autobahn FREE for cars. ~30% has no speed limit. Trucks pay Lkw-Maut.',
+    prices:[],enc:null,buy:null,bl:null,
+    rules:[{i:'🍺',t:'Alcohol 0.5‰',c:'warn'},{i:'⛽',t:'No stopping on Autobahn',c:'bad'},{i:'🔧',t:'Warning triangle req.',c:'ok'}]},
+  { id:'nl',flag:'🇳🇱',name:'Netherlands',region:'EU',type:'free',
+    info:'All motorways free. 100 km/h daytime (environmental), 130 km/h at night on some sections.',
+    prices:[],enc:null,buy:null,bl:null,
+    rules:[{i:'🍺',t:'Alcohol 0.5‰',c:'warn'},{i:'🚲',t:'Bikes have priority',c:'warn'}]},
+  { id:'be',flag:'🇧🇪',name:'Belgium',region:'EU',type:'free',
+    info:'Free for cars. Liefkenshoek tunnel near Antwerp has a toll.',
+    prices:[{p:'Liefkenshoek tunnel',v:'~€6'}],
+    enc:null,buy:null,bl:null,
+    rules:[{i:'🍺',t:'Alcohol 0.5‰',c:'warn'},{i:'🚲',t:'Bikes have priority',c:'warn'}]},
+  { id:'lu',flag:'🇱🇺',name:'Luxembourg',region:'EU',type:'free',
+    info:'All roads free. No tolls of any kind.',
+    prices:[],enc:null,buy:null,bl:null,
+    rules:[{i:'🍺',t:'Alcohol 0.5‰',c:'warn'}]},
+  { id:'dk',flag:'🇩🇰',name:'Denmark',region:'EU',type:'free',
+    info:'Motorways free. Øresund Bridge (DKK 390) and Storebælt Bridge (DKK 250) are charged separately.',
+    prices:[{p:'Øresund Bridge',v:'DKK 390'},{p:'Storebælt Bridge',v:'DKK 250'}],
+    enc:null,buy:null,bl:null,
+    rules:[{i:'🍺',t:'Alcohol 0.5‰',c:'warn'},{i:'💡',t:'Lights always on',c:'ok'}]},
+  { id:'se',flag:'🇸🇪',name:'Sweden',region:'EU',type:'free',
+    info:'Most motorways free. Stockholm and Gothenburg have congestion charges.',
+    prices:[{p:'City congestion',v:'SEK 11–45/pass'}],
+    enc:null,buy:null,bl:null,
+    rules:[{i:'🍺',t:'Alcohol 0.2‰',c:'bad'},{i:'❄️',t:'Winter tyres req.',c:'warn'},{i:'💡',t:'Lights always on',c:'ok'}]},
+  { id:'fi',flag:'🇫🇮',name:'Finland',region:'EU',type:'free',
+    info:'All motorways free. No tolls. Good road quality.',
+    prices:[],enc:null,buy:null,bl:null,
+    rules:[{i:'🍺',t:'Alcohol 0.5‰',c:'warn'},{i:'❄️',t:'Winter tyres req.',c:'warn'},{i:'💡',t:'Lights always on',c:'ok'}]},
+  { id:'gb',flag:'🇬🇧',name:'United Kingdom',region:'Non-EU',type:'free',
+    info:'Most motorways free. Some newer roads (M6 Toll, Dartford Crossing) have charges. Left-hand traffic.',
+    prices:[{p:'M6 Toll',v:'£6.70'},{p:'Dartford Crossing',v:'£3.00'}],
+    enc:null,buy:null,bl:null,
+    rules:[{i:'🍺',t:'Alcohol 0.8‰',c:'warn'},{i:'🚗',t:'Left-hand traffic',c:'bad'},{i:'💡',t:'Mph speed limits',c:'warn'}]},
+  { id:'lt',flag:'🇱🇹',name:'Lithuania',region:'EU',type:'free',
+    info:'All motorways free. No vignette or toll for passenger cars.',
+    prices:[],enc:null,buy:null,bl:null,
+    rules:[{i:'🍺',t:'Alcohol 0.4‰',c:'warn'},{i:'❄️',t:'Winter tyres req.',c:'warn'},{i:'💡',t:'Lights always on',c:'ok'}]},
+  { id:'lv',flag:'🇱🇻',name:'Latvia',region:'EU',type:'free',
+    info:'All motorways free. No vignette.',
+    prices:[],enc:null,buy:null,bl:null,
+    rules:[{i:'🍺',t:'Alcohol 0.5‰',c:'warn'},{i:'❄️',t:'Winter tyres req.',c:'warn'},{i:'💡',t:'Lights always on',c:'ok'}]},
+  { id:'ee',flag:'🇪🇪',name:'Estonia',region:'EU',type:'free',
+    info:'All motorways free. No vignette. Good road quality.',
+    prices:[],enc:null,buy:null,bl:null,
+    rules:[{i:'🍺',t:'Alcohol 0.2‰',c:'bad'},{i:'❄️',t:'Winter tyres req.',c:'warn'},{i:'💡',t:'Lights always on',c:'ok'}]},
+  { id:'cy',flag:'🇨🇾',name:'Cyprus',region:'EU',type:'free',
+    info:'Motorways free. Lowest EU motorway limit (100 km/h). Left-hand traffic.',
+    prices:[],enc:null,buy:null,bl:null,
+    rules:[{i:'🍺',t:'Alcohol 0.5‰',c:'warn'},{i:'🚗',t:'Left-hand traffic',c:'bad'}]},
+  { id:'mt',flag:'🇲🇹',name:'Malta',region:'EU',type:'free',
+    info:'No motorways in the traditional sense. All roads free. Left-hand traffic. Very congested.',
+    prices:[],enc:null,buy:null,bl:null,
+    rules:[{i:'🍺',t:'Alcohol 0.8‰',c:'warn'},{i:'🚗',t:'Left-hand traffic',c:'bad'}]},
+  { id:'is',flag:'🇮🇸',name:'Iceland',region:'Non-EU',type:'free',
+    info:'Most roads free. Hvalfjörður tunnel has a small toll.',
+    prices:[{p:'Hvalfjörður tunnel',v:'ISK 1,000'}],
+    enc:null,buy:null,bl:null,
+    rules:[{i:'🍺',t:'Alcohol 0.5‰',c:'warn'},{i:'⛄',t:'F-roads 4WD only',c:'bad'},{i:'💡',t:'Lights always on',c:'ok'}]},
+  { id:'ad',flag:'🇦🇩',name:'Andorra',region:'Non-EU',type:'free',
+    info:'All roads free. No motorways. Popular for duty-free shopping on road trips.',
+    prices:[],enc:null,buy:null,bl:null,
+    rules:[{i:'🍺',t:'Alcohol 0.5‰',c:'warn'}]},
+  { id:'mc',flag:'🇲🇨',name:'Monaco',region:'Non-EU',type:'free',
+    info:'City-state. French road rules apply. No separate vignette. Extremely congested.',
+    prices:[],enc:null,buy:null,bl:null,
+    rules:[{i:'🍺',t:'Alcohol 0.5‰',c:'warn'},{i:'🅿️',t:'Parking very expensive',c:'warn'}]},
+  { id:'sm',flag:'🇸🇲',name:'San Marino',region:'Non-EU',type:'free',
+    info:'City-state. Italian road rules apply. No toll or vignette, but Italian vignette not needed here.',
+    prices:[],enc:null,buy:null,bl:null,
+    rules:[{i:'🍺',t:'Alcohol 0.5‰',c:'warn'}]},
+  { id:'va',flag:'🇻🇦',name:'Vatican',region:'Non-EU',type:'free',
+    info:'City-state. Italian road rules apply. Cars generally not permitted inside Vatican walls.',
+    prices:[],enc:null,buy:null,bl:null,
+    rules:[{i:'🍺',t:'Alcohol 0.5‰',c:'warn'},{i:'🚫',t:'Cars not allowed inside',c:'bad'}]},
+  { id:'am',flag:'🇦🇲',name:'Armenia',region:'Non-EU',type:'free',
+    info:'Roads generally free. Some tunnels have small fees.',
+    prices:[{p:'Vardenyats tunnel',v:'~AMD 500'}],
+    enc:null,buy:null,bl:null,
+    rules:[{i:'🍺',t:'Alcohol 0.0‰',c:'bad'},{i:'💡',t:'Lights always on',c:'ok'}]},
+  { id:'az',flag:'🇦🇿',name:'Azerbaijan',region:'Non-EU',type:'free',
+    info:'Most roads free. Baku–Shamakhi expressway tolled.',
+    prices:[{p:'Baku–Shamakhi',v:'AZN 1'}],
+    enc:null,buy:null,bl:null,
+    rules:[{i:'🍺',t:'Alcohol 0.0‰',c:'bad'},{i:'💡',t:'Lights always on',c:'ok'}]},
+];
+
+const SPEED = [
+  {flag:'🇸🇰',name:'Slovakia',   urban:50,rural:90, motor:130,truck:90, note:'0.0‰ alcohol. Lights always on.'},
+  {flag:'🇨🇿',name:'Czechia',    urban:50,rural:90, motor:130,truck:80, note:'0.0‰ alcohol. Lights always on.'},
+  {flag:'🇦🇹',name:'Austria',    urban:50,rural:100,motor:130,truck:80, note:'Tunnels: 80 km/h. Winter: 100 on some sections.'},
+  {flag:'🇨🇭',name:'Switzerland',urban:50,rural:80, motor:120,truck:80, note:'Very strict enforcement. Tunnel: 80 km/h.'},
+  {flag:'🇭🇺',name:'Hungary',    urban:50,rural:90, motor:130,truck:80, note:'0.0‰ alcohol.'},
+  {flag:'🇸🇮',name:'Slovenia',   urban:50,rural:90, motor:130,truck:80, note:'Lights always on.'},
+  {flag:'🇷🇴',name:'Romania',    urban:50,rural:90, motor:130,truck:80, note:'0.0‰ alcohol.'},
+  {flag:'🇧🇬',name:'Bulgaria',   urban:50,rural:90, motor:140,truck:80, note:'140 km/h — tied highest fixed limit in EU.'},
+  {flag:'🇩🇪',name:'Germany',    urban:50,rural:100,motor:999,truck:80, note:'No general limit on ~30% of Autobahn. 130 advisory.'},
+  {flag:'🇫🇷',name:'France',     urban:50,rural:80, motor:130,truck:90, note:'Rain: 110 km/h. New drivers: max 110 km/h.'},
+  {flag:'🇮🇹',name:'Italy',      urban:50,rural:90, motor:130,truck:80, note:'Rain: 110. Fog: 80. Fines doubled at night.'},
+  {flag:'🇪🇸',name:'Spain',      urban:50,rural:90, motor:120,truck:80, note:'1-lane urban streets: 30 km/h.'},
+  {flag:'🇵🇹',name:'Portugal',   urban:50,rural:90, motor:120,truck:90, note:''},
+  {flag:'🇵🇱',name:'Poland',     urban:50,rural:90, motor:140,truck:80, note:'140 km/h — tied highest fixed limit in EU.'},
+  {flag:'🇭🇷',name:'Croatia',    urban:50,rural:90, motor:130,truck:80, note:'Under 25: lower limits. Lights always on.'},
+  {flag:'🇬🇷',name:'Greece',     urban:50,rural:90, motor:130,truck:80, note:''},
+  {flag:'🇧🇪',name:'Belgium',    urban:50,rural:90, motor:120,truck:90, note:'Brussels: 30 km/h city-wide.'},
+  {flag:'🇳🇱',name:'Netherlands',urban:50,rural:80, motor:100,truck:90, note:'100 km/h daytime (env). 130 km/h at night.'},
+  {flag:'🇱🇺',name:'Luxembourg', urban:50,rural:90, motor:130,truck:90, note:''},
+  {flag:'🇩🇰',name:'Denmark',    urban:50,rural:80, motor:130,truck:80, note:'Lights always on.'},
+  {flag:'🇸🇪',name:'Sweden',     urban:50,rural:70, motor:120,truck:80, note:'Variable limits. 0.2‰ alcohol.'},
+  {flag:'🇫🇮',name:'Finland',    urban:50,rural:80, motor:120,truck:80, note:'Winter: 100 km/h on many motorways.'},
+  {flag:'🇮🇪',name:'Ireland',    urban:50,rural:80, motor:120,truck:80, note:'Left-hand traffic. mph road signs.'},
+  {flag:'🇬🇧',name:'UK',         urban:48,rural:97, motor:113,truck:90, note:'Uses mph: 30/60/70 mph. Left-hand traffic.'},
+  {flag:'🇱🇹',name:'Lithuania',  urban:50,rural:90, motor:130,truck:90, note:'0.4‰ alcohol. Lights always on.'},
+  {flag:'🇱🇻',name:'Latvia',     urban:50,rural:90, motor:130,truck:80, note:'0.5‰ alcohol. Lights always on.'},
+  {flag:'🇪🇪',name:'Estonia',    urban:50,rural:90, motor:110,truck:90, note:'0.2‰ alcohol. Lights always on.'},
+  {flag:'🇳🇴',name:'Norway',     urban:50,rural:80, motor:110,truck:90, note:'Income-scaled fines. Strictest enforcement.'},
+  {flag:'🇷🇸',name:'Serbia',     urban:50,rural:80, motor:130,truck:80, note:'0.3‰ alcohol.'},
+  {flag:'🇲🇪',name:'Montenegro', urban:50,rural:80, motor:120,truck:80, note:'0.3‰ alcohol.'},
+  {flag:'🇧🇦',name:'Bosnia & H.',urban:50,rural:80, motor:130,truck:80, note:''},
+  {flag:'🇲🇰',name:'N. Macedonia',urban:50,rural:80,motor:130,truck:80, note:''},
+  {flag:'🇦🇱',name:'Albania',    urban:40,rural:90, motor:110,truck:80, note:'0.1‰ alcohol. Lowest urban limit.'},
+  {flag:'🇽🇰',name:'Kosovo',     urban:50,rural:80, motor:130,truck:80, note:'0.0‰ alcohol.'},
+  {flag:'🇹🇷',name:'Turkey',     urban:50,rural:90, motor:130,truck:80, note:'Some new sections 140 km/h.'},
+  {flag:'🇺🇦',name:'Ukraine',    urban:50,rural:90, motor:130,truck:80, note:'0.2‰ alcohol.'},
+  {flag:'🇧🇾',name:'Belarus',    urban:60,rural:90, motor:110,truck:90, note:'0.0‰ alcohol. Check travel warnings.'},
+  {flag:'🇲🇩',name:'Moldova',    urban:50,rural:90, motor:130,truck:90, note:'0.0‰ alcohol.'},
+  {flag:'🇨🇾',name:'Cyprus',     urban:50,rural:80, motor:100,truck:80, note:'Lowest EU motorway limit. Left-hand traffic.'},
+  {flag:'🇲🇹',name:'Malta',      urban:50,rural:80, motor:80, truck:80, note:'No motorways. Left-hand traffic.'},
+  {flag:'🇮🇸',name:'Iceland',    urban:50,rural:90, motor:90, truck:80, note:'F-roads require 4WD. Unpaved roads: 80 km/h.'},
+  {flag:'🇦🇩',name:'Andorra',    urban:40,rural:90, motor:90, truck:80, note:''},
+  {flag:'🇬🇪',name:'Georgia',    urban:60,rural:80, motor:100,truck:80, note:'0.3‰ alcohol.'},
+  {flag:'🇦🇲',name:'Armenia',    urban:60,rural:90, motor:110,truck:80, note:'0.0‰ alcohol.'},
+  {flag:'🇦🇿',name:'Azerbaijan', urban:60,rural:90, motor:110,truck:80, note:'0.0‰ alcohol.'},
+  {flag:'🇱🇮',name:'Liechtenstein',urban:50,rural:80,motor:120,truck:80,note:'Swiss vignette applies.'},
+];
+
+const ENC = [
+  {ico:'📡',name:'Telepass',scope:'IT, FR, ES, PT, BE, HR, PL…',
+   tagline:'The pan-European standard',
+   desc:'Originally Italian, now accepted across most toll countries. One device, multiple countries. Subscription ~€2–5/month. Major time saver on Italian and French motorways.',
+   works:['Italy','France','Spain','Portugal','Belgium','Croatia','Poland','Greece (partial)']},
+  {ico:'📱',name:'e-TOLL Poland',scope:'PL',
+   tagline:'App-based, no device needed',
+   desc:'Poland\'s national system via smartphone app. No physical device needed. Register at etoll.gov.pl and pay via app or pre-pay.',
+   works:['Poland']},
+  {ico:'🔵',name:'ENC Croatia (HAC)',scope:'HR',
+   tagline:'Beat the summer queues',
+   desc:'Essential for Croatia in July–August. Dedicated ENC lane at all plazas — drive through without stopping. Available at HAC service centers.',
+   works:['Croatia']},
+  {ico:'🟢',name:'Via Verde',scope:'PT, ES partial',
+   tagline:'Required for electronic-only roads',
+   desc:'Some Portuguese roads have NO cash lane — Via Verde or Telepass required. Available at CTT post offices. Telepass also accepted.',
+   works:['Portugal','Spain (partial)']},
+  {ico:'🟡',name:'AutoPASS',scope:'NO',
+   tagline:'Norway\'s national system',
+   desc:'Works at all Norwegian tolls and city congestion rings. Foreign visitors can register plate at autopass.no or use rental car pass.',
+   works:['Norway']},
+  {ico:'🟠',name:'eFlow Ireland',scope:'IE M50',
+   tagline:'M50 Dublin — cash not accepted',
+   desc:'The M50 Dublin has NO cash tolls. Pay via eFlow app, website, or PayZone retailer within 24 hours of passing.',
+   works:['Ireland (M50)']},
+  {ico:'🔴',name:'HGS Turkey',scope:'TR',
+   tagline:'Required for Istanbul bridges',
+   desc:'Turkish motorways and Istanbul bridges require HGS transponder. Tourists get temporary access at PTT post offices or border crossings.',
+   works:['Turkey']},
+  {ico:'⚫',name:'BelToll',scope:'BY',
+   tagline:'Belarus motorway toll system',
+   desc:'Electronic toll collection on Belarusian motorways. Transponder required or pre-pay at service areas. Check travel advisories before entering Belarus.',
+   works:['Belarus']},
+];
+
+let activeFilter='all';
+
+function renderCC(filter='all',search=''){
+  const grid=document.getElementById('country-grid');
+  const items=C.filter(c=>{
+    const mf=filter==='all'||c.type===filter;
+    const ms=!search||c.name.toLowerCase().includes(search.toLowerCase());
+    return mf&&ms;
+  });
+  const tl={vignette:'🏷️ Vignette',toll:'🚧 Toll gates',free:'🆓 Free'};
+  const tc={vignette:'tbv',toll:'tbt',free:'tbf'};
+  grid.innerHTML=items.map(c=>`
+    <div class="cc" data-type="${c.type}">
+      <div class="cc-top">
+        <div class="cc-fl">${c.flag}</div>
+        <div>
+          <div class="cc-nm">${c.name}</div>
+          <div class="cc-rg">${c.region}</div>
+          <span class="tbadge ${tc[c.type]}">${tl[c.type]}</span>
+        </div>
+      </div>
+      <div class="cc-body">
+        <div class="cc-info">${c.info}</div>
+        ${c.prices.length?`<div class="prices">${c.prices.map(p=>`<div class="pr"><span class="pr-p">${p.p}</span><span class="pr-v">${p.v}</span></div>`).join('')}</div>`:`<p style="font-size:.73rem;color:var(--muted);margin-bottom:.75rem">No payment required for passenger cars.</p>`}
+        ${c.enc?`<div class="epill">📦 ${c.enc}</div>`:''}
+        ${c.rules?.length?`<div class="rules">${c.rules.map(r=>`<span class="rp rp-${r.c}">${r.i} ${r.t}</span>`).join('')}</div>`:''}
+      </div>
+      <div class="cc-foot">
+        ${c.buy?`<a class="bbuy" href="${c.buy}" target="_blank">Buy → ${c.bl}</a>`:c.type==='toll'?`<span class="bbuy na">Pay at toll gate</span>`:`<span class="bbuy na">No purchase needed</span>`}
+      </div>
+    </div>`).join('');
+}
+
+function filterCC(type,btn){
+  document.querySelectorAll('.fb').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active'); activeFilter=type;
+  renderCC(type,document.getElementById('cc-search').value);
+}
+function searchCC(){ renderCC(activeFilter,document.getElementById('cc-search').value); }
+
+function renderSpeed(){
+  document.getElementById('speed-tbody').innerHTML=SPEED.map(s=>`<tr>
+    <td>${s.flag} ${s.name}</td>
+    <td><span class="spd">${s.urban}</span></td>
+    <td><span class="spd">${s.rural}</span></td>
+    <td>${s.motor===999?`<span class="spd none">No limit*</span>`:`<span class="spd ${s.motor>=130?'fast':s.motor<=100?'slow':''}">${s.motor}</span>`}</td>
+    <td><span class="spd slow">${s.truck}</span></td>
+    <td class="nc">${s.note}</td>
+  </tr>`).join('');
+}
+
+function renderCalcChecks(){
+  const wrap=document.getElementById('calc-checks');
+  C.filter(c=>c.type==='vignette'&&c.id!=='li').forEach(c=>{
+    const l=document.createElement('label');
+    l.className='cck'; l.dataset.id=c.id;
+    l.innerHTML=`<input type="checkbox"><span>${c.flag}</span>${c.name}`;
+    l.addEventListener('click',()=>l.classList.toggle('sel'));
+    wrap.appendChild(l);
+  });
+}
+
+function doCalc(){
+  const sel=[...document.querySelectorAll('.cck.sel')].map(l=>l.dataset.id);
+  const panel=document.getElementById('calc-result');
+  if(!sel.length){panel.innerHTML='<h2>What you need</h2><div class="re">Please select at least one country.</div>';return;}
+  const items=C.filter(c=>sel.includes(c.id));
+  let html='<h2>What you need</h2>';
+  items.forEach(c=>{
+    const cheap=c.prices[0];
+    html+=`<div class="ri"><div class="ri-f">${c.flag}</div><div class="ri-i"><div class="ri-n">${c.name}</div><div class="ri-a">${cheap?`Buy vignette — from ${cheap.p}`:'No vignette needed'}</div></div>${cheap?`<div class="ri-p">${cheap.v}</div>`:''}</div>`;
+  });
+  const cnt=items.filter(c=>c.prices.length).length;
+  html+=`<div class="rtot"><span class="rtl">Vignettes to buy</span><span class="rtv">${cnt}</span></div><div class="rnote">💡 Buy online before your trip. AT, CZ, SK, HU, RO, BG are fully electronic — camera enforced, no sticker.</div>`;
+  panel.innerHTML=html;
+}
+
+function renderENC(){
+  document.getElementById('enc-grid').innerHTML=ENC.map(d=>`
+    <div class="enc-card">
+      <div class="enc-h"><div class="enc-ico">${d.ico}</div><div><div class="enc-ti">${d.name}</div><div class="enc-sc">${d.scope}</div></div></div>
+      <div class="enc-tl">"${d.tagline}"</div>
+      <div class="enc-d">${d.desc}</div>
+      <div class="enc-tags">${d.works.map(w=>`<span class="enc-tag">${w}</span>`).join('')}</div>
+    </div>`).join('');
+}
+
+function switchTab(id,btn){
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('view-'+id).classList.add('active');
+}
+
+document.getElementById('stat-countries').textContent=C.length;
+renderCC(); renderSpeed(); renderCalcChecks(); renderENC();
+</script>
+</body>
+</html>
