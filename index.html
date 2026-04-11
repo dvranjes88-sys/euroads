@@ -172,6 +172,33 @@ main { padding:2rem; max-width:1300px; margin:0 auto; }
 .bmc-btn { display:flex; align-items:center; gap:.6rem; background:#FFDD00; color:#000; border:none; border-radius:100px; padding:.65rem 1.2rem; font-size:.8rem; font-weight:700; cursor:pointer; text-decoration:none; box-shadow:0 4px 20px rgba(0,0,0,.15); transition:all .2s; white-space:nowrap; }
 .bmc-btn:hover { transform:translateY(-2px); box-shadow:0 8px 25px rgba(0,0,0,.2); }
 
+/* MAP ROUTE */
+.mr-layout { display:grid; grid-template-columns:380px 1fr; gap:1.5rem; align-items:start; }
+.mr-panel { background:var(--surface); border:1.5px solid var(--border); border-radius:var(--r); padding:1.6rem; }
+.mr-field { margin-bottom:.85rem; }
+.mr-field label { display:block; font-size:.68rem; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:.08em; margin-bottom:.3rem; }
+.mr-field input { width:100%; padding:.6rem .85rem; border:1.5px solid var(--border); border-radius:8px; font-family:'Geist',sans-serif; font-size:.85rem; background:var(--surface); color:var(--text); outline:none; transition:border-color .15s; }
+.mr-field input:focus { border-color:var(--accent); }
+.mr-map-wrap { position:sticky; top:120px; border-radius:var(--r); overflow:hidden; border:1.5px solid var(--border); height:580px; background:#e8e4dc; }
+#mr-map { width:100%; height:100%; }
+.mr-legend { position:absolute; bottom:1rem; left:1rem; background:rgba(255,255,255,.92); border-radius:8px; padding:.6rem .9rem; z-index:10; }
+.mrl-item { display:flex; align-items:center; gap:.5rem; font-size:.72rem; font-weight:500; margin-bottom:.25rem; }
+.mrl-item:last-child { margin-bottom:0; }
+.mrl-dot { width:12px; height:12px; border-radius:50%; flex-shrink:0; }
+.mr-country-item { display:flex; align-items:center; gap:.85rem; border:1.5px solid var(--border); border-radius:8px; padding:.85rem 1rem; margin-bottom:.6rem; }
+.mr-ci-code { font-size:.72rem; font-weight:800; color:var(--muted); width:2.2rem; text-align:center; flex-shrink:0; }
+.mr-ci-info { flex:1; }
+.mr-ci-name { font-weight:700; font-size:.88rem; }
+.mr-ci-sub { font-size:.72rem; color:var(--muted); margin-top:.1rem; }
+.mr-ci-price { font-family:'Geist',sans-serif; font-weight:800; font-size:.95rem; color:var(--v); }
+.mr-total-box { background:var(--vl); border:2px solid #a8d5c5; border-radius:10px; padding:1rem 1.2rem; margin-top:1rem; }
+.mr-total-label { font-size:.68rem; font-weight:700; text-transform:uppercase; letter-spacing:.1em; color:var(--v); margin-bottom:.4rem; }
+.mr-total-row { display:flex; justify-content:space-between; align-items:center; }
+.mr-total-amt { font-family:'Geist',sans-serif; font-weight:900; font-size:1.6rem; color:var(--v); }
+.mr-route-info { font-size:.75rem; color:var(--muted); background:var(--bg); border-radius:6px; padding:.6rem .85rem; margin-bottom:1rem; display:flex; gap:1.5rem; flex-wrap:wrap; }
+.mr-route-stat strong { display:block; font-size:.95rem; font-weight:800; color:var(--text); }
+@media(max-width:900px){ .mr-layout{grid-template-columns:1fr;} .mr-map-wrap{height:320px;position:relative;top:0;} }
+
 /* ROUTE PLANNER */
 .route-row { display:grid; grid-template-columns:1fr auto 1fr; gap:.5rem; align-items:center; margin-bottom:.85rem; }
 .route-arrow { font-size:1.2rem; color:var(--muted); text-align:center; padding-top:1.4rem; }
@@ -247,6 +274,7 @@ main { padding:2rem; max-width:1300px; margin:0 auto; }
   <button class="tab active" onclick="switchTab('countries',this)">🗺️ Countries</button>
   <button class="tab" onclick="switchTab('speed',this)">⚡ Speed Limits</button>
   <button class="tab tab-highlight" onclick="switchTab('calc',this)">🧮 Route Calculator</button>
+  <button class="tab" onclick="switchTab('maproute',this)">📍 Map Route</button>
   <button class="tab" onclick="switchTab('enc',this)">📦 ENC Devices</button>
   <button class="tab" onclick="switchTab('game',this)">🎮 EuroTour Game</button>
 </div>
@@ -344,6 +372,53 @@ main { padding:2rem; max-width:1300px; margin:0 auto; }
     <iframe src="euro-capitals-game.html" style="width:100%;height:100%;border:none;" title="EuroTour Game"></iframe>
   </div>
   <p style="font-size:.72rem;color:var(--muted);margin-top:.75rem;text-align:center;">Game not loading? <a href="euro-capitals-game.html" target="_blank" style="color:var(--accent);">Open in full screen →</a></p>
+</div>
+
+<div class="view" id="view-maproute">
+  <div class="mr-layout">
+    <!-- LEFT: inputs -->
+    <div class="mr-panel">
+      <h2 style="font-weight:800;font-size:1.15rem;margin-bottom:.3rem;">📍 Map Route Planner</h2>
+      <p style="font-size:.78rem;color:var(--muted);margin-bottom:1.25rem;">Enter any two cities — we'll calculate the exact route, detect which countries and motorways you cross, and show what to buy.</p>
+
+      <div class="mr-field">
+        <label>From — city or address</label>
+        <input type="text" id="mr-from" placeholder="e.g. Bratislava, Slovakia" autocomplete="off">
+      </div>
+      <div class="mr-field">
+        <label>To — city or address</label>
+        <input type="text" id="mr-to" placeholder="e.g. Kozarska Dubica, Bosnia" autocomplete="off">
+      </div>
+
+      <div class="date-row" style="margin-top:.75rem;">
+        <div class="date-field">
+          <label>Departure</label>
+          <input type="date" id="mr-date-from">
+        </div>
+        <div class="date-field">
+          <label>Return</label>
+          <input type="date" id="mr-date-to">
+        </div>
+      </div>
+
+      <button class="bcalc pulse" id="mr-calc-btn" onclick="calcMapRoute()" style="margin-top:.85rem;width:100%;">
+        Calculate route →
+      </button>
+
+      <div id="mr-result" style="margin-top:1.25rem;"></div>
+    </div>
+
+    <!-- RIGHT: map -->
+    <div class="mr-map-wrap">
+      <div id="mr-map"></div>
+      <div id="mr-legend" class="mr-legend" style="display:none;">
+        <div class="mrl-item"><span class="mrl-dot" style="background:#1B4D3E"></span> Vignette required</div>
+        <div class="mrl-item"><span class="mrl-dot" style="background:#7A3200"></span> Toll gate</div>
+        <div class="mrl-item"><span class="mrl-dot" style="background:#0F3460"></span> Free motorway</div>
+        <div class="mrl-item"><span class="mrl-dot" style="background:#888"></span> No motorway</div>
+      </div>
+    </div>
+  </div>
 </div>
 
 </main>
@@ -1084,14 +1159,222 @@ function renderENC(){
 }
 
 function switchTab(id,btn){
-  document.querySelectorAll('.tab').forEach(t=>{
-    t.classList.remove('active');
-  });
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
   document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
   btn.classList.add('active');
-  // stop pulsing when calc tab is active (no need to attract anymore)
   if(id==='calc') btn.classList.remove('tab-highlight');
   document.getElementById('view-'+id).classList.add('active');
+  if(id==='maproute') initMrMap();
+}
+
+// ── MAP ROUTE ──────────────────────────────────────────────
+const GKEY='AIzaSyD65WK4E-yPe5koojoRlFHqBulad5zReg0';
+let mrMap=null, mrDirectionsRenderer=null, mrPolylines=[];
+
+// Country code → EuroRoads country id mapping
+const CC_MAP={
+  'SK':'sk','CZ':'cz','AT':'at','CH':'ch','HU':'hu','SI':'si','RO':'ro','BG':'bg',
+  'HR':'hr','FR':'fr','IT':'it','ES':'es','PT':'pt','PL':'pl','GR':'gr','IE':'ie',
+  'DE':'de','NL':'nl','BE':'be','LU':'lu','DK':'dk','SE':'se','FI':'fi',
+  'GB':'gb','LT':'lt','LV':'lv','EE':'ee','CY':'cy','MT':'mt','IS':'is',
+  'NO':'no','RS':'rs','ME':'me','BA':'ba','MK':'mk','AL':'al','XK':'xk',
+  'TR':'tr','UA':'ua','BY':'by','GE':'ge','AM':'am','AZ':'az','MD':'md',
+  'AD':'ad','MC':'mc','SM':'sm','LI':'li',
+};
+
+// Motorway prefixes by country — if route uses these, it's a paid/vignette road
+const MOTORWAY_PREFIXES={
+  sk:['D','R'],cz:['D','R'],at:['A','S'],ch:['A'],hu:['M'],si:['A','H'],
+  ro:['A'],bg:['A'],hr:['A'],fr:['A'],it:['A'],es:['AP','A'],pt:['A','IP'],
+  pl:['A','S'],gr:['A'],de:['A'],nl:['A'],be:['A','E'],se:['E'],no:['E'],
+  rs:['A'],me:['A'],ba:['A'],mk:['A'],
+};
+
+function initMrMap(){
+  if(mrMap) return;
+  // Set default dates
+  const today=new Date();
+  const nextWeek=new Date(today); nextWeek.setDate(today.getDate()+7);
+  document.getElementById('mr-date-from').value=today.toISOString().split('T')[0];
+  document.getElementById('mr-date-to').value=nextWeek.toISOString().split('T')[0];
+
+  if(!window.google){
+    const s=document.createElement('script');
+    s.src=`https://maps.googleapis.com/maps/api/js?key=${GKEY}&libraries=geometry`;
+    s.onload=()=>createMrMap();
+    document.head.appendChild(s);
+  } else { createMrMap(); }
+}
+
+function createMrMap(){
+  mrMap=new google.maps.Map(document.getElementById('mr-map'),{
+    center:{lat:47,lng:15}, zoom:5,
+    mapTypeId:'roadmap',
+    styles:[
+      {featureType:'poi',stylers:[{visibility:'off'}]},
+      {featureType:'transit',stylers:[{visibility:'off'}]},
+    ],
+    disableDefaultUI:false,
+    zoomControl:true,
+    streetViewControl:false,
+    fullscreenControl:true,
+  });
+  mrDirectionsRenderer=new google.maps.DirectionsRenderer({
+    map:mrMap,
+    suppressMarkers:false,
+    polylineOptions:{strokeColor:'#1B4D3E',strokeWeight:5,strokeOpacity:0.8}
+  });
+}
+
+async function calcMapRoute(){
+  const fromVal=document.getElementById('mr-from').value.trim();
+  const toVal=document.getElementById('mr-to').value.trim();
+  if(!fromVal||!toVal){
+    document.getElementById('mr-result').innerHTML='<div class="re" style="text-align:left;padding:.75rem;">Please enter both origin and destination.</div>';
+    return;
+  }
+
+  const resultEl=document.getElementById('mr-result');
+  resultEl.innerHTML='<div style="font-size:.8rem;color:var(--muted);padding:.5rem 0;">⏳ Calculating route...</div>';
+
+  if(!window.google||!mrMap) { initMrMap(); await new Promise(r=>setTimeout(r,2000)); }
+
+  // Load FX if needed
+  if(!Object.keys(FX).length) await loadFX();
+
+  const dateFrom=document.getElementById('mr-date-from').value;
+  const dateTo=document.getElementById('mr-date-to').value;
+  let tripDays=7;
+  if(dateFrom&&dateTo){
+    const d1=new Date(dateFrom),d2=new Date(dateTo);
+    tripDays=Math.max(1,Math.ceil((d2-d1)/(1000*60*60*24)));
+  }
+
+  const directionsService=new google.maps.DirectionsService();
+
+  try {
+    const result=await new Promise((res,rej)=>{
+      directionsService.route({
+        origin:fromVal,
+        destination:toVal,
+        travelMode:google.maps.TravelMode.DRIVING,
+        region:'eu',
+      },(r,s)=>{ if(s==='OK') res(r); else rej(s); });
+    });
+
+    mrDirectionsRenderer.setDirections(result);
+
+    // Extract countries from route steps
+    const steps=result.routes[0].legs.flatMap(l=>l.steps);
+    const totalDist=result.routes[0].legs.reduce((s,l)=>s+l.distance.value,0);
+    const totalDur=result.routes[0].legs.reduce((s,l)=>s+l.duration.value,0);
+
+    // Geocode sample points along route to detect countries
+    const path=result.routes[0].overview_path;
+    const samplePoints=[];
+    const step=Math.max(1,Math.floor(path.length/12));
+    for(let i=0;i<path.length;i+=step) samplePoints.push(path[i]);
+
+    // Reverse geocode each sample point
+    const geocoder=new google.maps.Geocoder();
+    const countryCodes=new Set();
+    const countryOrder=[];
+
+    await Promise.all(samplePoints.map(pt=>new Promise(res=>{
+      geocoder.geocode({location:pt},(results,status)=>{
+        if(status==='OK'&&results[0]){
+          const cc=results[0].address_components.find(c=>c.types.includes('country'))?.short_name;
+          if(cc&&!countryCodes.has(cc)){
+            countryCodes.add(cc);
+            countryOrder.push(cc);
+          }
+        }
+        res();
+      });
+    })));
+
+    // Check road types in steps for motorway detection
+    const stepInstructions=steps.map(s=>s.instructions||'').join(' ').toLowerCase();
+    const usesMotorway=stepInstructions.includes('motorway')||stepInstructions.includes('highway')||
+                       stepInstructions.includes('autobahn')||stepInstructions.includes('autoput')||
+                       /[darmah]\d+/.test(stepInstructions);
+
+    // Build results
+    const countryResults=[];
+    let totalEur=0;
+
+    for(const cc of countryOrder){
+      const id=CC_MAP[cc];
+      const country=C.find(c=>c.id===id);
+      if(!country) continue;
+
+      let action='', priceStr='', priceEur=0, color='#888', needsPay=false;
+
+      if(country.type==='vignette'&&country.prices.length){
+        const rec=getBestVignette(country.prices,tripDays);
+        priceStr=rec.v; priceEur=parseEuro(rec.v);
+        action=`Buy vignette (${rec.p})`;
+        color='#1B4D3E'; needsPay=true; totalEur+=priceEur;
+      } else if(country.type==='toll'){
+        const est=country.prices[0];
+        priceStr=est?'~'+est.v:'varies'; priceEur=est?parseEuro(est.v):0;
+        action='Pay at toll gate'+(country.enc?' · ENC available':'');
+        color='#7A3200'; needsPay=true; totalEur+=priceEur;
+      } else {
+        action='Free — no payment needed'; color='#0F3460';
+      }
+
+      countryResults.push({cc,country,action,priceStr,priceEur,color,needsPay});
+    }
+
+    // Draw colored country segments on map (simplified — overlay polylines)
+    mrPolylines.forEach(p=>p.setMap(null)); mrPolylines=[];
+
+    // Route info bar
+    const distKm=(totalDist/1000).toFixed(0);
+    const durH=Math.floor(totalDur/3600);
+    const durM=Math.floor((totalDur%3600)/60);
+
+    let html=`
+      <div class="mr-route-info">
+        <div class="mr-route-stat"><strong>${distKm} km</strong>distance</div>
+        <div class="mr-route-stat"><strong>${durH}h ${durM}m</strong>drive time</div>
+        <div class="mr-route-stat"><strong>${countryResults.length}</strong>countries</div>
+        <div class="mr-route-stat"><strong>${tripDays} days</strong>trip duration</div>
+      </div>`;
+
+    html+='<div style="font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);margin-bottom:.6rem;">Countries on your route</div>';
+
+    countryResults.forEach(r=>{
+      const eurNote=r.priceStr&&!r.priceStr.startsWith('€')&&r.priceEur?` <span style="color:var(--muted);font-size:.68rem;">≈ ${toEurStr(r.priceEur)}</span>`:'';
+      html+=`<div class="mr-country-item" style="border-left:4px solid ${r.color};">
+        <div class="mr-ci-code">${r.cc}</div>
+        <div class="mr-ci-info">
+          <div class="mr-ci-name">${r.country.name}</div>
+          <div class="mr-ci-sub">${r.action}${r.country.buy?` · <a href="${r.country.buy}" target="_blank" style="color:var(--accent);text-decoration:none;">${r.country.bl} ↗</a>`:''}</div>
+        </div>
+        ${r.needsPay?`<div class="mr-ci-price">${r.priceStr}${eurNote}</div>`:'<div style="color:var(--f);font-weight:700;font-size:.8rem;">FREE</div>'}
+      </div>`;
+    });
+
+    if(totalEur>0){
+      html+=`<div class="mr-total-box">
+        <div class="mr-total-label">💰 Estimated total road costs</div>
+        <div class="mr-total-row">
+          <div style="font-size:.78rem;color:var(--muted);">Vignettes + tolls · all in EUR${Object.keys(FX).length?' · live rates':''}</div>
+          <div class="mr-total-amt">${toEurStr(totalEur)}</div>
+        </div>
+      </div>`;
+    }
+
+    html+='<div class="rnote" style="margin-top:.75rem;">⚠️ Toll estimates are approximate. Free roads in some countries (e.g. BiH local roads) are not charged even if on the route. Always check country-specific rules.</div>';
+
+    resultEl.innerHTML=html;
+    document.getElementById('mr-legend').style.display='block';
+
+  } catch(err) {
+    resultEl.innerHTML=`<div style="font-size:.8rem;color:var(--danger,#c00);padding:.75rem;background:#fde8e6;border-radius:8px;">Could not calculate route: ${err}. Please check the city names and try again.</div>`;
+  }
 }
 
 document.getElementById('stat-countries').textContent=C.length;
