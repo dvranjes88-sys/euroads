@@ -157,6 +157,20 @@ main { padding:2rem; max-width:1300px; margin:0 auto; }
   .tab-bar{padding:0 1.25rem;} main{padding:1.25rem;}
   .cw{grid-template-columns:1fr;} .ckg{grid-template-columns:1fr;}
 }
+
+/* DATE ROW */
+.date-row { display:grid; grid-template-columns:1fr 1fr; gap:.75rem; margin-bottom:1.1rem; }
+.date-field label { display:block; font-size:.7rem; font-weight:600; color:var(--muted); text-transform:uppercase; letter-spacing:.08em; margin-bottom:.35rem; }
+.date-field input { width:100%; padding:.55rem .75rem; border:1.5px solid var(--border); border-radius:8px; font-family:'DM Sans',sans-serif; font-size:.82rem; background:var(--surface); color:var(--text); outline:none; transition:border-color .15s; }
+.date-field input:focus { border-color:var(--accent); }
+
+/* RECOMMENDED BADGE */
+.rec-badge { display:inline-flex; align-items:center; gap:.3rem; font-size:.65rem; background:#fff3cd; color:#856404; border:1px solid #ffc107; padding:.2rem .55rem; border-radius:4px; font-weight:600; }
+
+/* BMC BUTTON */
+.bmc-wrap { position:fixed; bottom:1.5rem; right:1.5rem; z-index:500; }
+.bmc-btn { display:flex; align-items:center; gap:.6rem; background:#FFDD00; color:#000; border:none; border-radius:100px; padding:.65rem 1.2rem; font-size:.8rem; font-weight:700; cursor:pointer; text-decoration:none; box-shadow:0 4px 20px rgba(0,0,0,.15); transition:all .2s; white-space:nowrap; }
+.bmc-btn:hover { transform:translateY(-2px); box-shadow:0 8px 25px rgba(0,0,0,.2); }
 </style>
 </head>
 <body>
@@ -213,7 +227,20 @@ main { padding:2rem; max-width:1300px; margin:0 auto; }
   <div class="cw">
     <div class="cpanel">
       <h2>🧮 Route Calculator</h2>
-      <p>Select countries on your route — see which vignettes to buy before driving.</p>
+      <p>Select countries on your route and your travel dates — we'll tell you exactly which vignettes to buy.</p>
+
+      <div class="date-row">
+        <div class="date-field">
+          <label>📅 Departure date</label>
+          <input type="date" id="calc-date-from">
+        </div>
+        <div class="date-field">
+          <label>📅 Return date</label>
+          <input type="date" id="calc-date-to">
+        </div>
+      </div>
+
+      <div style="font-size:.75rem;font-weight:600;color:var(--text);margin-bottom:.6rem;margin-top:.25rem;">Select countries:</div>
       <div class="ckg" id="calc-checks"></div>
       <button class="bcalc" onclick="doCalc()">Calculate my trip →</button>
     </div>
@@ -230,6 +257,22 @@ main { padding:2rem; max-width:1300px; margin:0 auto; }
 </div>
 
 </main>
+
+<!-- Buy Me a Coffee -->
+<div class="bmc-wrap">
+  <a class="bmc-btn" href="https://buymeacoffee.com/dvranjes" target="_blank" rel="noopener">
+    ☕ Buy me a coffee
+  </a>
+</div>
+
+<!-- Google Analytics — replace G-XXXXXXXXXX with your real ID -->
+<!-- <script async src="https://www.googletagmanager.com/gtag/js?id=G-XXXXXXXXXX"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+  gtag('config', 'G-XXXXXXXXXX');
+</script> -->
 
 <script>
 const C = [
@@ -609,27 +652,110 @@ function renderSpeed(){
 
 function renderCalcChecks(){
   const wrap=document.getElementById('calc-checks');
-  C.filter(c=>c.type==='vignette'&&c.id!=='li').forEach(c=>{
+  wrap.innerHTML='';
+  // Set default dates
+  const today=new Date();
+  const nextWeek=new Date(today); nextWeek.setDate(today.getDate()+7);
+  document.getElementById('calc-date-from').value=today.toISOString().split('T')[0];
+  document.getElementById('calc-date-to').value=nextWeek.toISOString().split('T')[0];
+
+  C.forEach(c=>{
     const l=document.createElement('label');
     l.className='cck'; l.dataset.id=c.id;
-    l.innerHTML=`<input type="checkbox"><span>${c.flag}</span>${c.name}`;
-    l.addEventListener('click',()=>l.classList.toggle('sel'));
+    const typeIcon={vignette:'🏷️',toll:'🚧',free:'🆓'}[c.type];
+    l.innerHTML=`<input type="checkbox"><span style="font-size:.9rem">${typeIcon}</span>${c.name}`;
+    l.addEventListener('click',function(e){
+      e.preventDefault();
+      this.classList.toggle('sel');
+    });
     wrap.appendChild(l);
   });
+}
+
+function getBestVignette(prices, days){
+  if(!prices||!prices.length) return null;
+  // pick cheapest that covers the trip duration
+  const durationMap={'10 days':10,'7 days':7,'1 day':1,'2 months':60,'1 month':30,'30 days':30,'1 year':365,'1 week':7};
+  let best=null;
+  for(const p of prices){
+    const pDays=Object.entries(durationMap).find(([k])=>p.p.toLowerCase().includes(k.replace(' days','d').replace(' day','d')))||null;
+    const pD=Object.entries(durationMap).find(([k])=>p.p===k);
+    const cover=pD?pD[1]:999;
+    if(cover>=days){
+      if(!best) best=p;
+      else best=p; // take first that covers, prices are ordered shortest first
+    }
+    if(!best) best=prices[prices.length-1]; // fallback to longest
+  }
+  return best||prices[0];
 }
 
 function doCalc(){
   const sel=[...document.querySelectorAll('.cck.sel')].map(l=>l.dataset.id);
   const panel=document.getElementById('calc-result');
   if(!sel.length){panel.innerHTML='<h2>What you need</h2><div class="re">Please select at least one country.</div>';return;}
+
+  const dateFrom=document.getElementById('calc-date-from').value;
+  const dateTo=document.getElementById('calc-date-to').value;
+  let tripDays=1;
+  if(dateFrom&&dateTo){
+    const d1=new Date(dateFrom), d2=new Date(dateTo);
+    tripDays=Math.max(1,Math.ceil((d2-d1)/(1000*60*60*24)));
+  }
+
   const items=C.filter(c=>sel.includes(c.id));
+  const vignItems=items.filter(c=>c.type==='vignette'&&c.prices.length);
+  const tollItems=items.filter(c=>c.type==='toll');
+  const freeItems=items.filter(c=>c.type==='free');
+
   let html='<h2>What you need</h2>';
-  items.forEach(c=>{
-    const cheap=c.prices[0];
-    html+=`<div class="ri"><div class="ri-f">${c.flag}</div><div class="ri-i"><div class="ri-n">${c.name}</div><div class="ri-a">${cheap?`Buy vignette — from ${cheap.p}`:'No vignette needed'}</div></div>${cheap?`<div class="ri-p">${cheap.v}</div>`:''}</div>`;
-  });
-  const cnt=items.filter(c=>c.prices.length).length;
-  html+=`<div class="rtot"><span class="rtl">Vignettes to buy</span><span class="rtv">${cnt}</span></div><div class="rnote">💡 Buy online before your trip. AT, CZ, SK, HU, RO, BG are fully electronic — camera enforced, no sticker.</div>`;
+
+  if(dateFrom&&dateTo){
+    html+=`<div style="font-size:.75rem;color:var(--muted);margin-bottom:1rem;padding:.6rem .8rem;background:var(--bg);border-radius:6px;">📅 Trip: <strong>${dateFrom}</strong> → <strong>${dateTo}</strong> (${tripDays} day${tripDays>1?'s':''})</div>`;
+  }
+
+  if(vignItems.length){
+    html+='<div style="font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);margin-bottom:.5rem;">🏷️ Buy vignettes</div>';
+    vignItems.forEach(c=>{
+      const rec=getBestVignette(c.prices,tripDays)||c.prices[0];
+      const isRec=c.prices.indexOf(rec)>=0;
+      html+=`<div class="ri">
+        <div class="ri-f">${c.flag||c.id.toUpperCase()}</div>
+        <div class="ri-i">
+          <div class="ri-n">${c.name}</div>
+          <div class="ri-a">Recommended: <strong>${rec.p}</strong>${c.buy?` · <a href="${c.buy}" target="_blank" style="color:var(--accent);text-decoration:none;">${c.bl} ↗</a>`:''}</div>
+        </div>
+        <div class="ri-p">${rec.v}</div>
+      </div>`;
+    });
+  }
+
+  if(tollItems.length){
+    html+='<div style="font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);margin:1rem 0 .5rem;">🚧 Pay at toll gate</div>';
+    tollItems.forEach(c=>{
+      html+=`<div class="ri">
+        <div class="ri-f">${c.flag||c.id.toUpperCase()}</div>
+        <div class="ri-i">
+          <div class="ri-n">${c.name}</div>
+          <div class="ri-a">${c.enc?`ENC available: ${c.enc}`:'Cash or card at booth'}${c.prices[0]?' · Est. '+c.prices[0].v:''}</div>
+        </div>
+        <div style="font-size:.7rem;color:var(--muted)">at gate</div>
+      </div>`;
+    });
+  }
+
+  if(freeItems.length){
+    html+='<div style="font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);margin:1rem 0 .5rem;">🆓 No payment needed</div>';
+    freeItems.forEach(c=>{
+      html+=`<div class="ri"><div class="ri-f">${c.flag||c.id.toUpperCase()}</div><div class="ri-i"><div class="ri-n">${c.name}</div><div class="ri-a">Free for passenger cars</div></div><div style="color:var(--v);font-weight:700;font-size:.85rem;">FREE</div></div>`;
+    });
+  }
+
+  if(vignItems.length){
+    html+=`<div class="rtot"><span class="rtl">Vignettes to buy</span><span class="rtv">${vignItems.length}</span></div>
+    <div class="rnote">💡 Buy vignettes online before your trip. AT, CZ, SK, HU, RO, BG are fully electronic — camera enforced, no sticker needed.</div>`;
+  }
+
   panel.innerHTML=html;
 }
 
