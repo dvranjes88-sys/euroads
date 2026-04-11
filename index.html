@@ -171,6 +171,42 @@ main { padding:2rem; max-width:1300px; margin:0 auto; }
 .bmc-wrap { position:fixed; bottom:1.5rem; right:1.5rem; z-index:500; }
 .bmc-btn { display:flex; align-items:center; gap:.6rem; background:#FFDD00; color:#000; border:none; border-radius:100px; padding:.65rem 1.2rem; font-size:.8rem; font-weight:700; cursor:pointer; text-decoration:none; box-shadow:0 4px 20px rgba(0,0,0,.15); transition:all .2s; white-space:nowrap; }
 .bmc-btn:hover { transform:translateY(-2px); box-shadow:0 8px 25px rgba(0,0,0,.2); }
+
+/* ROUTE PLANNER */
+.route-row { display:grid; grid-template-columns:1fr auto 1fr; gap:.5rem; align-items:center; margin-bottom:.85rem; }
+.route-arrow { font-size:1.2rem; color:var(--muted); text-align:center; padding-top:1.4rem; }
+.route-field label { display:block; font-size:.68rem; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:.08em; margin-bottom:.3rem; }
+.route-select-wrap { position:relative; }
+.route-select-wrap input, .cc-search-wrap input { width:100%; padding:.55rem .75rem; border:1.5px solid var(--border); border-radius:8px; font-family:'DM Sans',sans-serif; font-size:.82rem; background:var(--surface); color:var(--text); outline:none; transition:border-color .15s; }
+.route-select-wrap input:focus, .cc-search-wrap input:focus { border-color:var(--accent); }
+.route-dropdown { position:absolute; top:calc(100% + 4px); left:0; right:0; background:var(--surface); border:1.5px solid var(--border); border-radius:8px; z-index:300; max-height:200px; overflow-y:auto; display:none; box-shadow:0 8px 24px rgba(0,0,0,.1); }
+.route-dropdown.open { display:block; }
+.drop-item { padding:.55rem .85rem; font-size:.8rem; cursor:pointer; display:flex; align-items:center; gap:.6rem; transition:background .1s; }
+.drop-item:hover { background:var(--bg); }
+.drop-item .di-type { font-size:.6rem; color:var(--muted); margin-left:auto; }
+
+.broute { width:100%; padding:.6rem; background:var(--f); color:#fff; border:none; border-radius:7px; font-size:.78rem; font-weight:600; cursor:pointer; font-family:'DM Sans',sans-serif; margin-bottom:.85rem; transition:background .15s; }
+.broute:hover { background:#0a2850; }
+
+.divider-or { text-align:center; font-size:.7rem; color:var(--muted); margin:.75rem 0; display:flex; align-items:center; gap:.6rem; }
+.divider-or::before, .divider-or::after { content:''; flex:1; height:1px; background:var(--border); }
+
+.cc-search-wrap { position:relative; display:flex; align-items:center; gap:.5rem; background:var(--surface); border:1.5px solid var(--border); border-radius:8px; padding:.1rem .75rem; margin-bottom:.75rem; }
+.cc-search-wrap span { color:var(--muted); flex-shrink:0; }
+.cc-search-wrap input { border:none; padding:.45rem 0; }
+.cc-search-wrap .route-dropdown { top:calc(100% + 4px); }
+
+.selected-countries { display:flex; flex-wrap:wrap; gap:.4rem; min-height:1rem; margin-bottom:.85rem; }
+.sel-tag { display:inline-flex; align-items:center; gap:.4rem; background:var(--vl); border:1.5px solid #a8d5c5; color:var(--v); border-radius:100px; padding:.25rem .7rem; font-size:.75rem; font-weight:500; }
+.sel-tag button { background:none; border:none; cursor:pointer; color:var(--v); font-size:.9rem; line-height:1; padding:0; opacity:.6; }
+.sel-tag button:hover { opacity:1; }
+
+@keyframes pulse-green {
+  0%,100% { box-shadow:0 0 0 0 rgba(27,77,62,.4); }
+  50% { box-shadow:0 0 0 8px rgba(27,77,62,0); }
+}
+.bcalc.pulse { animation:pulse-green 2s infinite; background:var(--v); }
+.bcalc.pulse:hover { background:#144038; }
 </style>
 </head>
 <body>
@@ -182,7 +218,7 @@ main { padding:2rem; max-width:1300px; margin:0 auto; }
 
 <div class="hero">
   <h1>Every road in <em>Europe</em>,<br>one place.</h1>
-  <p>Vignettes, tolls, speed limits and driving rules for every European country — from Iceland to Turkey, from Portugal to Ukraine.</p>
+  <p>Vignettes, tolls, speed limits and driving rules for every European country — from Portugal to Greece, from Norway to Turkey.</p>
   <div class="hstats">
     <div><div class="hstat-n" id="stat-countries">50</div><div class="hstat-l">Countries</div></div>
     <div><div class="hstat-n">3</div><div class="hstat-l">Road systems</div></div>
@@ -226,27 +262,55 @@ main { padding:2rem; max-width:1300px; margin:0 auto; }
 <div class="view" id="view-calc">
   <div class="cw">
     <div class="cpanel">
-      <h2>🧮 Route Calculator</h2>
-      <p>Select countries on your route and your travel dates — we'll tell you exactly which vignettes to buy.</p>
+      <h2>Route Planner</h2>
+      <p>Enter your origin and destination — we'll suggest the countries on your route and which vignettes to buy.</p>
+
+      <div class="route-row">
+        <div class="route-field">
+          <label>From</label>
+          <div class="route-select-wrap">
+            <input type="text" id="route-from" placeholder="e.g. Slovakia" oninput="filterRouteDropdown('from')" onblur="hideDropdown('from')" autocomplete="off">
+            <div class="route-dropdown" id="drop-from"></div>
+          </div>
+        </div>
+        <div class="route-arrow">→</div>
+        <div class="route-field">
+          <label>To</label>
+          <div class="route-select-wrap">
+            <input type="text" id="route-to" placeholder="e.g. Croatia" oninput="filterRouteDropdown('to')" onblur="hideDropdown('to')" autocomplete="off">
+            <div class="route-dropdown" id="drop-to"></div>
+          </div>
+        </div>
+      </div>
+
+      <button class="broute" onclick="suggestRoute()">Suggest route countries →</button>
+
+      <div class="divider-or">or select manually</div>
 
       <div class="date-row">
         <div class="date-field">
-          <label>📅 Departure date</label>
+          <label>Departure</label>
           <input type="date" id="calc-date-from">
         </div>
         <div class="date-field">
-          <label>📅 Return date</label>
+          <label>Return</label>
           <input type="date" id="calc-date-to">
         </div>
       </div>
 
-      <div style="font-size:.75rem;font-weight:600;color:var(--text);margin-bottom:.6rem;margin-top:.25rem;">Select countries:</div>
-      <div class="ckg" id="calc-checks"></div>
-      <button class="bcalc" onclick="doCalc()">Calculate my trip →</button>
+      <div class="cc-search-wrap">
+        <span>🔍</span>
+        <input type="text" id="calc-search" placeholder="Search and add country…" oninput="filterCalcSearch()" onblur="hideCalcDrop()" autocomplete="off">
+        <div class="route-dropdown" id="drop-calc"></div>
+      </div>
+
+      <div class="selected-countries" id="selected-tags"></div>
+
+      <button class="bcalc pulse" id="calc-btn" onclick="doCalc()">Calculate my trip →</button>
     </div>
     <div class="cres" id="calc-result">
       <h2>What you need</h2>
-      <div class="re">👆 Select countries and hit Calculate</div>
+      <div class="re">👆 Plan your route and hit Calculate</div>
     </div>
   </div>
 </div>
@@ -650,77 +714,154 @@ function renderSpeed(){
   </tr>`).join('');
 }
 
+// ── ROUTE PLANNER STATE ──
+let selectedCalcCountries = [];
+
+function filterRouteDropdown(side){
+  const input=document.getElementById(`route-${side}`);
+  const drop=document.getElementById(`drop-${side}`);
+  const val=input.value.toLowerCase().trim();
+  if(!val){drop.classList.remove('open');return;}
+  const matches=C.filter(c=>c.name.toLowerCase().includes(val)).slice(0,8);
+  if(!matches.length){drop.classList.remove('open');return;}
+  drop.innerHTML=matches.map(c=>`<div class="drop-item" onmousedown="selectRoute('${side}','${c.name}')">
+    <span>${c.name}</span><span class="di-type">${{vignette:'🏷️',toll:'🚧',free:'🆓'}[c.type]}</span>
+  </div>`).join('');
+  drop.classList.add('open');
+}
+
+function selectRoute(side,name){
+  document.getElementById(`route-${side}`).value=name;
+  document.getElementById(`drop-${side}`).classList.remove('open');
+}
+
+function hideDropdown(side){
+  setTimeout(()=>document.getElementById(`drop-${side}`).classList.remove('open'),200);
+}
+
+function filterCalcSearch(){
+  const input=document.getElementById('calc-search');
+  const drop=document.getElementById('drop-calc');
+  const val=input.value.toLowerCase().trim();
+  if(!val){drop.classList.remove('open');return;}
+  const matches=C.filter(c=>c.name.toLowerCase().includes(val)&&!selectedCalcCountries.find(s=>s.id===c.id)).slice(0,8);
+  if(!matches.length){drop.classList.remove('open');return;}
+  drop.innerHTML=matches.map(c=>`<div class="drop-item" onmousedown="addCalcCountry('${c.id}')">
+    <span>${c.name}</span><span class="di-type">${{vignette:'🏷️ Vignette',toll:'🚧 Toll',free:'🆓 Free'}[c.type]}</span>
+  </div>`).join('');
+  drop.classList.add('open');
+}
+
+function hideCalcDrop(){
+  setTimeout(()=>document.getElementById('drop-calc').classList.remove('open'),200);
+}
+
+function addCalcCountry(id){
+  const c=C.find(x=>x.id===id);
+  if(!c||selectedCalcCountries.find(x=>x.id===id)) return;
+  selectedCalcCountries.push(c);
+  document.getElementById('calc-search').value='';
+  document.getElementById('drop-calc').classList.remove('open');
+  renderTags();
+}
+
+function removeCalcCountry(id){
+  selectedCalcCountries=selectedCalcCountries.filter(c=>c.id!==id);
+  renderTags();
+}
+
+function renderTags(){
+  const wrap=document.getElementById('selected-tags');
+  wrap.innerHTML=selectedCalcCountries.map(c=>`
+    <span class="sel-tag">${c.name} <button onclick="removeCalcCountry('${c.id}')">×</button></span>
+  `).join('');
+}
+
+// Simple route suggester based on geographic logic
+const ROUTES = {
+  'Slovakia-Croatia': ['Slovakia','Hungary','Croatia'],
+  'Slovakia-Greece': ['Slovakia','Hungary','Serbia','N. Macedonia','Greece'],
+  'Slovakia-Montenegro': ['Slovakia','Hungary','Serbia','Montenegro'],
+  'Slovakia-Albania': ['Slovakia','Hungary','Serbia','N. Macedonia','Albania'],
+  'Germany-Croatia': ['Germany','Austria','Slovenia','Croatia'],
+  'Germany-Greece': ['Germany','Austria','Slovenia','Croatia','N. Macedonia','Greece'],
+  'Germany-Turkey': ['Germany','Austria','Hungary','Serbia','Bulgaria','Turkey'],
+  'France-Croatia': ['France','Italy','Slovenia','Croatia'],
+  'Poland-Croatia': ['Poland','Slovakia','Hungary','Croatia'],
+  'Netherlands-Croatia': ['Netherlands','Germany','Austria','Slovenia','Croatia'],
+  'UK-Croatia': ['United Kingdom','Belgium','France','Italy','Slovenia','Croatia'],
+};
+
+function suggestRoute(){
+  const from=document.getElementById('route-from').value.trim();
+  const to=document.getElementById('route-to').value.trim();
+  if(!from||!to){alert('Please enter both origin and destination.');return;}
+
+  const key1=`${from}-${to}`;
+  const key2=`${to}-${from}`;
+  let route=ROUTES[key1]||ROUTES[key2];
+
+  if(!route){
+    // Generic fallback — find both countries and add anything in between alphabetically isn't smart
+    // so just add from + to
+    const cf=C.find(c=>c.name.toLowerCase()===from.toLowerCase());
+    const ct=C.find(c=>c.name.toLowerCase()===to.toLowerCase());
+    route=[cf?.name,ct?.name].filter(Boolean);
+    if(route.length<2){alert('Could not find those countries. Please select manually below.');return;}
+  }
+
+  selectedCalcCountries=[];
+  route.forEach(name=>{
+    const c=C.find(x=>x.name===name||x.name.toLowerCase()===name.toLowerCase());
+    if(c&&!selectedCalcCountries.find(x=>x.id===c.id)) selectedCalcCountries.push(c);
+  });
+  renderTags();
+  document.getElementById('calc-result').innerHTML='<h2>What you need</h2><div class="re">Route loaded! Hit Calculate to see vignettes.</div>';
+}
+
 function renderCalcChecks(){
-  const wrap=document.getElementById('calc-checks');
-  wrap.innerHTML='';
-  // Set default dates
   const today=new Date();
   const nextWeek=new Date(today); nextWeek.setDate(today.getDate()+7);
   document.getElementById('calc-date-from').value=today.toISOString().split('T')[0];
   document.getElementById('calc-date-to').value=nextWeek.toISOString().split('T')[0];
-
-  C.forEach(c=>{
-    const l=document.createElement('label');
-    l.className='cck'; l.dataset.id=c.id;
-    const typeIcon={vignette:'🏷️',toll:'🚧',free:'🆓'}[c.type];
-    l.innerHTML=`<input type="checkbox"><span style="font-size:.9rem">${typeIcon}</span>${c.name}`;
-    l.addEventListener('click',function(e){
-      e.preventDefault();
-      this.classList.toggle('sel');
-    });
-    wrap.appendChild(l);
-  });
 }
 
-function getBestVignette(prices, days){
+function getBestVignette(prices,days){
   if(!prices||!prices.length) return null;
-  // pick cheapest that covers the trip duration
-  const durationMap={'10 days':10,'7 days':7,'1 day':1,'2 months':60,'1 month':30,'30 days':30,'1 year':365,'1 week':7};
+  const dmap={'10 days':10,'7 days':7,'1 day':1,'2 months':60,'1 month':30,'30 days':30,'1 year':365,'1 week':7};
   let best=null;
   for(const p of prices){
-    const pDays=Object.entries(durationMap).find(([k])=>p.p.toLowerCase().includes(k.replace(' days','d').replace(' day','d')))||null;
-    const pD=Object.entries(durationMap).find(([k])=>p.p===k);
-    const cover=pD?pD[1]:999;
-    if(cover>=days){
-      if(!best) best=p;
-      else best=p; // take first that covers, prices are ordered shortest first
-    }
-    if(!best) best=prices[prices.length-1]; // fallback to longest
+    const cover=Object.entries(dmap).find(([k])=>p.p===k)?.[1]||999;
+    if(cover>=days&&!best) best=p;
   }
-  return best||prices[0];
+  return best||prices[prices.length-1];
 }
 
 function doCalc(){
-  const sel=[...document.querySelectorAll('.cck.sel')].map(l=>l.dataset.id);
   const panel=document.getElementById('calc-result');
-  if(!sel.length){panel.innerHTML='<h2>What you need</h2><div class="re">Please select at least one country.</div>';return;}
+  if(!selectedCalcCountries.length){panel.innerHTML='<h2>What you need</h2><div class="re">Please add at least one country.</div>';return;}
 
   const dateFrom=document.getElementById('calc-date-from').value;
   const dateTo=document.getElementById('calc-date-to').value;
-  let tripDays=1;
+  let tripDays=7;
   if(dateFrom&&dateTo){
-    const d1=new Date(dateFrom), d2=new Date(dateTo);
+    const d1=new Date(dateFrom),d2=new Date(dateTo);
     tripDays=Math.max(1,Math.ceil((d2-d1)/(1000*60*60*24)));
   }
 
-  const items=C.filter(c=>sel.includes(c.id));
-  const vignItems=items.filter(c=>c.type==='vignette'&&c.prices.length);
-  const tollItems=items.filter(c=>c.type==='toll');
-  const freeItems=items.filter(c=>c.type==='free');
+  const vignItems=selectedCalcCountries.filter(c=>c.type==='vignette'&&c.prices.length);
+  const tollItems=selectedCalcCountries.filter(c=>c.type==='toll');
+  const freeItems=selectedCalcCountries.filter(c=>c.type==='free');
 
   let html='<h2>What you need</h2>';
-
-  if(dateFrom&&dateTo){
-    html+=`<div style="font-size:.75rem;color:var(--muted);margin-bottom:1rem;padding:.6rem .8rem;background:var(--bg);border-radius:6px;">📅 Trip: <strong>${dateFrom}</strong> → <strong>${dateTo}</strong> (${tripDays} day${tripDays>1?'s':''})</div>`;
-  }
+  if(dateFrom&&dateTo) html+=`<div style="font-size:.74rem;color:var(--muted);margin-bottom:1rem;padding:.6rem .8rem;background:var(--bg);border-radius:6px;">Trip: <strong>${dateFrom}</strong> → <strong>${dateTo}</strong> · ${tripDays} day${tripDays>1?'s':''}</div>`;
 
   if(vignItems.length){
-    html+='<div style="font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);margin-bottom:.5rem;">🏷️ Buy vignettes</div>';
+    html+='<div style="font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);margin-bottom:.5rem;">🏷️ Buy vignettes before driving</div>';
     vignItems.forEach(c=>{
-      const rec=getBestVignette(c.prices,tripDays)||c.prices[0];
-      const isRec=c.prices.indexOf(rec)>=0;
+      const rec=getBestVignette(c.prices,tripDays);
       html+=`<div class="ri">
-        <div class="ri-f">${c.flag||c.id.toUpperCase()}</div>
+        <div class="ri-f" style="font-size:.75rem;font-weight:800;color:var(--muted);width:2rem;text-align:center">${c.id.toUpperCase()}</div>
         <div class="ri-i">
           <div class="ri-n">${c.name}</div>
           <div class="ri-a">Recommended: <strong>${rec.p}</strong>${c.buy?` · <a href="${c.buy}" target="_blank" style="color:var(--accent);text-decoration:none;">${c.bl} ↗</a>`:''}</div>
@@ -731,30 +872,24 @@ function doCalc(){
   }
 
   if(tollItems.length){
-    html+='<div style="font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);margin:1rem 0 .5rem;">🚧 Pay at toll gate</div>';
+    html+='<div style="font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);margin:1rem 0 .5rem;">🚧 Pay at toll gate</div>';
     tollItems.forEach(c=>{
       html+=`<div class="ri">
-        <div class="ri-f">${c.flag||c.id.toUpperCase()}</div>
-        <div class="ri-i">
-          <div class="ri-n">${c.name}</div>
-          <div class="ri-a">${c.enc?`ENC available: ${c.enc}`:'Cash or card at booth'}${c.prices[0]?' · Est. '+c.prices[0].v:''}</div>
-        </div>
+        <div class="ri-f" style="font-size:.75rem;font-weight:800;color:var(--muted);width:2rem;text-align:center">${c.id.toUpperCase()}</div>
+        <div class="ri-i"><div class="ri-n">${c.name}</div><div class="ri-a">${c.enc?`ENC: ${c.enc}`:'Cash or card'}${c.prices[0]?' · est. '+c.prices[0].v:''}</div></div>
         <div style="font-size:.7rem;color:var(--muted)">at gate</div>
       </div>`;
     });
   }
 
   if(freeItems.length){
-    html+='<div style="font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);margin:1rem 0 .5rem;">🆓 No payment needed</div>';
+    html+='<div style="font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);margin:1rem 0 .5rem;">🆓 Free</div>';
     freeItems.forEach(c=>{
-      html+=`<div class="ri"><div class="ri-f">${c.flag||c.id.toUpperCase()}</div><div class="ri-i"><div class="ri-n">${c.name}</div><div class="ri-a">Free for passenger cars</div></div><div style="color:var(--v);font-weight:700;font-size:.85rem;">FREE</div></div>`;
+      html+=`<div class="ri"><div class="ri-f" style="font-size:.75rem;font-weight:800;color:var(--muted);width:2rem;text-align:center">${c.id.toUpperCase()}</div><div class="ri-i"><div class="ri-n">${c.name}</div><div class="ri-a">No payment needed</div></div><div style="color:var(--v);font-weight:800">FREE</div></div>`;
     });
   }
 
-  if(vignItems.length){
-    html+=`<div class="rtot"><span class="rtl">Vignettes to buy</span><span class="rtv">${vignItems.length}</span></div>
-    <div class="rnote">💡 Buy vignettes online before your trip. AT, CZ, SK, HU, RO, BG are fully electronic — camera enforced, no sticker needed.</div>`;
-  }
+  if(vignItems.length) html+=`<div class="rtot"><span class="rtl">Vignettes to buy</span><span class="rtv">${vignItems.length}</span></div><div class="rnote">💡 Buy vignettes online before your trip. Electronic vignettes (AT, CZ, SK, HU, RO, BG) are camera-enforced — no sticker needed.</div>`;
 
   panel.innerHTML=html;
 }
