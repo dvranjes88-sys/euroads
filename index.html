@@ -248,6 +248,7 @@ main { padding:2rem; max-width:1300px; margin:0 auto; }
   <button class="tab" onclick="switchTab('speed',this)">⚡ Speed Limits</button>
   <button class="tab tab-highlight" onclick="switchTab('calc',this)">🧮 Route Calculator</button>
   <button class="tab" onclick="switchTab('enc',this)">📦 ENC Devices</button>
+  <button class="tab" onclick="switchTab('game',this)">🎮 EuroTour Game</button>
 </div>
 
 <main>
@@ -337,12 +338,20 @@ main { padding:2rem; max-width:1300px; margin:0 auto; }
   <div class="enc-grid" id="enc-grid"></div>
 </div>
 
+<div class="view" id="view-game">
+  <div class="sh"><h2>🎮 EuroTour — Capital City Game</h2><p>Test your European geography knowledge. Click cities on the map to build your route!</p></div>
+  <div style="border:1.5px solid var(--border);border-radius:12px;overflow:hidden;height:600px;">
+    <iframe src="euro-capitals-game.html" style="width:100%;height:100%;border:none;" title="EuroTour Game"></iframe>
+  </div>
+  <p style="font-size:.72rem;color:var(--muted);margin-top:.75rem;text-align:center;">Game not loading? <a href="euro-capitals-game.html" target="_blank" style="color:var(--accent);">Open in full screen →</a></p>
+</div>
+
 </main>
 
 <!-- Buy Me a Coffee -->
 <div class="bmc-wrap">
   <a class="bmc-btn" href="https://buymeacoffee.com/dvranjes" target="_blank" rel="noopener">
-    ☕ Buy me a coffee
+    😊 Buy me a coffee
   </a>
 </div>
 
@@ -955,9 +964,44 @@ function getBestVignette(prices,days){
   return best||prices[prices.length-1];
 }
 
-function doCalc(){
+// Currency cache
+let FX = {};
+async function loadFX(){
+  try {
+    const r=await fetch('https://api.frankfurter.app/latest?base=EUR&symbols=CZK,CHF,HUF,RON,BGN,PLN,HRK,NOK,RSD,BAM,MKD,ALL,TRY,UAH,GEL,AMD,AZN,SEK,DKK,ISK');
+    const d=await r.json();
+    FX=d.rates||{};
+  } catch(e){ FX={}; }
+}
+loadFX();
+
+function parseEuro(str){
+  // Extract numeric value and currency from price string like "€10", "CZK 430", "CHF 40", "HUF 5,340"
+  if(!str) return 0;
+  const clean=str.replace(/\s/g,'').replace(',','');
+  const eurM=clean.match(/€([\d.]+)/);
+  if(eurM) return parseFloat(eurM[1]);
+  const pairs=[['CZK',FX.CZK||25],['CHF',FX.CHF||0.97],['HUF',FX.HUF||390],['RON',FX.RON||5],['BGN',FX.BGN||1.96],['PLN',FX.PLN||4.2],['NOK',FX.NOK||11.5],['RSD',FX.RSD||117],['MKD',FX.MKD||61],['ALL',FX.ALL||108],['TRY',FX.TRY||35],['UAH',FX.UAH||44],['GEL',FX.GEL||2.9],['SEK',FX.SEK||11.2],['DKK',FX.DKK||7.46],['ISK',FX.ISK||150]];
+  for(const [cur,rate] of pairs){
+    const m=clean.match(new RegExp(cur+'([\\d.]+)'));
+    if(m) return parseFloat(m[1])/rate;
+  }
+  // try to find number after currency code at start
+  const m2=str.match(/([\d,]+(?:\.[\d]+)?)/);
+  return m2?parseFloat(m2[1].replace(',','')):0;
+}
+
+function toEurStr(eur){
+  return '€'+eur.toFixed(2).replace(/\.00$/,'');
+}
+
+async function doCalc(){
   const panel=document.getElementById('calc-result');
   if(!selectedCalcCountries.length){panel.innerHTML='<h2>What you need</h2><div class="re">Please add at least one country.</div>';return;}
+
+  panel.innerHTML='<h2>What you need</h2><div class="re">⏳ Loading exchange rates...</div>';
+
+  if(!Object.keys(FX).length) await loadFX();
 
   const dateFrom=document.getElementById('calc-date-from').value;
   const dateTo=document.getElementById('calc-date-to').value;
@@ -971,6 +1015,7 @@ function doCalc(){
   const tollItems=selectedCalcCountries.filter(c=>c.type==='toll');
   const freeItems=selectedCalcCountries.filter(c=>c.type==='free');
 
+  let totalEur=0;
   let html='<h2>What you need</h2>';
   if(dateFrom&&dateTo) html+=`<div style="font-size:.74rem;color:var(--muted);margin-bottom:1rem;padding:.6rem .8rem;background:var(--bg);border-radius:6px;">Trip: <strong>${dateFrom}</strong> → <strong>${dateTo}</strong> · ${tripDays} day${tripDays>1?'s':''}</div>`;
 
@@ -978,13 +1023,16 @@ function doCalc(){
     html+='<div style="font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);margin-bottom:.5rem;">🏷️ Buy vignettes before driving</div>';
     vignItems.forEach(c=>{
       const rec=getBestVignette(c.prices,tripDays);
+      const eurVal=parseEuro(rec.v);
+      totalEur+=eurVal;
+      const eurNote=rec.v.startsWith('€')?'':`<span style="font-size:.68rem;color:var(--muted);"> ≈ ${toEurStr(eurVal)}</span>`;
       html+=`<div class="ri">
         <div class="ri-f" style="font-size:.75rem;font-weight:800;color:var(--muted);width:2rem;text-align:center">${c.id.toUpperCase()}</div>
         <div class="ri-i">
           <div class="ri-n">${c.name}</div>
           <div class="ri-a">Recommended: <strong>${rec.p}</strong>${c.buy?` · <a href="${c.buy}" target="_blank" style="color:var(--accent);text-decoration:none;">${c.bl} ↗</a>`:''}</div>
         </div>
-        <div class="ri-p">${rec.v}</div>
+        <div class="ri-p">${rec.v}${eurNote}</div>
       </div>`;
     });
   }
@@ -992,10 +1040,12 @@ function doCalc(){
   if(tollItems.length){
     html+='<div style="font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);margin:1rem 0 .5rem;">🚧 Pay at toll gate</div>';
     tollItems.forEach(c=>{
+      const tollEst=c.prices[0]?parseEuro(c.prices[0].v):0;
+      if(tollEst) totalEur+=tollEst;
       html+=`<div class="ri">
         <div class="ri-f" style="font-size:.75rem;font-weight:800;color:var(--muted);width:2rem;text-align:center">${c.id.toUpperCase()}</div>
         <div class="ri-i"><div class="ri-n">${c.name}</div><div class="ri-a">${c.enc?`ENC: ${c.enc}`:'Cash or card'}${c.prices[0]?' · est. '+c.prices[0].v:''}</div></div>
-        <div style="font-size:.7rem;color:var(--muted)">at gate</div>
+        <div style="font-size:.7rem;color:var(--muted)">${tollEst?'~'+toEurStr(tollEst):'at gate'}</div>
       </div>`;
     });
   }
@@ -1007,8 +1057,19 @@ function doCalc(){
     });
   }
 
-  if(vignItems.length) html+=`<div class="rtot"><span class="rtl">Vignettes to buy</span><span class="rtv">${vignItems.length}</span></div><div class="rnote">💡 Buy vignettes online before your trip. Electronic vignettes (AT, CZ, SK, HU, RO, BG) are camera-enforced — no sticker needed.</div>`;
+  // TOTAL COST BOX
+  if(totalEur>0){
+    html+=`
+    <div style="margin-top:1.25rem;background:var(--vl);border:2px solid #a8d5c5;border-radius:10px;padding:1rem 1.2rem;">
+      <div style="font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--v);margin-bottom:.4rem;">💰 Estimated total road costs</div>
+      <div style="display:flex;justify-content:space-between;align-items:center;">
+        <div style="font-size:.78rem;color:var(--muted);">Vignettes + estimated tolls · all in EUR${Object.keys(FX).length?' · live rates':'· approx rates'}</div>
+        <div style="font-family:'Geist',sans-serif;font-weight:900;font-size:1.5rem;color:var(--v);">${toEurStr(totalEur)}</div>
+      </div>
+    </div>`;
+  }
 
+  html+=`<div class="rnote" style="margin-top:.75rem;">💡 Buy vignettes online before your trip. Electronic vignettes (AT, CZ, SK, HU, RO, BG) are camera-enforced — no sticker needed. Toll estimates are approximate.</div>`;
   panel.innerHTML=html;
 }
 

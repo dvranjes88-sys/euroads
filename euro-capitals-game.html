@@ -1,0 +1,682 @@
+<!DOCTYPE html>
+<html lang="sk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>EuroTour</title>
+
+<!-- Leaflet (cdnjs - more reliable than unpkg on mobile) -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;600&display=swap');
+:root{
+  --bg:#0d1117;--surface:#161b22;--border:#30363d;
+  --accent:#f0c040;--accent2:#4fc3f7;--green:#3fb950;
+  --red:#f85149;--text:#e6edf3;--muted:#8b949e;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);
+  height:100dvh;overflow:hidden;display:flex;flex-direction:column;}
+
+/* MAP */
+#map-area{flex:1;position:relative;min-height:0;}
+#leaflet-map{width:100%;height:100%;}
+
+/* Hide Leaflet default attribution (tiny) */
+.leaflet-control-attribution{font-size:8px;opacity:0.5;}
+.leaflet-control-zoom{display:none;} /* hide +/- on mobile, use pinch */
+
+/* City markers */
+.city-marker{
+  width:12px;height:12px;border-radius:50%;
+  border:2px solid #07111f;cursor:pointer;
+  transition:transform 0.15s;
+}
+.city-marker:hover{transform:scale(1.4);}
+.city-marker.unvisited{background:#4fc3f7;box-shadow:0 0 6px rgba(79,195,247,0.6);}
+.city-marker.visited  {background:#3fb950;box-shadow:0 0 6px rgba(63,185,80,0.6);}
+.city-marker.current  {background:#f0c040;box-shadow:0 0 10px rgba(240,192,64,0.9);
+  width:15px;height:15px;}
+
+/* Coin markers */
+.coin-marker{
+  width:18px;height:18px;border-radius:50%;
+  background:radial-gradient(circle at 35% 35%, #ffe066, #f0a500);
+  border:1.5px solid #b8860b;
+  display:flex;align-items:center;justify-content:center;
+  font-size:9px;font-weight:bold;color:#6b4200;
+  box-shadow:0 0 8px rgba(255,215,0,0.7);
+  animation:coinBob 1.4s ease-in-out infinite alternate;
+}
+@keyframes coinBob{from{transform:translateY(0)}to{transform:translateY(-3px)}}
+
+/* Plane */
+.plane-marker{
+  font-size:22px;
+  filter:drop-shadow(0 0 5px rgba(240,192,64,0.9));
+  transition:transform 0.05s linear;
+}
+
+/* AIRPORT OVERLAY */
+#airport-overlay{
+  position:absolute;inset:0;display:none;flex-direction:column;
+  align-items:center;justify-content:center;
+  z-index:1000;pointer-events:none;
+  transition:background 0.4s;background:rgba(0,0,0,0);
+}
+#airport-overlay.active{display:flex;background:rgba(0,0,0,0.45);}
+#airport-card{
+  background:rgba(22,27,34,0.96);border:1px solid var(--accent);
+  border-radius:16px;padding:14px 24px;text-align:center;
+  transform:scale(0.7);opacity:0;
+  transition:transform 0.35s cubic-bezier(.34,1.56,.64,1),opacity 0.28s;
+  max-width:270px;
+}
+#airport-overlay.active #airport-card{transform:scale(1);opacity:1;}
+#airport-iata{font-family:'Bebas Neue',sans-serif;font-size:2.8rem;
+  letter-spacing:4px;color:var(--accent);line-height:1;}
+#airport-name{font-size:0.72rem;color:var(--muted);margin-top:3px;}
+#airport-city{font-size:0.88rem;color:var(--text);font-weight:600;margin-top:5px;}
+#airport-closest{font-size:0.6rem;color:var(--accent2);margin-top:6px;
+  background:rgba(79,195,247,0.1);border:1px solid rgba(79,195,247,0.3);
+  border-radius:10px;padding:2px 9px;display:inline-block;}
+
+/* TOAST */
+#toast{position:absolute;top:10px;left:50%;
+  transform:translateX(-50%) translateY(-70px);
+  background:var(--green);color:#000;font-weight:600;font-size:0.75rem;
+  padding:6px 15px;border-radius:20px;transition:transform 0.3s ease;
+  pointer-events:none;z-index:1100;white-space:nowrap;
+  max-width:90vw;overflow:hidden;text-overflow:ellipsis;}
+#toast.show{transform:translateX(-50%) translateY(0);}
+#toast.coin{background:#ffd700;}
+
+/* DEST PANEL */
+#dest-panel{position:absolute;bottom:0;left:0;right:0;
+  background:var(--surface);border-top:1px solid var(--border);
+  border-radius:16px 16px 0 0;z-index:900;
+  transform:translateY(100%);transition:transform 0.3s cubic-bezier(.4,0,.2,1);
+  max-height:58vh;display:flex;flex-direction:column;}
+#dest-panel.open{transform:translateY(0);}
+#dest-handle{width:36px;height:4px;background:var(--border);
+  border-radius:2px;margin:10px auto 4px;flex-shrink:0;}
+#dest-title{font-family:'Bebas Neue',sans-serif;font-size:0.85rem;
+  letter-spacing:1px;color:var(--muted);padding:0 14px 6px;flex-shrink:0;}
+#dest-list{overflow-y:auto;flex:1;padding:0 8px 16px;}
+.dest-item{display:flex;align-items:center;gap:8px;padding:9px 10px;
+  border-radius:10px;cursor:pointer;font-size:0.83rem;transition:background 0.1s;}
+.dest-item:active{background:rgba(240,192,64,0.08);}
+.dest-item.visited{color:var(--muted);}
+.dest-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
+.dest-item.unvisited .dest-dot{background:var(--accent2);}
+.dest-item.visited   .dest-dot{background:var(--green);}
+.dest-right{margin-left:auto;display:flex;flex-direction:column;
+  align-items:flex-end;gap:1px;flex-shrink:0;}
+.dest-km{font-size:0.7rem;color:var(--muted);white-space:nowrap;}
+.dest-coins{font-size:0.68rem;color:#ffd700;white-space:nowrap;}
+.dest-coins.zero{color:var(--border);}
+.dest-sep{font-size:0.6rem;color:var(--muted);text-transform:uppercase;
+  letter-spacing:1px;padding:8px 10px 2px;}
+
+/* HUD */
+#hud{display:flex;align-items:center;justify-content:space-between;
+  padding:4px 10px;background:rgba(13,17,23,0.97);
+  border-top:1px solid var(--border);flex-shrink:0;gap:5px;
+  position:relative;z-index:950;}
+.hud-stats{display:flex;gap:4px;flex:1;align-items:center;flex-wrap:wrap;}
+.hud-pill{position:relative;display:flex;align-items:center;gap:2px;
+  background:rgba(255,255,255,0.04);border:1px solid var(--border);
+  border-radius:20px;padding:2px 7px;white-space:nowrap;}
+.hud-icon{font-size:0.6rem;line-height:1;}
+.hud-val{font-family:'Bebas Neue',sans-serif;font-size:0.8rem;
+  color:var(--accent);line-height:1;}
+.hud-val.green{color:var(--green);}
+.hud-val.blue{color:var(--accent2);}
+.hud-btn{font-size:0.62rem;font-family:'DM Sans',sans-serif;
+  background:var(--surface);color:var(--muted);border:1px solid var(--border);
+  border-radius:8px;padding:3px 8px;cursor:pointer;white-space:nowrap;flex-shrink:0;}
+
+/* HUD TOOLTIPS */
+.hud-tooltip{
+  position:absolute;bottom:calc(100% + 8px);left:50%;
+  transform:translateX(-50%);
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:8px;padding:5px 10px;
+  font-size:0.68rem;color:var(--text);white-space:nowrap;
+  pointer-events:none;z-index:1200;
+  opacity:0;transition:opacity 0.15s;
+  box-shadow:0 4px 12px rgba(0,0,0,0.5);
+}
+.hud-tooltip::after{content:'';position:absolute;top:100%;left:50%;
+  transform:translateX(-50%);border:5px solid transparent;
+  border-top-color:var(--border);}
+.hud-pill:hover .hud-tooltip,
+.hud-pill.tip-show .hud-tooltip{opacity:1;}
+
+/* OVERLAY / MODAL */
+#overlay{position:absolute;inset:0;background:rgba(0,0,0,0.85);
+  display:flex;align-items:center;justify-content:center;z-index:1500;}
+.modal{background:var(--surface);border:1px solid var(--border);
+  border-radius:16px;padding:22px 18px;max-width:400px;width:92%;
+  text-align:center;max-height:88vh;overflow-y:auto;}
+.modal h2{font-family:'Bebas Neue',sans-serif;font-size:1.7rem;
+  letter-spacing:3px;color:var(--accent);margin-bottom:8px;}
+.modal p{color:var(--muted);font-size:0.78rem;margin-bottom:12px;line-height:1.5;}
+.city-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:5px;
+  max-height:210px;overflow-y:auto;margin-bottom:12px;}
+.city-btn{background:var(--bg);border:1px solid var(--border);border-radius:6px;
+  padding:7px 4px;font-size:0.68rem;color:var(--text);cursor:pointer;
+  font-family:'DM Sans',sans-serif;transition:all 0.12s;}
+.city-btn:hover,.city-btn:active{border-color:var(--accent);color:var(--accent);}
+.btn{font-family:'Bebas Neue',sans-serif;letter-spacing:1px;background:var(--accent);
+  color:#000;border:none;border-radius:8px;padding:10px 22px;font-size:1rem;cursor:pointer;}
+.result-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:12px 0;}
+.result-cell{background:var(--bg);border-radius:8px;padding:10px 6px;text-align:center;}
+.result-cell .big{font-family:'Bebas Neue',sans-serif;font-size:1.4rem;display:block;}
+.result-cell .lbl{font-size:0.6rem;color:var(--muted);text-transform:uppercase;}
+</style>
+</head>
+<body>
+
+<div id="map-area">
+  <div id="leaflet-map"></div>
+
+  <div id="airport-overlay">
+    <div id="airport-card">
+      <div id="airport-iata">BTS</div>
+      <div id="airport-name">M. R. Štefánik Airport</div>
+      <div id="airport-city">Bratislava 🇸🇰</div>
+      <div id="airport-closest" style="display:none">📍 closest airport</div>
+    </div>
+  </div>
+
+  <div id="toast"></div>
+
+  <div id="dest-panel">
+    <div id="dest-handle"></div>
+    <div id="dest-title">KAM LETÍME?</div>
+    <div id="dest-list"></div>
+  </div>
+
+  <div id="overlay">
+    <div class="modal" id="modal-cnt"></div>
+  </div>
+</div>
+
+<div id="hud">
+  <div class="hud-stats">
+    <div class="hud-pill" onclick="if(S.started&&!S.flying)openDestPanel()" style="cursor:pointer">
+      <span class="hud-icon">✈️</span>
+      <span class="hud-val blue" id="stat-current">–</span>
+      <div class="hud-tooltip">Aktuálne mesto</div>
+    </div>
+    <div class="hud-pill">
+      <span class="hud-icon">🏙</span>
+      <span class="hud-val green" id="stat-visited">0/44</span>
+      <div class="hud-tooltip">Navštívené mestá</div>
+    </div>
+    <div class="hud-pill">
+      <span class="hud-icon">🛣</span>
+      <span class="hud-val" id="stat-km">0</span>
+      <div class="hud-tooltip">Km najazdené</div>
+    </div>
+    <div class="hud-pill">
+      <span class="hud-icon">🪙</span>
+      <span class="hud-val" id="stat-coins">0</span>
+      <div class="hud-tooltip">Zozbierané mince</div>
+    </div>
+    <div class="hud-pill">
+      <span class="hud-icon">⭐</span>
+      <span class="hud-val green" id="stat-score">0</span>
+      <div class="hud-tooltip">Celkové skóre</div>
+    </div>
+  </div>
+  <button class="hud-btn" onclick="showMenu()">↺ Nová</button>
+  <button class="hud-btn" id="fly-btn"
+    onclick="if(S.started&&!S.flying)openDestPanel()"
+    style="background:var(--accent);color:#000;border-color:var(--accent);display:none">✈ Leť</button>
+</div>
+
+<script>
+// ── CITY DATA ─────────────────────────────────────────────────────────────────
+const CITIES = [
+  {name:"Amsterdam",        lat:52.37, lon:4.90,  iata:"AMS", airport:"Amsterdam Schiphol",          flag:"🇳🇱"},
+  {name:"Andorra la Vella", lat:42.51, lon:1.52,  iata:"BCN", airport:"Barcelona El Prat",            flag:"🇦🇩", closest:true},
+  {name:"Ankara",           lat:39.92, lon:32.85, iata:"ESB", airport:"Esenboğa Intl",                flag:"🇹🇷"},
+  {name:"Atény",            lat:37.98, lon:23.73, iata:"ATH", airport:"Eleftherios Venizelos",         flag:"🇬🇷"},
+  {name:"Belehrad",         lat:44.80, lon:20.46, iata:"BEG", airport:"Nikola Tesla Airport",          flag:"🇷🇸"},
+  {name:"Berlín",           lat:52.52, lon:13.40, iata:"BER", airport:"Brandenburg BER",               flag:"🇩🇪"},
+  {name:"Bern",             lat:46.95, lon:7.45,  iata:"ZRH", airport:"Zürich Airport",                flag:"🇨🇭", closest:true},
+  {name:"Bratislava",       lat:48.15, lon:17.11, iata:"BTS", airport:"M. R. Štefánik Airport",        flag:"🇸🇰"},
+  {name:"Brusel",           lat:50.85, lon:4.35,  iata:"BRU", airport:"Brussels Airport",              flag:"🇧🇪"},
+  {name:"Budapešť",         lat:47.50, lon:19.04, iata:"BUD", airport:"Budapest Liszt Ferenc",         flag:"🇭🇺"},
+  {name:"Dublin",           lat:53.33, lon:-6.25, iata:"DUB", airport:"Dublin Airport",                flag:"🇮🇪"},
+  {name:"Helsinky",         lat:60.17, lon:24.94, iata:"HEL", airport:"Helsinki-Vantaa",               flag:"🇫🇮"},
+  {name:"Kodaň",            lat:55.68, lon:12.57, iata:"CPH", airport:"Copenhagen Airport",           flag:"🇩🇰"},
+  {name:"Kyjev",            lat:50.45, lon:30.52, iata:"KBP", airport:"Boryspil Intl",                 flag:"🇺🇦"},
+  {name:"Lisabon",          lat:38.72, lon:-9.14, iata:"LIS", airport:"Humberto Delgado",              flag:"🇵🇹"},
+  {name:"Londýn",           lat:51.51, lon:-0.13, iata:"LHR", airport:"Heathrow Airport",              flag:"🇬🇧"},
+  {name:"Luxemburg",        lat:49.61, lon:6.13,  iata:"LUX", airport:"Luxembourg Findel",             flag:"🇱🇺"},
+  {name:"Ľubľana",          lat:46.05, lon:14.51, iata:"LJU", airport:"Jože Pučnik Airport",           flag:"🇸🇮"},
+  {name:"Madrid",           lat:40.42, lon:-3.70, iata:"MAD", airport:"Adolfo Suárez Barajas",         flag:"🇪🇸"},
+  {name:"Minsk",            lat:53.90, lon:27.57, iata:"MSQ", airport:"Minsk Intl Airport",            flag:"🇧🇾"},
+  {name:"Monaco",           lat:43.73, lon:7.42,  iata:"NCE", airport:"Nice Côte d'Azur",              flag:"🇲🇨", closest:true},
+  {name:"Nikózia",          lat:35.17, lon:33.37, iata:"LCA", airport:"Larnaca Intl Airport",          flag:"🇨🇾", closest:true},
+  {name:"Oslo",             lat:59.91, lon:10.75, iata:"OSL", airport:"Oslo Gardermoen",               flag:"🇳🇴"},
+  {name:"Paríž",            lat:48.85, lon:2.35,  iata:"CDG", airport:"Charles de Gaulle",             flag:"🇫🇷"},
+  {name:"Podgorica",        lat:42.44, lon:19.26, iata:"TGD", airport:"Podgorica Airport",             flag:"🇲🇪"},
+  {name:"Praha",            lat:50.08, lon:14.44, iata:"PRG", airport:"Václav Havel Airport",          flag:"🇨🇿"},
+  {name:"Reykjavík",        lat:64.13, lon:-21.90,iata:"KEF", airport:"Keflavík Intl",                 flag:"🇮🇸"},
+  {name:"Riga",             lat:56.95, lon:24.11, iata:"RIX", airport:"Riga Intl Airport",             flag:"🇱🇻"},
+  {name:"Rím",              lat:41.90, lon:12.50, iata:"FCO", airport:"Fiumicino – L. da Vinci",       flag:"🇮🇹"},
+  {name:"San Maríno",       lat:43.94, lon:12.46, iata:"RMI", airport:"Federico Fellini (Rimini)",     flag:"🇸🇲", closest:true},
+  {name:"Sarajevo",         lat:43.85, lon:18.36, iata:"SJJ", airport:"Sarajevo Intl Airport",         flag:"🇧🇦"},
+  {name:"Skopje",           lat:42.00, lon:21.43, iata:"SKP", airport:"Alexander the Great Intl",      flag:"🇲🇰"},
+  {name:"Sofia",            lat:42.70, lon:23.32, iata:"SOF", airport:"Sofia Airport",                 flag:"🇧🇬"},
+  {name:"Štokholm",         lat:59.33, lon:18.07, iata:"ARN", airport:"Stockholm Arlanda",             flag:"🇸🇪"},
+  {name:"Tallinn",          lat:59.44, lon:24.75, iata:"TLL", airport:"Lennart Meri Airport",          flag:"🇪🇪"},
+  {name:"Tirana",           lat:41.33, lon:19.82, iata:"TIA", airport:"Mother Teresa Airport",         flag:"🇦🇱"},
+  {name:"Vaduz",            lat:47.14, lon:9.52,  iata:"ZRH", airport:"Zürich Airport",                flag:"🇱🇮", closest:true},
+  {name:"Valletta",         lat:35.90, lon:14.51, iata:"MLA", airport:"Malta Intl Airport",            flag:"🇲🇹"},
+  {name:"Varšava",          lat:52.23, lon:21.01, iata:"WAW", airport:"Chopin Airport",                flag:"🇵🇱"},
+  {name:"Viedeň",           lat:48.21, lon:16.37, iata:"VIE", airport:"Wien Schwechat",                flag:"🇦🇹"},
+  {name:"Vilnius",          lat:54.69, lon:25.28, iata:"VNO", airport:"Vilnius Airport",               flag:"🇱🇹"},
+  {name:"Záhreb",           lat:45.81, lon:15.98, iata:"ZAG", airport:"Zagreb Airport",                flag:"🇭🇷"},
+  {name:"Bukurešť",         lat:44.43, lon:26.10, iata:"OTP", airport:"Henri Coandă Intl",             flag:"🇷🇴"},
+];
+
+// ── STATE ─────────────────────────────────────────────────────────────────────
+let S = {started:false, currentIdx:-1, visited:new Set(),
+         totalKm:0, coins:0, score:0, coinPositions:[], flying:false};
+
+// Leaflet map + layer refs
+let map, cityMarkers=[], coinMarkers=[], routeLines=[], planeMarker=null;
+const destPanel = document.getElementById('dest-panel');
+
+// ── LEAFLET INIT ──────────────────────────────────────────────────────────────
+function initMap() {
+  map = L.map('leaflet-map', {
+    center: [52, 15], zoom: 4,
+    minZoom: 3, maxZoom: 14,
+    zoomControl: false,
+    attributionControl: true,
+  });
+
+  // OpenStreetMap - funguje vždy bez CORS problémov
+  const osm = L.tileLayer(
+    'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+    { attribution:'© OpenStreetMap', maxZoom:19 }
+  );
+
+  // Stamen Toner Hybrid - hranice + labels (len overlay, bez pozadia)
+  const labels = L.tileLayer(
+    'https://tiles.stadiamaps.com/tiles/stamen_toner_hybrid/{z}/{x}/{y}{r}.png',
+    { attribution:'© Stadia', maxZoom:20, opacity:0.6 }
+  );
+
+  osm.addTo(map);
+  labels.addTo(map);
+
+  // Tap on map closes/opens dest panel
+  map.on('click', () => {
+    const dp = document.getElementById('dest-panel');
+    if (dp.classList.contains('open')) dp.classList.remove('open');
+    else if (S.started && !S.flying) openDestPanel();
+  });
+}
+
+// ── HAVERSINE ─────────────────────────────────────────────────────────────────
+function haversine(a, b) {
+  const R=6371, dLat=(b.lat-a.lat)*Math.PI/180, dLon=(b.lon-a.lon)*Math.PI/180;
+  const x=Math.sin(dLat/2)**2+Math.cos(a.lat*Math.PI/180)*Math.cos(b.lat*Math.PI/180)*Math.sin(dLon/2)**2;
+  return R*2*Math.atan2(Math.sqrt(x), Math.sqrt(1-x));
+}
+
+// ── MARKER HELPERS ────────────────────────────────────────────────────────────
+function makeCityIcon(state) {
+  const cls = 'city-marker ' + state;
+  return L.divIcon({className:'', html:`<div class="${cls}"></div>`, iconSize:[15,15], iconAnchor:[7,7]});
+}
+
+function makeCoinIcon() {
+  return L.divIcon({className:'', html:`<div class="coin-marker">€</div>`, iconSize:[18,18], iconAnchor:[9,9]});
+}
+
+function makePlaneIcon(angleDeg) {
+  return L.divIcon({
+    className:'',
+    html:`<div class="plane-marker" style="transform:rotate(${angleDeg}deg)">✈️</div>`,
+    iconSize:[24,24], iconAnchor:[12,12]
+  });
+}
+
+// ── DRAW CITIES ───────────────────────────────────────────────────────────────
+function drawCities() {
+  cityMarkers.forEach(m => map.removeLayer(m));
+  cityMarkers = [];
+  CITIES.forEach((city, i) => {
+    const state = S.currentIdx===i ? 'current' : S.visited.has(i) ? 'visited' : 'unvisited';
+    const m = L.marker([city.lat, city.lon], {
+      icon: makeCityIcon(state),
+      zIndexOffset: state==='current' ? 200 : 0
+    }).addTo(map);
+    m.on('click', e => { L.DomEvent.stopPropagation(e); onCityTap(i); });
+    cityMarkers.push(m);
+  });
+}
+
+// ── COINS ─────────────────────────────────────────────────────────────────────
+const COIN_SPOTS = [
+  {lat:51.0,lon:8.0},{lat:48.2,lon:11.2},{lat:46.2,lon:9.1},{lat:50.3,lon:17.2},
+  {lat:52.1,lon:16.1},{lat:55.2,lon:13.1},{lat:57.1,lon:15.2},{lat:54.1,lon:18.1},
+  {lat:49.2,lon:20.1},{lat:46.1,lon:18.2},{lat:44.1,lon:16.2},{lat:43.2,lon:21.1},
+  {lat:45.1,lon:24.2},{lat:47.2,lon:26.1},{lat:50.1,lon:29.2},{lat:53.2,lon:25.1},
+  {lat:56.1,lon:22.2},{lat:58.2,lon:26.1},{lat:61.1,lon:22.1},{lat:60.2,lon:14.2},
+  {lat:47.1,lon:4.2}, {lat:44.2,lon:5.1}, {lat:42.1,lon:3.2}, {lat:40.2,lon:0.1},
+  {lat:39.1,lon:-4.1},{lat:38.2,lon:-7.1},{lat:41.1,lon:-7.2},{lat:44.2,lon:-7.1},
+  {lat:46.2,lon:2.1}, {lat:48.1,lon:6.2}, {lat:45.2,lon:13.1},{lat:43.1,lon:13.2},
+  {lat:40.1,lon:20.2},{lat:38.2,lon:23.1},{lat:36.1,lon:28.2},{lat:37.2,lon:35.1},
+];
+
+function generateCoins() {
+  coinMarkers.forEach(m => map.removeLayer(m));
+  coinMarkers = [];
+  S.coinPositions = [];
+  COIN_SPOTS.forEach(s => {
+    const lat = s.lat + (Math.random()-.5)*1.2;
+    const lon = s.lon + (Math.random()-.5)*1.2;
+    const m = L.marker([lat, lon], {icon:makeCoinIcon(), interactive:false}).addTo(map);
+    coinMarkers.push(m);
+    S.coinPositions.push({lat, lon, collected:false, markerIdx:coinMarkers.length-1});
+  });
+}
+
+// Count (and optionally collect) coins along great-circle path
+function coinsAlongPath(fromLat, fromLon, toLat, toLon, collect=false) {
+  const STEPS = 30, HIT_KM = 60;
+  let n = 0;
+  S.coinPositions.forEach((coin, ci) => {
+    if (coin.collected) return;
+    for (let t=0; t<=STEPS; t++) {
+      const f = t/STEPS;
+      const lat = fromLat + (toLat-fromLat)*f;
+      const lon = fromLon + (toLon-fromLon)*f;
+      const dist = haversine({lat,lon}, coin);
+      if (dist < HIT_KM) {
+        if (collect) {
+          coin.collected = true;
+          map.removeLayer(coinMarkers[coin.markerIdx]);
+        }
+        n++; break;
+      }
+    }
+  });
+  return n;
+}
+
+// ── ROUTE LINES ───────────────────────────────────────────────────────────────
+function addRouteLine(fromCity, toCity) {
+  const line = L.polyline(
+    [[fromCity.lat, fromCity.lon],[toCity.lat, toCity.lon]],
+    {color:'#f0c040', weight:2, opacity:0.55, dashArray:'8 6'}
+  ).addTo(map);
+  routeLines.push(line);
+}
+
+// ── PLANE ANIMATION ───────────────────────────────────────────────────────────
+function animatePlane(fromCity, toCity, durationMs, onDone) {
+  S.flying = true;
+  if (planeMarker) map.removeLayer(planeMarker);
+
+  const fromLat=fromCity.lat, fromLon=fromCity.lon;
+  const toLat=toCity.lat,     toLon=toCity.lon;
+  const angle = Math.atan2(toLon-fromLon, toLat-fromLat) * 180/Math.PI;
+
+  planeMarker = L.marker([fromLat, fromLon], {
+    icon: makePlaneIcon(angle), zIndexOffset:500, interactive:false
+  }).addTo(map);
+
+  const t0 = performance.now();
+  function easeInOut(t){return t<.5?2*t*t:-1+(4-2*t)*t;}
+
+  (function frame(now){
+    const p = Math.min((now-t0)/durationMs, 1);
+    const e = easeInOut(p);
+    const lat = fromLat+(toLat-fromLat)*e;
+    const lon = fromLon+(toLon-fromLon)*e;
+    planeMarker.setLatLng([lat, lon]);
+    if (p < 1) { requestAnimationFrame(frame); }
+    else {
+      map.removeLayer(planeMarker); planeMarker=null;
+      S.flying=false; onDone();
+    }
+  })(t0);
+}
+
+// ── FLY SEQUENCE ──────────────────────────────────────────────────────────────
+function flyTo(destIdx) {
+  if (!S.started || S.flying || destIdx===S.currentIdx) return;
+  destPanel.classList.remove('open');
+
+  const fromCity = CITIES[S.currentIdx];
+  const toCity   = CITIES[destIdx];
+  const dist = Math.round(haversine(fromCity, toCity));
+  const coinsGot = coinsAlongPath(fromCity.lat, fromCity.lon, toCity.lat, toCity.lon, true);
+  const flightMs = Math.min(900 + dist*0.13, 2600);
+
+  // Draw route line immediately
+  addRouteLine(fromCity, toCity);
+
+  // Zoom out to see full route
+  const bounds = L.latLngBounds([fromCity.lat,fromCity.lon],[toCity.lat,toCity.lon]).pad(0.4);
+  map.fitBounds(bounds, {animate:true, duration:0.5});
+
+  setTimeout(() => {
+    animatePlane(fromCity, toCity, flightMs, () => {
+      // Update state
+      S.totalKm += dist;
+      S.visited.add(destIdx);
+      S.currentIdx = destIdx;
+      S.coins += coinsGot;
+      const pen=Math.floor(dist/1000)*100, bon=coinsGot*500;
+      S.score += bon - pen + 50;
+
+      updateHUD();
+      drawCities();
+
+      let msg = `✈️ ${fromCity.name} → ${toCity.name}  ${dist.toLocaleString()} km`;
+      if (coinsGot>0) msg = `🪙 ×${coinsGot}  `+msg;
+      showToast(msg, coinsGot>0?'coin':'');
+
+      // Zoom into arrival airport
+      map.flyTo([toCity.lat, toCity.lon], 11, {animate:true, duration:1.0});
+      setTimeout(() => {
+        showAirportCard(destIdx);
+        // After 2.2s zoom back to Europe
+        setTimeout(() => {
+          hideAirportCard();
+          map.flyTo([52, 15], 4, {animate:true, duration:1.2});
+        }, 2200);
+      }, 800);
+
+      if (S.visited.size===CITIES.length) setTimeout(showWin, 4500);
+    });
+  }, 400);
+}
+
+// ── AIRPORT CARD ──────────────────────────────────────────────────────────────
+let airportHideTimer=null;
+function showAirportCard(idx) {
+  const city=CITIES[idx];
+  document.getElementById('airport-iata').textContent=city.iata;
+  document.getElementById('airport-name').textContent=city.airport;
+  document.getElementById('airport-city').textContent=`${city.name} ${city.flag}`;
+  document.getElementById('airport-closest').style.display=city.closest?'inline-block':'none';
+  const ov=document.getElementById('airport-overlay');
+  ov.style.display='flex';
+  requestAnimationFrame(()=>requestAnimationFrame(()=>ov.classList.add('active')));
+}
+function hideAirportCard(delayMs=0) {
+  clearTimeout(airportHideTimer);
+  airportHideTimer=setTimeout(()=>{
+    const ov=document.getElementById('airport-overlay');
+    ov.classList.remove('active');
+    setTimeout(()=>{ov.style.display='none';},350);
+  },delayMs);
+}
+
+// ── DEST PANEL ────────────────────────────────────────────────────────────────
+function openDestPanel() {
+  if (!S.started||S.flying) return;
+  const cur=CITIES[S.currentIdx];
+  const unvisited=[], visited=[];
+  CITIES.forEach((c,i)=>{
+    if(i===S.currentIdx)return;
+    const km=Math.round(haversine(cur,c));
+    const coins=coinsAlongPath(cur.lat,cur.lon,c.lat,c.lon,false);
+    (S.visited.has(i)?visited:unvisited).push({c,i,km,coins});
+  });
+  unvisited.sort((a,b)=>a.c.name.localeCompare(b.c.name,'sk'));
+  visited.sort((a,b)=>a.c.name.localeCompare(b.c.name,'sk'));
+
+  const dl=document.getElementById('dest-list');
+  dl.innerHTML='';
+  function addSep(t){const d=document.createElement('div');d.className='dest-sep';d.textContent=t;dl.appendChild(d);}
+  function addItem({c,i,km,coins},cls){
+    const d=document.createElement('div');
+    d.className=`dest-item ${cls}`;
+    const coinStr=coins>0?`<span class="dest-coins">🪙 ×${coins}</span>`:`<span class="dest-coins zero">–</span>`;
+    d.innerHTML=`<div class="dest-dot"></div><span>${c.name} ${c.flag}</span>
+      <div class="dest-right"><span class="dest-km">${km.toLocaleString()} km</span>${coinStr}</div>`;
+    d.addEventListener('click',()=>flyTo(i));
+    dl.appendChild(d);
+  }
+  if(unvisited.length){addSep('🔵 Nenavštívené');unvisited.forEach(e=>addItem(e,'unvisited'));}
+  if(visited.length)  {addSep('✅ Navštívené');  visited.forEach(e=>addItem(e,'visited'));}
+  destPanel.classList.add('open');
+}
+
+function onCityTap(idx){
+  if (!S.started||S.flying) return;
+  openDestPanel();
+}
+
+// ── HUD ───────────────────────────────────────────────────────────────────────
+function updateHUD(){
+  document.getElementById('stat-current').textContent=CITIES[S.currentIdx]?.name||'–';
+  document.getElementById('stat-visited').textContent=`${S.visited.size}/${CITIES.length}`;
+  const km=S.totalKm;
+  document.getElementById('stat-km').textContent=km>=1000?(km/1000).toFixed(1)+'k':km;
+  document.getElementById('stat-coins').textContent=S.coins;
+  const sc=S.score;
+  document.getElementById('stat-score').textContent=sc>=1000?(sc/1000).toFixed(1)+'k':sc;
+}
+
+// ── TOAST ─────────────────────────────────────────────────────────────────────
+let toastT;
+function showToast(msg,type=''){
+  const t=document.getElementById('toast');
+  t.textContent=msg; t.className='show '+type;
+  clearTimeout(toastT); toastT=setTimeout(()=>t.className='',3500);
+}
+
+// ── GAME START ────────────────────────────────────────────────────────────────
+function startGame(idx) {
+  S={started:true, currentIdx:idx, visited:new Set([idx]),
+     totalKm:0, coins:0, score:0, coinPositions:[], flying:false};
+
+  // Clear old route lines
+  routeLines.forEach(l=>map.removeLayer(l)); routeLines=[];
+
+  generateCoins();
+  document.getElementById('overlay').style.display='none';
+  document.getElementById('fly-btn').style.display='';
+  updateHUD();
+  drawCities();
+
+  // Zoom to start city then show airport card
+  map.flyTo([CITIES[idx].lat, CITIES[idx].lon], 11, {animate:true, duration:1.0});
+  setTimeout(()=>{
+    showAirportCard(idx);
+    setTimeout(()=>{
+      hideAirportCard();
+      map.flyTo([52,15], 4, {animate:true, duration:1.2});
+    }, 2200);
+  }, 800);
+
+  showToast(`🚀 Štart: ${CITIES[idx].name} ${CITIES[idx].flag} — klepni ✈ Leť`);
+}
+
+// ── MENU ─────────────────────────────────────────────────────────────────────
+function showMenu(){
+  destPanel.classList.remove('open');
+  hideAirportCard(0);
+  const mc=document.getElementById('modal-cnt');
+  mc.innerHTML=`
+    <h2>🌍 EuroTour</h2>
+    <p>Navštív všetky európske hlavné mestá.<br>Najazdi čo najmenej km a zbieraj 🪙 mince!</p>
+    <p style="color:var(--accent);font-size:0.72rem;margin-bottom:10px;">Vyber štartovacie mesto:</p>
+    <div class="city-grid" id="sg"></div>
+    <p style="font-size:0.62rem;color:var(--muted);">🪙 +500 &nbsp;|&nbsp; 🏙 +50 &nbsp;|&nbsp; 1 000 km = −100</p>
+  `;
+  document.getElementById('overlay').style.display='flex';
+  const grid=mc.querySelector('#sg');
+  [...CITIES].sort((a,b)=>a.name.localeCompare(b.name,'sk')).forEach(city=>{
+    const btn=document.createElement('button');
+    btn.className='city-btn';
+    btn.textContent=`${city.flag} ${city.name}`;
+    btn.onclick=()=>startGame(CITIES.indexOf(city));
+    grid.appendChild(btn);
+  });
+}
+
+// ── WIN ───────────────────────────────────────────────────────────────────────
+function showWin(){
+  destPanel.classList.remove('open');
+  const pen=-Math.floor(S.totalKm/1000)*100;
+  const mc=document.getElementById('modal-cnt');
+  mc.innerHTML=`
+    <h2>🏆 VÝHRA!</h2>
+    <p>Navštívil si všetky európske hlavné mestá!</p>
+    <div class="result-grid">
+      <div class="result-cell"><span class="big" style="color:#4fc3f7">${S.totalKm.toLocaleString()}</span><span class="lbl">km najazdené</span></div>
+      <div class="result-cell"><span class="big" style="color:#ffd700">${S.coins}</span><span class="lbl">mincí</span></div>
+      <div class="result-cell"><span class="big" style="color:#f85149">${pen.toLocaleString()}</span><span class="lbl">km penalizácia</span></div>
+      <div class="result-cell"><span class="big" style="color:#3fb950">${S.score.toLocaleString()}</span><span class="lbl">SKÓRE</span></div>
+    </div>
+    <button class="btn" onclick="showMenu()">Hrať znova</button>
+  `;
+  document.getElementById('overlay').style.display='flex';
+}
+
+// ── HUD TOUCH TOOLTIPS ────────────────────────────────────────────────────────
+let activeTipPill=null;
+document.querySelectorAll('#hud .hud-pill').forEach(pill=>{
+  pill.addEventListener('touchstart',e=>{
+    if(pill.onclick) return; // first pill opens dest, skip
+    e.preventDefault();
+    if(activeTipPill&&activeTipPill!==pill)activeTipPill.classList.remove('tip-show');
+    pill.classList.toggle('tip-show');
+    activeTipPill=pill.classList.contains('tip-show')?pill:null;
+  },{passive:false});
+});
+document.addEventListener('touchstart',e=>{
+  if(activeTipPill&&!activeTipPill.contains(e.target)){
+    activeTipPill.classList.remove('tip-show');activeTipPill=null;
+  }
+},{passive:true});
+
+// ── BOOT ──────────────────────────────────────────────────────────────────────
+// Wait for DOM + Leaflet to be fully ready
+if (typeof L === 'undefined') {
+  document.getElementById('map-area').innerHTML =
+    '<div style="color:#f85149;padding:20px;font-size:0.9rem">❌ Leaflet sa nepodarilo načítať.<br>Skontroluj pripojenie na internet a obnov stránku.</div>';
+} else {
+  initMap();
+  showMenu();
+}
+</script>
+</body>
+</html>
