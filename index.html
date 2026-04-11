@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>EuroRoads — Complete European Highway Guide</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Anybody:wght@300;400;600;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,400&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700;800;900&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 :root {
@@ -15,24 +15,24 @@
   --accent: #D4820A; --r: 10px;
 }
 html { scroll-behavior: smooth; }
-body { background:var(--bg); color:var(--text); font-family:'DM Sans',sans-serif; font-size:15px; line-height:1.6; overflow-x:hidden; }
+body { background:var(--bg); color:var(--text); font-family:'Geist',sans-serif; font-size:15px; line-height:1.6; overflow-x:hidden; }
 
 header { background:var(--text); color:#fff; height:58px; display:flex; align-items:center; justify-content:space-between; padding:0 2rem; position:sticky; top:0; z-index:200; border-bottom:3px solid var(--accent); }
-.logo { font-family:'Anybody',sans-serif; font-weight:800; font-size:1.2rem; letter-spacing:-0.02em; }
+.logo { font-family:'Geist',sans-serif; font-weight:900; font-size:1.2rem; letter-spacing:-0.04em; }
 .logo span { color:var(--accent); }
 .hm { font-size:.7rem; color:rgba(255,255,255,.4); letter-spacing:.1em; text-transform:uppercase; }
 
 .hero { background:var(--text); color:#fff; padding:2.5rem 2rem 2rem; position:relative; overflow:hidden; }
 .hero::after { content:'🛣️'; position:absolute; font-size:14rem; right:-1rem; top:-2rem; opacity:.04; pointer-events:none; }
-.hero h1 { font-family:'Anybody',sans-serif; font-weight:800; font-size:clamp(1.6rem,4vw,2.8rem); letter-spacing:-0.03em; line-height:1.05; margin-bottom:.6rem; }
+.hero h1 { font-family:'Geist',sans-serif; font-weight:800; font-size:clamp(1.6rem,4vw,2.8rem); letter-spacing:-0.03em; line-height:1.05; margin-bottom:.6rem; }
 .hero h1 em { color:var(--accent); font-style:normal; }
 .hero p { color:rgba(255,255,255,.5); font-size:.82rem; max-width:500px; margin-bottom:1.5rem; }
 .hstats { display:flex; gap:2rem; flex-wrap:wrap; }
-.hstat-n { font-family:'Anybody',sans-serif; font-weight:800; font-size:1.4rem; color:var(--accent); }
+.hstat-n { font-family:'Geist',sans-serif; font-weight:800; font-size:1.4rem; color:var(--accent); }
 .hstat-l { font-size:.65rem; color:rgba(255,255,255,.4); letter-spacing:.08em; text-transform:uppercase; }
 
 .tab-bar { display:flex; background:var(--surface); border-bottom:2px solid var(--border); padding:0 2rem; position:sticky; top:58px; z-index:190; overflow-x:auto; gap:.25rem; }
-.tab { padding:.75rem 1.3rem; font-family:'Anybody',sans-serif; font-weight:700; font-size:.72rem; letter-spacing:.04em; text-transform:uppercase; border:none; background:none; cursor:pointer; color:var(--muted); border-bottom:3px solid transparent; margin-bottom:-2px; white-space:nowrap; transition:all .18s; border-radius:6px 6px 0 0; display:flex; align-items:center; gap:.4rem; }
+.tab { padding:.75rem 1.3rem; font-family:'Geist',sans-serif; font-weight:700; font-size:.72rem; letter-spacing:.04em; text-transform:uppercase; border:none; background:none; cursor:pointer; color:var(--muted); border-bottom:3px solid transparent; margin-bottom:-2px; white-space:nowrap; transition:all .18s; border-radius:6px 6px 0 0; display:flex; align-items:center; gap:.4rem; }
 .tab.active { color:var(--text); border-bottom-color:var(--accent); background:rgba(212,130,10,0.06); }
 .tab:hover:not(.active) { color:var(--text); background:var(--bg); }
 
@@ -47,14 +47,14 @@ main { padding:2rem; max-width:1300px; margin:0 auto; }
 .fb.ft.active { background:var(--t); border-color:var(--t); }
 .fb.ff.active { background:var(--f); border-color:var(--f); }
 .sbox { margin-left:auto; display:flex; align-items:center; gap:.4rem; background:var(--surface); border:1.5px solid var(--border); border-radius:100px; padding:.38rem .9rem; }
-.sbox input { border:none; outline:none; font-family:'DM Sans',sans-serif; font-size:.78rem; background:transparent; width:150px; color:var(--text); }
+.sbox input { border:none; outline:none; font-family:'Geist',sans-serif; font-size:.78rem; background:transparent; width:150px; color:var(--text); }
 
 .cc-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(300px,1fr)); gap:.85rem; }
 .cc { background:var(--surface); border:1.5px solid var(--border); border-radius:var(--r); overflow:hidden; transition:all .2s; display:flex; flex-direction:column; }
 .cc:hover { transform:translateY(-3px); box-shadow:0 10px 28px rgba(0,0,0,.09); }
 .cc-top { padding:1rem 1.2rem .8rem; border-bottom:1px solid var(--border); display:flex; align-items:flex-start; gap:.8rem; }
 .cc-fl { font-size:1.9rem; line-height:1; flex-shrink:0; }
-.cc-nm { font-family:'Anybody',sans-serif; font-weight:800; font-size:.95rem; letter-spacing:-.01em; }
+.cc-nm { font-family:'Geist',sans-serif; font-weight:800; font-size:.95rem; letter-spacing:-.01em; }
 .cc-rg { font-size:.58rem; color:var(--muted); letter-spacing:.08em; text-transform:uppercase; margin-top:.1rem; }
 .tbadge { font-size:.57rem; font-weight:500; letter-spacing:.1em; text-transform:uppercase; padding:.16rem .5rem; border-radius:100px; margin-top:.28rem; display:inline-block; }
 .tbv { background:var(--vl); color:var(--v); }
@@ -66,7 +66,7 @@ main { padding:2rem; max-width:1300px; margin:0 auto; }
 .prices { display:flex; flex-direction:column; gap:.28rem; margin-bottom:.75rem; }
 .pr { display:flex; justify-content:space-between; font-size:.73rem; }
 .pr-p { color:var(--muted); }
-.pr-v { font-family:'Anybody',sans-serif; font-weight:700; }
+.pr-v { font-family:'Geist',sans-serif; font-weight:700; }
 .epill { display:inline-flex; align-items:center; gap:.3rem; font-size:.65rem; color:var(--enc); background:var(--encl); padding:.22rem .6rem; border-radius:100px; margin-bottom:.75rem; font-weight:500; }
 .rules { display:flex; flex-wrap:wrap; gap:.3rem; margin-bottom:.6rem; }
 .rp { font-size:.62rem; padding:.18rem .48rem; border-radius:4px; display:flex; align-items:center; gap:.2rem; }
@@ -75,18 +75,18 @@ main { padding:2rem; max-width:1300px; margin:0 auto; }
 .rp-bad { background:#fde8e6; color:#9B2D22; }
 
 .cc-foot { padding:0 1.2rem 1rem; }
-.bbuy { width:100%; padding:.58rem; background:var(--text); color:#fff; border:none; border-radius:7px; font-family:'DM Sans',sans-serif; font-size:.73rem; font-weight:500; cursor:pointer; text-decoration:none; display:flex; align-items:center; justify-content:center; gap:.3rem; transition:all .15s; }
+.bbuy { width:100%; padding:.58rem; background:var(--text); color:#fff; border:none; border-radius:7px; font-family:'Geist',sans-serif; font-size:.73rem; font-weight:500; cursor:pointer; text-decoration:none; display:flex; align-items:center; justify-content:center; gap:.3rem; transition:all .15s; }
 .bbuy:hover { background:#333; }
 .bbuy.na { background:var(--border); color:var(--muted); cursor:default; pointer-events:none; }
 
 /* SPEED TABLE */
 .speed-table-wrap { overflow-x:auto; }
 .speed-table { width:100%; border-collapse:collapse; font-size:.8rem; background:var(--surface); border-radius:var(--r); overflow:hidden; border:1.5px solid var(--border); }
-.speed-table th { background:var(--text); color:#fff; font-family:'Anybody',sans-serif; font-weight:700; font-size:.68rem; letter-spacing:.06em; text-transform:uppercase; padding:.7rem .9rem; text-align:left; white-space:nowrap; }
+.speed-table th { background:var(--text); color:#fff; font-family:'Geist',sans-serif; font-weight:700; font-size:.68rem; letter-spacing:.06em; text-transform:uppercase; padding:.7rem .9rem; text-align:left; white-space:nowrap; }
 .speed-table td { padding:.6rem .9rem; border-bottom:1px solid var(--border); vertical-align:middle; }
 .speed-table tr:last-child td { border-bottom:none; }
 .speed-table tr:hover td { background:var(--bg); }
-.spd { font-family:'Anybody',sans-serif; font-weight:700; }
+.spd { font-family:'Geist',sans-serif; font-weight:700; }
 .spd.fast { color:var(--t); }
 .spd.slow { color:var(--f); }
 .spd.none { color:var(--muted); font-size:.72rem; font-weight:400; }
@@ -95,27 +95,27 @@ main { padding:2rem; max-width:1300px; margin:0 auto; }
 /* CALC */
 .cw { display:grid; grid-template-columns:1fr 1fr; gap:1.5rem; align-items:start; }
 .cpanel { background:var(--surface); border:1.5px solid var(--border); border-radius:var(--r); padding:1.6rem; }
-.cpanel h2 { font-family:'Anybody',sans-serif; font-weight:800; font-size:1.1rem; margin-bottom:.3rem; }
+.cpanel h2 { font-family:'Geist',sans-serif; font-weight:800; font-size:1.1rem; margin-bottom:.3rem; }
 .cpanel p { font-size:.78rem; color:var(--muted); margin-bottom:1.1rem; }
 .ckg { display:grid; grid-template-columns:1fr 1fr; gap:.45rem; margin-bottom:1.1rem; }
 .cck { display:flex; align-items:center; gap:.5rem; padding:.5rem .75rem; border:1.5px solid var(--border); border-radius:8px; cursor:pointer; font-size:.76rem; user-select:none; transition:all .15s; }
 .cck:hover { border-color:#aaa; }
 .cck.sel { border-color:var(--v); background:var(--vl); }
 .cck input { display:none; }
-.bcalc { width:100%; padding:.65rem; background:var(--text); color:#fff; border:none; border-radius:7px; font-size:.8rem; font-weight:500; cursor:pointer; font-family:'DM Sans',sans-serif; }
+.bcalc { width:100%; padding:.65rem; background:var(--text); color:#fff; border:none; border-radius:7px; font-size:.8rem; font-weight:500; cursor:pointer; font-family:'Geist',sans-serif; }
 .bcalc:hover { background:#333; }
 .cres { background:var(--surface); border:1.5px solid var(--border); border-radius:var(--r); padding:1.6rem; }
-.cres h2 { font-family:'Anybody',sans-serif; font-weight:800; font-size:1.1rem; margin-bottom:1.1rem; }
+.cres h2 { font-family:'Geist',sans-serif; font-weight:800; font-size:1.1rem; margin-bottom:1.1rem; }
 .re { text-align:center; padding:3rem 1rem; color:var(--muted); font-size:.83rem; }
 .ri { display:flex; align-items:center; gap:.8rem; border:1.5px solid var(--border); border-radius:8px; padding:.9rem 1rem; margin-bottom:.65rem; }
 .ri-f { font-size:1.6rem; }
 .ri-i { flex:1; }
-.ri-n { font-family:'Anybody',sans-serif; font-weight:700; font-size:.88rem; }
+.ri-n { font-family:'Geist',sans-serif; font-weight:700; font-size:.88rem; }
 .ri-a { font-size:.7rem; color:var(--muted); }
-.ri-p { font-family:'Anybody',sans-serif; font-weight:800; font-size:.95rem; color:var(--v); }
+.ri-p { font-family:'Geist',sans-serif; font-weight:800; font-size:.95rem; color:var(--v); }
 .rtot { border-top:2px solid var(--border); padding-top:.8rem; margin-top:.2rem; display:flex; justify-content:space-between; align-items:center; }
 .rtl { font-size:.7rem; color:var(--muted); text-transform:uppercase; letter-spacing:.08em; }
-.rtv { font-family:'Anybody',sans-serif; font-weight:800; font-size:1.35rem; }
+.rtv { font-family:'Geist',sans-serif; font-weight:800; font-size:1.35rem; }
 .rnote { font-size:.68rem; color:var(--muted); margin-top:.65rem; line-height:1.7; }
 
 /* ENC */
@@ -123,7 +123,7 @@ main { padding:2rem; max-width:1300px; margin:0 auto; }
 .enc-card { background:var(--surface); border:1.5px solid var(--border); border-radius:var(--r); padding:1.3rem; }
 .enc-h { display:flex; align-items:center; gap:.7rem; margin-bottom:.7rem; }
 .enc-ico { width:38px; height:38px; background:var(--encl); border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:1.1rem; flex-shrink:0; }
-.enc-ti { font-family:'Anybody',sans-serif; font-weight:800; font-size:.9rem; }
+.enc-ti { font-family:'Geist',sans-serif; font-weight:800; font-size:.9rem; }
 .enc-sc { font-size:.65rem; color:var(--enc); font-weight:500; }
 .enc-tl { font-size:.73rem; color:var(--muted); font-style:italic; margin-bottom:.55rem; }
 .enc-d { font-size:.75rem; color:var(--muted); line-height:1.7; margin-bottom:.8rem; }
@@ -131,13 +131,13 @@ main { padding:2rem; max-width:1300px; margin:0 auto; }
 .enc-tag { font-size:.63rem; background:var(--bg); border:1px solid var(--border); padding:.16rem .42rem; border-radius:4px; color:var(--muted); }
 
 .sh { margin-bottom:1.3rem; }
-.sh h2 { font-family:'Anybody',sans-serif; font-weight:800; font-size:1.3rem; letter-spacing:-0.02em; }
+.sh h2 { font-family:'Geist',sans-serif; font-weight:800; font-size:1.3rem; letter-spacing:-0.02em; }
 .sh p { font-size:.8rem; color:var(--muted); margin-top:.2rem; }
 
 /* CAMERAS */
 .cam-note { background:var(--accent-l,#FDF3E3); border:1.5px solid #f0d090; border-radius:8px; padding:.7rem 1rem; font-size:.75rem; color:#7A5000; margin-bottom:1.5rem; }
 .cam-section { margin-bottom:2rem; }
-.cam-section-title { font-family:'Anybody',sans-serif; font-weight:800; font-size:1rem; letter-spacing:-0.01em; margin-bottom:.75rem; display:flex; align-items:center; gap:.6rem; }
+.cam-section-title { font-family:'Geist',sans-serif; font-weight:800; font-size:1rem; letter-spacing:-0.01em; margin-bottom:.75rem; display:flex; align-items:center; gap:.6rem; }
 .cam-section-title .flags { font-size:1.1rem; }
 .cam-cards { display:grid; grid-template-columns:repeat(auto-fill,minmax(220px,1fr)); gap:.65rem; }
 .cam-card { background:var(--surface); border:1.5px solid var(--border); border-radius:8px; padding:.9rem 1rem; text-decoration:none; color:var(--text); transition:all .18s; display:flex; flex-direction:column; gap:.3rem; }
@@ -146,7 +146,7 @@ main { padding:2rem; max-width:1300px; margin:0 auto; }
 .cam-meta { font-size:.68rem; color:var(--muted); }
 .cam-src { font-size:.65rem; color:var(--accent); margin-top:.1rem; }
 .cam-hub { background:var(--surface); border:1.5px solid var(--border); border-radius:10px; padding:1.2rem 1.4rem; margin-bottom:1.5rem; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:1rem; }
-.cam-hub-text h3 { font-family:'Anybody',sans-serif; font-weight:800; font-size:1rem; }
+.cam-hub-text h3 { font-family:'Geist',sans-serif; font-weight:800; font-size:1rem; }
 .cam-hub-text p { font-size:.75rem; color:var(--muted); margin-top:.2rem; }
 .cam-hub-links { display:flex; gap:.6rem; flex-wrap:wrap; }
 .cam-hub-link { padding:.45rem 1rem; border-radius:6px; border:1.5px solid var(--border); font-size:.73rem; font-weight:500; text-decoration:none; color:var(--text); transition:all .15s; }
@@ -161,7 +161,7 @@ main { padding:2rem; max-width:1300px; margin:0 auto; }
 /* DATE ROW */
 .date-row { display:grid; grid-template-columns:1fr 1fr; gap:.75rem; margin-bottom:1.1rem; }
 .date-field label { display:block; font-size:.7rem; font-weight:600; color:var(--muted); text-transform:uppercase; letter-spacing:.08em; margin-bottom:.35rem; }
-.date-field input { width:100%; padding:.55rem .75rem; border:1.5px solid var(--border); border-radius:8px; font-family:'DM Sans',sans-serif; font-size:.82rem; background:var(--surface); color:var(--text); outline:none; transition:border-color .15s; }
+.date-field input { width:100%; padding:.55rem .75rem; border:1.5px solid var(--border); border-radius:8px; font-family:'Geist',sans-serif; font-size:.82rem; background:var(--surface); color:var(--text); outline:none; transition:border-color .15s; }
 .date-field input:focus { border-color:var(--accent); }
 
 /* RECOMMENDED BADGE */
@@ -177,7 +177,7 @@ main { padding:2rem; max-width:1300px; margin:0 auto; }
 .route-arrow { font-size:1.2rem; color:var(--muted); text-align:center; padding-top:1.4rem; }
 .route-field label { display:block; font-size:.68rem; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:.08em; margin-bottom:.3rem; }
 .route-select-wrap { position:relative; }
-.route-select-wrap input, .cc-search-wrap input { width:100%; padding:.55rem .75rem; border:1.5px solid var(--border); border-radius:8px; font-family:'DM Sans',sans-serif; font-size:.82rem; background:var(--surface); color:var(--text); outline:none; transition:border-color .15s; }
+.route-select-wrap input, .cc-search-wrap input { width:100%; padding:.55rem .75rem; border:1.5px solid var(--border); border-radius:8px; font-family:'Geist',sans-serif; font-size:.82rem; background:var(--surface); color:var(--text); outline:none; transition:border-color .15s; }
 .route-select-wrap input:focus, .cc-search-wrap input:focus { border-color:var(--accent); }
 .route-dropdown { position:absolute; top:calc(100% + 4px); left:0; right:0; background:var(--surface); border:1.5px solid var(--border); border-radius:8px; z-index:300; max-height:200px; overflow-y:auto; display:none; box-shadow:0 8px 24px rgba(0,0,0,.1); }
 .route-dropdown.open { display:block; }
@@ -185,7 +185,7 @@ main { padding:2rem; max-width:1300px; margin:0 auto; }
 .drop-item:hover { background:var(--bg); }
 .drop-item .di-type { font-size:.6rem; color:var(--muted); margin-left:auto; }
 
-.broute { width:100%; padding:.6rem; background:var(--f); color:#fff; border:none; border-radius:7px; font-size:.78rem; font-weight:600; cursor:pointer; font-family:'DM Sans',sans-serif; margin-bottom:.85rem; transition:background .15s; }
+.broute { width:100%; padding:.6rem; background:var(--f); color:#fff; border:none; border-radius:7px; font-size:.78rem; font-weight:600; cursor:pointer; font-family:'Geist',sans-serif; margin-bottom:.85rem; transition:background .15s; }
 .broute:hover { background:#0a2850; }
 
 .divider-or { text-align:center; font-size:.7rem; color:var(--muted); margin:.75rem 0; display:flex; align-items:center; gap:.6rem; }
@@ -207,6 +207,23 @@ main { padding:2rem; max-width:1300px; margin:0 auto; }
 }
 .bcalc.pulse { animation:pulse-green 2s infinite; background:var(--v); }
 .bcalc.pulse:hover { background:#144038; }
+
+/* Pulsing tab */
+@keyframes pulse-tab {
+  0%,100% { box-shadow:0 0 0 0 rgba(27,77,62,0); background:rgba(27,77,62,0.08); color:#1B4D3E; }
+  50%      { box-shadow:0 0 0 8px rgba(27,77,62,0); background:rgba(27,77,62,0.16); color:#1B4D3E; }
+}
+.tab-highlight {
+  color: var(--v) !important;
+  border-bottom-color: var(--v) !important;
+  animation: pulse-tab 1.8s ease-in-out infinite;
+  font-weight: 800 !important;
+}
+.tab-highlight::after {
+  content: ' ✦';
+  font-size: .6rem;
+  color: var(--v);
+}
 </style>
 </head>
 <body>
@@ -229,7 +246,7 @@ main { padding:2rem; max-width:1300px; margin:0 auto; }
 <div class="tab-bar">
   <button class="tab active" onclick="switchTab('countries',this)">🗺️ Countries</button>
   <button class="tab" onclick="switchTab('speed',this)">⚡ Speed Limits</button>
-  <button class="tab" onclick="switchTab('calc',this)">🧮 Route Calculator</button>
+  <button class="tab tab-highlight" onclick="switchTab('calc',this)">🧮 Route Calculator</button>
   <button class="tab" onclick="switchTab('enc',this)">📦 ENC Devices</button>
 </div>
 
@@ -779,17 +796,100 @@ function renderTags(){
 
 // Simple route suggester based on geographic logic
 const ROUTES = {
-  'Slovakia-Croatia': ['Slovakia','Hungary','Croatia'],
-  'Slovakia-Greece': ['Slovakia','Hungary','Serbia','N. Macedonia','Greece'],
-  'Slovakia-Montenegro': ['Slovakia','Hungary','Serbia','Montenegro'],
-  'Slovakia-Albania': ['Slovakia','Hungary','Serbia','N. Macedonia','Albania'],
-  'Germany-Croatia': ['Germany','Austria','Slovenia','Croatia'],
-  'Germany-Greece': ['Germany','Austria','Slovenia','Croatia','N. Macedonia','Greece'],
-  'Germany-Turkey': ['Germany','Austria','Hungary','Serbia','Bulgaria','Turkey'],
-  'France-Croatia': ['France','Italy','Slovenia','Croatia'],
-  'Poland-Croatia': ['Poland','Slovakia','Hungary','Croatia'],
-  'Netherlands-Croatia': ['Netherlands','Germany','Austria','Slovenia','Croatia'],
-  'UK-Croatia': ['United Kingdom','Belgium','France','Italy','Slovenia','Croatia'],
+  // FROM SLOVAKIA
+  'Slovakia-Croatia':         ['Slovakia','Hungary','Croatia'],
+  'Slovakia-Bosnia & Herz.':  ['Slovakia','Hungary','Croatia','Bosnia & Herz.'],
+  'Slovakia-Montenegro':      ['Slovakia','Hungary','Croatia','Bosnia & Herz.','Montenegro'],
+  'Slovakia-Serbia':          ['Slovakia','Hungary','Serbia'],
+  'Slovakia-Greece':          ['Slovakia','Hungary','Serbia','N. Macedonia','Greece'],
+  'Slovakia-N. Macedonia':    ['Slovakia','Hungary','Serbia','N. Macedonia'],
+  'Slovakia-Albania':         ['Slovakia','Hungary','Serbia','N. Macedonia','Albania'],
+  'Slovakia-Kosovo':          ['Slovakia','Hungary','Serbia','Kosovo'],
+  'Slovakia-Bulgaria':        ['Slovakia','Hungary','Serbia','Bulgaria'],
+  'Slovakia-Romania':         ['Slovakia','Hungary','Romania'],
+  'Slovakia-Turkey':          ['Slovakia','Hungary','Serbia','Bulgaria','Turkey'],
+  'Slovakia-Austria':         ['Slovakia','Austria'],
+  'Slovakia-Switzerland':     ['Slovakia','Austria','Switzerland'],
+  'Slovakia-Italy':           ['Slovakia','Austria','Italy'],
+  'Slovakia-France':          ['Slovakia','Austria','Switzerland','France'],
+  'Slovakia-Germany':         ['Slovakia','Austria','Germany'],
+  'Slovakia-Poland':          ['Slovakia','Poland'],
+  // FROM CZECHIA
+  'Czechia-Croatia':          ['Czechia','Austria','Slovenia','Croatia'],
+  'Czechia-Slovakia':         ['Czechia','Slovakia'],
+  'Czechia-Hungary':          ['Czechia','Slovakia','Hungary'],
+  'Czechia-Greece':           ['Czechia','Slovakia','Hungary','Serbia','N. Macedonia','Greece'],
+  'Czechia-Italy':            ['Czechia','Austria','Italy'],
+  // FROM POLAND
+  'Poland-Croatia':           ['Poland','Slovakia','Hungary','Croatia'],
+  'Poland-Greece':            ['Poland','Slovakia','Hungary','Serbia','N. Macedonia','Greece'],
+  'Poland-Hungary':           ['Poland','Slovakia','Hungary'],
+  'Poland-Italy':             ['Poland','Slovakia','Austria','Italy'],
+  'Poland-Germany':           ['Poland','Germany'],
+  // FROM GERMANY
+  'Germany-Croatia':          ['Germany','Austria','Slovenia','Croatia'],
+  'Germany-Bosnia & Herz.':   ['Germany','Austria','Slovenia','Croatia','Bosnia & Herz.'],
+  'Germany-Montenegro':       ['Germany','Austria','Slovenia','Croatia','Bosnia & Herz.','Montenegro'],
+  'Germany-Greece':           ['Germany','Austria','Hungary','Serbia','N. Macedonia','Greece'],
+  'Germany-Turkey':           ['Germany','Austria','Hungary','Serbia','Bulgaria','Turkey'],
+  'Germany-Italy':            ['Germany','Austria','Italy'],
+  'Germany-France':           ['Germany','France'],
+  'Germany-Switzerland':      ['Germany','Switzerland'],
+  'Germany-Serbia':           ['Germany','Austria','Hungary','Serbia'],
+  'Germany-Bulgaria':         ['Germany','Austria','Hungary','Serbia','Bulgaria'],
+  // FROM AUSTRIA
+  'Austria-Croatia':          ['Austria','Slovenia','Croatia'],
+  'Austria-Bosnia & Herz.':   ['Austria','Slovenia','Croatia','Bosnia & Herz.'],
+  'Austria-Serbia':           ['Austria','Hungary','Serbia'],
+  'Austria-Greece':           ['Austria','Hungary','Serbia','N. Macedonia','Greece'],
+  'Austria-Italy':            ['Austria','Italy'],
+  // FROM NETHERLANDS
+  'Netherlands-Croatia':      ['Netherlands','Germany','Austria','Slovenia','Croatia'],
+  'Netherlands-Greece':       ['Netherlands','Germany','Austria','Hungary','Serbia','N. Macedonia','Greece'],
+  'Netherlands-Italy':        ['Netherlands','Germany','Austria','Italy'],
+  'Netherlands-France':       ['Netherlands','Belgium','France'],
+  // FROM UK / FRANCE / BELGIUM
+  'United Kingdom-Croatia':   ['United Kingdom','Belgium','France','Italy','Slovenia','Croatia'],
+  'United Kingdom-Greece':    ['United Kingdom','Belgium','France','Italy','Slovenia','Croatia','N. Macedonia','Greece'],
+  'France-Croatia':           ['France','Italy','Slovenia','Croatia'],
+  'France-Greece':            ['France','Italy','Slovenia','Croatia','N. Macedonia','Greece'],
+  'France-Italy':             ['France','Italy'],
+  'Belgium-Croatia':          ['Belgium','Germany','Austria','Slovenia','Croatia'],
+  // FROM HUNGARY
+  'Hungary-Croatia':          ['Hungary','Croatia'],
+  'Hungary-Serbia':           ['Hungary','Serbia'],
+  'Hungary-Romania':          ['Hungary','Romania'],
+  'Hungary-Greece':           ['Hungary','Serbia','N. Macedonia','Greece'],
+  'Hungary-Montenegro':       ['Hungary','Serbia','Montenegro'],
+  'Hungary-Bosnia & Herz.':   ['Hungary','Croatia','Bosnia & Herz.'],
+  // FROM SERBIA
+  'Serbia-Greece':            ['Serbia','N. Macedonia','Greece'],
+  'Serbia-Montenegro':        ['Serbia','Montenegro'],
+  'Serbia-Albania':           ['Serbia','N. Macedonia','Albania'],
+  'Serbia-Bulgaria':          ['Serbia','Bulgaria'],
+  'Serbia-Turkey':            ['Serbia','Bulgaria','Turkey'],
+  // FROM ROMANIA
+  'Romania-Greece':           ['Romania','Bulgaria','Greece'],
+  'Romania-Turkey':           ['Romania','Bulgaria','Turkey'],
+  'Romania-Serbia':           ['Romania','Serbia'],
+  // FROM BULGARIA
+  'Bulgaria-Greece':          ['Bulgaria','Greece'],
+  'Bulgaria-Turkey':          ['Bulgaria','Turkey'],
+  // FROM SLOVENIA
+  'Slovenia-Croatia':         ['Slovenia','Croatia'],
+  'Slovenia-Bosnia & Herz.':  ['Slovenia','Croatia','Bosnia & Herz.'],
+  'Slovenia-Montenegro':      ['Slovenia','Croatia','Bosnia & Herz.','Montenegro'],
+  'Slovenia-Greece':          ['Slovenia','Croatia','N. Macedonia','Greece'],
+  // FROM CROATIA
+  'Croatia-Bosnia & Herz.':   ['Croatia','Bosnia & Herz.'],
+  'Croatia-Montenegro':       ['Croatia','Bosnia & Herz.','Montenegro'],
+  'Croatia-Serbia':           ['Croatia','Serbia'],
+  'Croatia-Greece':           ['Croatia','N. Macedonia','Greece'],
+  'Croatia-Albania':          ['Croatia','Bosnia & Herz.','Montenegro','Albania'],
+  // FROM ITALY
+  'Italy-Croatia':            ['Italy','Slovenia','Croatia'],
+  'Italy-Greece':             ['Italy','Slovenia','Croatia','N. Macedonia','Greece'],
+  'Italy-Albania':            ['Italy','Montenegro','Albania'],
 };
 
 function suggestRoute(){
@@ -797,17 +897,35 @@ function suggestRoute(){
   const to=document.getElementById('route-to').value.trim();
   if(!from||!to){alert('Please enter both origin and destination.');return;}
 
-  const key1=`${from}-${to}`;
-  const key2=`${to}-${from}`;
-  let route=ROUTES[key1]||ROUTES[key2];
+  // Try exact match both directions
+  let route=ROUTES[`${from}-${to}`]||ROUTES[`${to}-${from}`];
+
+  // Try case-insensitive match
+  if(!route){
+    const key=Object.keys(ROUTES).find(k=>{
+      const [a,b]=k.split('-');
+      return (a.toLowerCase()===from.toLowerCase()&&b.toLowerCase()===to.toLowerCase())||
+             (a.toLowerCase()===to.toLowerCase()&&b.toLowerCase()===from.toLowerCase());
+    });
+    if(key) route=ROUTES[key];
+  }
+
+  // Try partial match (e.g. "Bosnia" matches "Bosnia & Herz.")
+  if(!route){
+    const key=Object.keys(ROUTES).find(k=>{
+      const [a,b]=k.split('-');
+      return (a.toLowerCase().includes(from.toLowerCase())&&b.toLowerCase().includes(to.toLowerCase()))||
+             (a.toLowerCase().includes(to.toLowerCase())&&b.toLowerCase().includes(from.toLowerCase()));
+    });
+    if(key) route=ROUTES[key];
+  }
 
   if(!route){
-    // Generic fallback — find both countries and add anything in between alphabetically isn't smart
-    // so just add from + to
-    const cf=C.find(c=>c.name.toLowerCase()===from.toLowerCase());
-    const ct=C.find(c=>c.name.toLowerCase()===to.toLowerCase());
+    // Fallback — just add the two countries
+    const cf=C.find(c=>c.name.toLowerCase().includes(from.toLowerCase()));
+    const ct=C.find(c=>c.name.toLowerCase().includes(to.toLowerCase()));
+    if(!cf&&!ct){alert('Could not find those countries. Please use the search below to add manually.');return;}
     route=[cf?.name,ct?.name].filter(Boolean);
-    if(route.length<2){alert('Could not find those countries. Please select manually below.');return;}
   }
 
   selectedCalcCountries=[];
@@ -816,7 +934,7 @@ function suggestRoute(){
     if(c&&!selectedCalcCountries.find(x=>x.id===c.id)) selectedCalcCountries.push(c);
   });
   renderTags();
-  document.getElementById('calc-result').innerHTML='<h2>What you need</h2><div class="re">Route loaded! Hit Calculate to see vignettes.</div>';
+  document.getElementById('calc-result').innerHTML=`<h2>What you need</h2><div class="re">Route: <strong>${route.join(' → ')}</strong><br><br>Hit Calculate to see vignettes.</div>`;
 }
 
 function renderCalcChecks(){
@@ -905,9 +1023,13 @@ function renderENC(){
 }
 
 function switchTab(id,btn){
-  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t=>{
+    t.classList.remove('active');
+  });
   document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
   btn.classList.add('active');
+  // stop pulsing when calc tab is active (no need to attract anymore)
+  if(id==='calc') btn.classList.remove('tab-highlight');
   document.getElementById('view-'+id).classList.add('active');
 }
 
