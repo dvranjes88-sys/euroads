@@ -1279,95 +1279,78 @@ function nearestHACStation(lat, lng){
   return {name:best, dist:bestDist};
 }
 
-// Main HR toll calculator — uses GPS from route polyline
+// Main HR toll calculator
 async function calcHRToll(hrEntryCC, hrExitCC, hrDistKm, steps, vehicleCat, countrySegments){
   const cat = vehicleCat||'I';
 
-  // Find boundary GPS points — the HR points closest to the border
-  // i.e. first HR point (just entered HR) and last HR point (about to leave HR)
-  const segs = (countrySegments||[]).filter(Boolean);
-  let firstHR=null, lastHR=null;
+  // Step 1: Determine entry station from border country — always reliable
+  const entryStation = HAC_BORDER_ENTRY[hrEntryCC] || 'Bregana';
 
-  // firstHR = first sample point with cc=HR (closest to entry border)
-  // lastHR  = last sample point with cc=HR (closest to exit border)
-  for(let i=0;i<segs.length;i++){
-    if(segs[i]?.cc==='HR'){
-      if(!firstHR) firstHR=segs[i];
-      lastHR=segs[i];
+  // Step 2: Determine exit station
+  // If exiting to a neighbouring country — use border station
+  // If destination is inside HR — find last HAC station from steps
+  let exitStation = HAC_BORDER_ENTRY[hrExitCC] || null;
+
+  // Step 3: If exit is to BA/RS/ME — the last HAC station is NOT the border
+  // but the last motorway exit before the border (e.g. Novska, Slavonski Brod...)
+  // Detect from steps: look for last "výjazdom" step while still in HR
+  if(hrExitCC === 'BA' || hrExitCC === 'RS' || hrExitCC === 'ME' || !exitStation){
+    const hrSteps = steps.filter(s=>{
+      const instr=(s.instructions||'').replace(/<[^>]+>/g,' ');
+      // Keep steps that are NOT entering a new country
+      return !/Vchádzate do krajiny|Entering|entrant en/i.test(instr);
+    });
+
+    // Find last "výjazdom" step in HR steps — that's where we leave the motorway
+    const exitSteps = hrSteps.filter(s=>{
+      const instr=(s.instructions||'').replace(/<[^>]+>/g,' ');
+      return /výjazdom|výjazd|exit|sortie|Abfahrt/i.test(instr) &&
+             /Spoplatnená cesta/i.test(instr);
+    });
+
+    if(exitSteps.length > 0){
+      const lastExit = exitSteps[exitSteps.length-1];
+      const instr = (lastExit.instructions||'').replace(/<[^>]+>/g,' ');
+      // Extract station name from exit step — look for HAC station names
+      for(const [name] of HAC_STATION_GPS){
+        const re = new RegExp(name.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'), 'i');
+        if(re.test(instr)){
+          exitStation = name;
+          console.log('[HAC] Exit station from step:', name, '|', instr.substring(0,80));
+          break;
+        }
+      }
+    }
+
+    // Still no exit — use GPS nearest station to last HR point
+    if(!exitStation || exitStation === HAC_BORDER_ENTRY[hrExitCC]){
+      const segs = (countrySegments||[]).filter(Boolean);
+      let lastHR = null;
+      for(const s of segs){ if(s?.cc==='HR') lastHR=s; }
+      if(lastHR){
+        const nearest = nearestHACStation(lastHR.lat, lastHR.lng);
+        if(nearest.dist < 0.5) exitStation = nearest.name;
+        console.log('[HAC] Exit GPS nearest:', nearest);
+      }
     }
   }
 
-  // Also try the point just BEFORE first HR — might be closer to border station
-  let preHR=null, postHR=null;
-  for(let i=0;i<segs.length;i++){
-    if(segs[i]?.cc==='HR'){
-      if(!preHR && i>0) preHR=segs[i-1]; // last non-HR point before entering HR
-      break;
-    }
-  }
-  for(let i=segs.length-1;i>=0;i--){
-    if(segs[i]?.cc==='HR'){
-      if(i<segs.length-1) postHR=segs[i+1]; // first non-HR point after leaving HR
-      break;
-    }
-  }
+  console.log('[HAC] entry:', entryStation, '→ exit:', exitStation, '| entryCC:', hrEntryCC, 'exitCC:', hrExitCC);
 
-  // Find nearest HAC stations — try boundary point first, then first/last HR
-  let entryStation = HAC_BORDER_ENTRY[hrEntryCC];
-  let exitStation  = HAC_BORDER_ENTRY[hrExitCC];
-
-  // For entry: use preHR (non-HR point just before crossing) if available
-  // This is closer to the actual border/toll station
-  const entrySearchPt = preHR || firstHR;
-  const exitSearchPt  = postHR || lastHR;
-
-  if(entrySearchPt){
-    const nearest = nearestHACStation(entrySearchPt.lat, entrySearchPt.lng);
-    if(nearest.dist < 0.5) entryStation = nearest.name;
-    console.log('[HAC] Entry search pt:', entrySearchPt, '→ nearest:', nearest);
-  }
-  if(exitSearchPt){
-    const nearest = nearestHACStation(exitSearchPt.lat, exitSearchPt.lng);
-    if(nearest.dist < 0.5) exitStation = nearest.name;
-    console.log('[HAC] Exit search pt:', exitSearchPt, '→ nearest:', nearest);
-  }
-
-  // Fallback to firstHR/lastHR if no match from boundary points
-  if(entryStation === HAC_BORDER_ENTRY[hrEntryCC] && firstHR){
-    const nearest = nearestHACStation(firstHR.lat, firstHR.lng);
-    if(nearest.dist < 0.5) entryStation = nearest.name;
-  }
-  if(exitStation === HAC_BORDER_ENTRY[hrExitCC] && lastHR){
-    const nearest = nearestHACStation(lastHR.lat, lastHR.lng);
-    if(nearest.dist < 0.5) exitStation = nearest.name;
-  }
-
-  console.log('[HAC] Calling API:', entryStation, '→', exitStation);
-
-  // Call HAC API
-  if(entryStation && exitStation && entryStation!==exitStation){
+  // Step 4: Call HAC API
+  if(entryStation && exitStation && entryStation !== exitStation){
     const result = await fetchHACToll(entryStation, exitStation, cat);
-    if(result?.total>0){
+    if(result?.total > 0){
       return {amount:result.total, segments:result.segments,
               entry:entryStation, exit:exitStation, live:true, precise:true};
     }
   }
 
-  // Fallback border stations
-  const be=HAC_BORDER_ENTRY[hrEntryCC], bx=HAC_BORDER_ENTRY[hrExitCC];
-  if(be && bx && be!==bx){
-    const result = await fetchHACToll(be, bx, cat);
-    if(result?.total>0){
-      return {amount:result.total, segments:result.segments,
-              entry:be, exit:bx, live:true, precise:false};
-    }
-  }
-
-  // Distance estimate
+  // Fallback: distance estimate
   const mult=({'I':1,'IA':1,'II':1.576,'III':2.516,'IV':3.2})[cat]||1;
   const base=hrDistKm<50?3:hrDistKm<100?6:hrDistKm<180?10:hrDistKm<280?16:hrDistKm<380?22:28;
   return {amount:parseFloat((base*mult).toFixed(2)), segments:[],
-          entry:be||'?', exit:bx||'?', live:false, precise:false};
+          entry:entryStation||'?', exit:exitStation||'?', live:false, precise:false};
 }
 
 // Multi-stop UI
