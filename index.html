@@ -1282,62 +1282,51 @@ function nearestHACStation(lat, lng){
 // Main HR toll calculator
 async function calcHRToll(hrEntryCC, hrExitCC, hrDistKm, steps, vehicleCat, countrySegments){
   const cat = vehicleCat||'I';
+  const segs = (countrySegments||[]).filter(Boolean);
 
-  // Step 1: Determine entry station from border country — always reliable
-  const entryStation = HAC_BORDER_ENTRY[hrEntryCC] || 'Bregana';
-
-  // Step 2: Determine exit station
-  // If exiting to a neighbouring country — use border station
-  // If destination is inside HR — find last HAC station from steps
-  let exitStation = HAC_BORDER_ENTRY[hrExitCC] || null;
-
-  // Step 3: If exit is to BA/RS/ME — the last HAC station is NOT the border
-  // but the last motorway exit before the border (e.g. Novska, Slavonski Brod...)
-  // Detect from steps: look for last "výjazdom" step while still in HR
-  if(hrExitCC === 'BA' || hrExitCC === 'RS' || hrExitCC === 'ME' || !exitStation){
-    const hrSteps = steps.filter(s=>{
-      const instr=(s.instructions||'').replace(/<[^>]+>/g,' ');
-      // Keep steps that are NOT entering a new country
-      return !/Vchádzate do krajiny|Entering|entrant en/i.test(instr);
-    });
-
-    // Find last "výjazdom" step in HR steps — that's where we leave the motorway
-    const exitSteps = hrSteps.filter(s=>{
-      const instr=(s.instructions||'').replace(/<[^>]+>/g,' ');
-      return /výjazdom|výjazd|exit|sortie|Abfahrt/i.test(instr) &&
-             /Spoplatnená cesta/i.test(instr);
-    });
-
-    if(exitSteps.length > 0){
-      const lastExit = exitSteps[exitSteps.length-1];
-      const instr = (lastExit.instructions||'').replace(/<[^>]+>/g,' ');
-      // Extract station name from exit step — look for HAC station names
-      for(const [name] of HAC_STATION_GPS){
-        const re = new RegExp(name.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'), 'i');
-        if(re.test(instr)){
-          exitStation = name;
-          console.log('[HAC] Exit station from step:', name, '|', instr.substring(0,80));
-          break;
-        }
-      }
-    }
-
-    // Still no exit — use GPS nearest station to last HR point
-    if(!exitStation || exitStation === HAC_BORDER_ENTRY[hrExitCC]){
-      const segs = (countrySegments||[]).filter(Boolean);
-      let lastHR = null;
-      for(const s of segs){ if(s?.cc==='HR') lastHR=s; }
-      if(lastHR){
-        const nearest = nearestHACStation(lastHR.lat, lastHR.lng);
-        if(nearest.dist < 0.5) exitStation = nearest.name;
-        console.log('[HAC] Exit GPS nearest:', nearest);
-      }
+  // Find first and last HR points + boundary points
+  let firstHR=null, lastHR=null, preHR=null, postHR=null;
+  for(let i=0;i<segs.length;i++){
+    if(segs[i]?.cc==='HR'){
+      if(!firstHR){ firstHR=segs[i]; if(i>0) preHR=segs[i-1]; }
+      lastHR=segs[i];
+      if(i<segs.length-1) postHR=segs[i+1];
     }
   }
 
-  console.log('[HAC] entry:', entryStation, '→ exit:', exitStation, '| entryCC:', hrEntryCC, 'exitCC:', hrExitCC);
+  // GPS-based station detection — priority over border defaults
+  // Use preHR (last non-HR point before border) for entry — closest to border station
+  // Use postHR (first non-HR point after border) for exit
+  let entryStation = null;
+  let exitStation = null;
 
-  // Step 4: Call HAC API
+  // Entry: try preHR first (non-HR point just before crossing into HR)
+  const entryPt = preHR || firstHR;
+  if(entryPt){
+    const n = nearestHACStation(entryPt.lat, entryPt.lng);
+    if(n.dist < 0.5){ entryStation = n.name; }
+    console.log('[HAC] Entry GPS:', entryPt, '→', n);
+  }
+  // Fallback to border default
+  if(!entryStation) entryStation = HAC_BORDER_ENTRY[hrEntryCC] || 'Bregana';
+
+  // Exit: try postHR first (non-HR point just after leaving HR)
+  const exitBorderPt = postHR || lastHR;
+  if(exitBorderPt){
+    const n = nearestHACStation(exitBorderPt.lat, exitBorderPt.lng);
+    if(n.dist < 0.5){ exitStation = n.name; }
+    console.log('[HAC] Exit GPS:', exitBorderPt, '→', n);
+  }
+
+  // For internal exit (BA/RS/ME) — find last toll exit in steps
+  if(!exitStation || exitStation === entryStation){
+    const exitFromStep = findHRExitFromSteps(steps);
+    if(exitFromStep) exitStation = exitFromStep;
+  }
+  if(!exitStation) exitStation = HAC_BORDER_ENTRY[hrExitCC] || null;
+
+  console.log('[HAC] Final:', entryStation, '→', exitStation);
+
   if(entryStation && exitStation && entryStation !== exitStation){
     const result = await fetchHACToll(entryStation, exitStation, cat);
     if(result?.total > 0){
@@ -1346,11 +1335,29 @@ async function calcHRToll(hrEntryCC, hrExitCC, hrDistKm, steps, vehicleCat, coun
     }
   }
 
-  // Fallback: distance estimate
+  // Fallback estimate
   const mult=({'I':1,'IA':1,'II':1.576,'III':2.516,'IV':3.2})[cat]||1;
   const base=hrDistKm<50?3:hrDistKm<100?6:hrDistKm<180?10:hrDistKm<280?16:hrDistKm<380?22:28;
   return {amount:parseFloat((base*mult).toFixed(2)), segments:[],
           entry:entryStation||'?', exit:exitStation||'?', live:false, precise:false};
+}
+
+// Find last HAC exit station from step instructions
+function findHRExitFromSteps(steps){
+  const exitSteps = steps.filter(s=>{
+    const instr=(s.instructions||'').replace(/<[^>]+>/g,' ');
+    return /výjazdom|exit|Abfahrt/i.test(instr) && /Spoplatnená cesta/i.test(instr);
+  });
+  for(let i=exitSteps.length-1; i>=0; i--){
+    const instr=(exitSteps[i].instructions||'').replace(/<[^>]+>/g,' ');
+    for(const [name] of HAC_STATION_GPS){
+      if(new RegExp(name.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'),'i').test(instr)){
+        console.log('[HAC] Exit from step:', name);
+        return name;
+      }
+    }
+  }
+  return null;
 }
 
 // Multi-stop UI
@@ -1630,7 +1637,12 @@ async function renderRoute(result){
             ? `<br><span style="font-size:.6rem;color:#aaa;">Detected: [${hacResult.debugDetected.join(', ')}]</span>`
             : '';
           if(hacResult.segments?.length){
-            const segText=hacResult.segments.map(s=>`<strong>${s.entry}</strong>→<strong>${s.exit}</strong>: €${s.amount.toFixed(2)}`).join(' + ');
+            const segText=hacResult.segments.map(s=>{
+              const label = s.entry===s.exit
+                ? `<strong>${s.entry}</strong> (border toll)`
+                : `<strong>${s.entry}</strong>→<strong>${s.exit}</strong>`;
+              return `${label}: €${s.amount.toFixed(2)}`;
+            }).join(' + ');
             note=`${segText}<br>ENC 21% → ${toEurStr(priceEur*0.7826)} · <a href="https://karta.hac.hr/map/map" target="_blank" style="color:var(--accent)">karta.hac.hr ↗</a>${debugInfo}`;
           } else {
             note=`${hacResult.entry}→${hacResult.exit} · ENC 21% → ${toEurStr(priceEur*0.7826)} · <a href="https://karta.hac.hr/map/map" target="_blank" style="color:var(--accent)">karta.hac.hr ↗</a>${debugInfo}`;
