@@ -1249,11 +1249,16 @@ async function calcHRToll(hrEntryCC, hrExitCC, hrDistKm, steps, vehicleCat){
   // Detect stations from actual Google Maps route instructions
   const detected = detectHACStationsInSteps(steps);
 
+  // Debug: log full step text to console
+  const stepText = steps.map(s=>(s.instructions||'').replace(/<[^>]+>/g,' ')).join(' | ');
+  console.log('[HAC Debug] Steps text:', stepText.substring(0,500));
+  console.log('[HAC Debug] Detected stations:', detected);
+  console.log('[HAC Debug] Entry CC:', hrEntryCC, '→ Exit CC:', hrExitCC);
+
   // Entry = border entry station OR first detected station in steps
   const entryStation = HAC_BORDER_ENTRY[hrEntryCC] || detected[0] || null;
 
   // Exit = last detected station that is NOT the entry
-  // This finds the actual exit ramp from the route (e.g. "Novska")
   const exitStation = detected.filter(s=>s!==entryStation).slice(-1)[0]
     || HAC_BORDER_ENTRY[hrExitCC]
     || null;
@@ -1263,7 +1268,8 @@ async function calcHRToll(hrEntryCC, hrExitCC, hrDistKm, steps, vehicleCat){
     const result = await fetchHACToll(entryStation, exitStation, cat);
     if(result?.total>0){
       return {amount:result.total, segments:result.segments,
-              entry:entryStation, exit:exitStation, live:true, precise:!!detected.length};
+              entry:entryStation, exit:exitStation, live:true,
+              precise:!!detected.length, debugDetected:detected};
     }
   }
 
@@ -1274,7 +1280,7 @@ async function calcHRToll(hrEntryCC, hrExitCC, hrDistKm, steps, vehicleCat){
     const result = await fetchHACToll(be, bx, cat);
     if(result?.total>0){
       return {amount:result.total, segments:result.segments,
-              entry:be, exit:bx, live:true, precise:false};
+              entry:be, exit:bx, live:true, precise:false, debugDetected:detected};
     }
   }
 
@@ -1282,7 +1288,7 @@ async function calcHRToll(hrEntryCC, hrExitCC, hrDistKm, steps, vehicleCat){
   const mult = ({'I':1,'IA':1,'II':1.576,'III':2.516,'IV':3.2})[cat]||1;
   const base = hrDistKm<50?3:hrDistKm<100?6:hrDistKm<180?10:hrDistKm<280?16:hrDistKm<380?22:28;
   return {amount:parseFloat((base*mult).toFixed(2)), segments:[],
-          entry:be||'?', exit:bx||'?', live:false, precise:false};
+          entry:be||'?', exit:bx||'?', live:false, precise:false, debugDetected:detected};
 }
 
 // Multi-stop UI
@@ -1490,14 +1496,17 @@ async function calcMapRoute(){
           priceEur=hacResult.amount;
           priceStr=toEurStr(priceEur);
           const srcIcon=hacResult.live
-            ? (hacResult.method==='GPS' ? '🟢 Live HAC · GPS precise' : '🟡 Live HAC · border estimate')
+            ? (hacResult.precise ? '🟢 Live HAC · route detected' : '🟡 Live HAC · border estimate')
             : '🟠 Distance estimate';
           action=`Distance-based toll · ${catLabel} · ${srcIcon}`;
+          const debugInfo=hacResult.debugDetected?.length
+            ? `<br><span style="font-size:.6rem;color:#aaa;">Detected: [${hacResult.debugDetected.join(', ')}]</span>`
+            : '';
           if(hacResult.segments?.length){
             const segText=hacResult.segments.map(s=>`<strong>${s.entry}</strong>→<strong>${s.exit}</strong>: €${s.amount.toFixed(2)}`).join(' + ');
-            note=`${segText}<br>ENC 21% → ${toEurStr(priceEur*0.7826)} · <a href="https://karta.hac.hr/map/map" target="_blank" style="color:var(--accent)">karta.hac.hr ↗</a>`;
+            note=`${segText}<br>ENC 21% → ${toEurStr(priceEur*0.7826)} · <a href="https://karta.hac.hr/map/map" target="_blank" style="color:var(--accent)">karta.hac.hr ↗</a>${debugInfo}`;
           } else {
-            note=`${hacResult.entry}→${hacResult.exit} · ENC 21% → ${toEurStr(priceEur*0.7826)} · <a href="https://karta.hac.hr/map/map" target="_blank" style="color:var(--accent)">karta.hac.hr ↗</a>`;
+            note=`${hacResult.entry}→${hacResult.exit} · ENC 21% → ${toEurStr(priceEur*0.7826)} · <a href="https://karta.hac.hr/map/map" target="_blank" style="color:var(--accent)">karta.hac.hr ↗</a>${debugInfo}`;
           }
           needsPay=true; totalEur+=priceEur;
         } else if(FREE_LOCAL[id]){
