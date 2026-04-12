@@ -1283,31 +1283,63 @@ function nearestHACStation(lat, lng){
 async function calcHRToll(hrEntryCC, hrExitCC, hrDistKm, steps, vehicleCat, countrySegments){
   const cat = vehicleCat||'I';
 
-  // Find first and last HR GPS points from countrySegments
+  // Find boundary GPS points — the HR points closest to the border
+  // i.e. first HR point (just entered HR) and last HR point (about to leave HR)
   const segs = (countrySegments||[]).filter(Boolean);
   let firstHR=null, lastHR=null;
-  for(const s of segs){
-    if(s?.cc==='HR'){
-      if(!firstHR) firstHR=s;
-      lastHR=s;
+
+  // firstHR = first sample point with cc=HR (closest to entry border)
+  // lastHR  = last sample point with cc=HR (closest to exit border)
+  for(let i=0;i<segs.length;i++){
+    if(segs[i]?.cc==='HR'){
+      if(!firstHR) firstHR=segs[i];
+      lastHR=segs[i];
     }
   }
 
-  console.log('[HAC] HR GPS entry:', firstHR, '→ exit:', lastHR);
+  // Also try the point just BEFORE first HR — might be closer to border station
+  let preHR=null, postHR=null;
+  for(let i=0;i<segs.length;i++){
+    if(segs[i]?.cc==='HR'){
+      if(!preHR && i>0) preHR=segs[i-1]; // last non-HR point before entering HR
+      break;
+    }
+  }
+  for(let i=segs.length-1;i>=0;i--){
+    if(segs[i]?.cc==='HR'){
+      if(i<segs.length-1) postHR=segs[i+1]; // first non-HR point after leaving HR
+      break;
+    }
+  }
 
-  // Find nearest HAC stations to entry/exit GPS points
+  // Find nearest HAC stations — try boundary point first, then first/last HR
   let entryStation = HAC_BORDER_ENTRY[hrEntryCC];
   let exitStation  = HAC_BORDER_ENTRY[hrExitCC];
 
-  if(firstHR){
-    const nearest = nearestHACStation(firstHR.lat, firstHR.lng);
-    if(nearest.dist < 0.25) entryStation = nearest.name;
-    console.log('[HAC] Nearest entry station:', nearest);
+  // For entry: use preHR (non-HR point just before crossing) if available
+  // This is closer to the actual border/toll station
+  const entrySearchPt = preHR || firstHR;
+  const exitSearchPt  = postHR || lastHR;
+
+  if(entrySearchPt){
+    const nearest = nearestHACStation(entrySearchPt.lat, entrySearchPt.lng);
+    if(nearest.dist < 0.5) entryStation = nearest.name;
+    console.log('[HAC] Entry search pt:', entrySearchPt, '→ nearest:', nearest);
   }
-  if(lastHR){
+  if(exitSearchPt){
+    const nearest = nearestHACStation(exitSearchPt.lat, exitSearchPt.lng);
+    if(nearest.dist < 0.5) exitStation = nearest.name;
+    console.log('[HAC] Exit search pt:', exitSearchPt, '→ nearest:', nearest);
+  }
+
+  // Fallback to firstHR/lastHR if no match from boundary points
+  if(entryStation === HAC_BORDER_ENTRY[hrEntryCC] && firstHR){
+    const nearest = nearestHACStation(firstHR.lat, firstHR.lng);
+    if(nearest.dist < 0.5) entryStation = nearest.name;
+  }
+  if(exitStation === HAC_BORDER_ENTRY[hrExitCC] && lastHR){
     const nearest = nearestHACStation(lastHR.lat, lastHR.lng);
-    if(nearest.dist < 0.25) exitStation = nearest.name;
-    console.log('[HAC] Nearest exit station:', nearest);
+    if(nearest.dist < 0.5) exitStation = nearest.name;
   }
 
   console.log('[HAC] Calling API:', entryStation, '→', exitStation);
