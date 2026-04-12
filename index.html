@@ -1148,13 +1148,26 @@ const FREE_LOCAL={'ba':true,'rs':true,'me':true,'mk':true,'al':true,'xk':true,'g
 // Returns JSON with Segments[] each having Prices[] per Category
 // Access-Control-Allow-Origin: * → can be called directly from browser
 
-// Border CC → HAC entry station name (as used in API)
+// Border CC → HAC entry/exit station name (Croatian side, as used in HAC API)
 const HAC_BORDER_STATION = {
-  'SI': ['Bregana','Rupa','Macelj'],   // multiple SLO entries
-  'HU': ['Goričan'],
-  'BA': ['Stara Gradiška','Razvala'],
-  'RS': ['Lipovac'],
-  'ME': ['Karasovići'],
+  // Entry into Croatia from neighbouring country
+  entry: {
+    'SI': 'Bregana',        // A3 main SLO→HR (most common tourist route)
+    'SI_RUPA': 'Rupa',      // A7 Rijeka direction
+    'SI_MACELJ': 'Macelj',  // A2 northern SLO
+    'HU': 'Goričan',        // A4 HU→HR
+    'BA': 'Stara Gradiška', // A3 BIH→HR (Slavonija)
+    'RS': 'Lipovac',        // A3 SRB→HR (Bajakovo)
+    'ME': 'Karasovići',     // A10 MNE→HR (Dubrovnik area)
+  },
+  // Exit from Croatia to neighbouring country
+  exit: {
+    'SI': 'Bregana',
+    'HU': 'Goričan',
+    'BA': 'Slavonski Brod', // Croatian side before BiH border
+    'RS': 'Lipovac',
+    'ME': 'Karasovići',
+  }
 };
 
 // Detect likely HAC entry/exit station names from Google Maps step text
@@ -1166,7 +1179,7 @@ function detectHACStationNames(steps){
   return known.filter(s=>text.toLowerCase().includes(s.toLowerCase()));
 }
 
-// Call HAC live API for toll price
+// Call HAC live API — supports both station names and GPS coordinates
 async function fetchHACToll(entry, exit, vehicleCat){
   const cat = vehicleCat || 'I';
   const url = `https://cro3-tmp.hac.hr/tollcalculator/price/${encodeURIComponent(entry)}/${encodeURIComponent(exit)}`;
@@ -1174,71 +1187,89 @@ async function fetchHACToll(entry, exit, vehicleCat){
     const r = await fetch(url);
     if(!r.ok) return null;
     const data = await r.json();
-    // Sum up all segments
     let total = 0;
     const segments = [];
     for(const seg of (data.Segments||[])){
       const price = seg.Prices?.find(p=>p.Category===cat) || seg.Prices?.find(p=>p.Category==='I');
-      if(price) {
+      if(price){
         total += price.Amount;
-        segments.push({
-          entry: seg.EntryName,
-          exit: seg.ExitName,
-          amount: price.Amount,
-          cat: price.Category,
-        });
+        segments.push({entry:seg.EntryName, exit:seg.ExitName, amount:price.Amount, cat:price.Category});
       }
     }
     return total > 0 ? {total, segments, live:true} : null;
-  } catch(e) {
-    return null;
-  }
+  } catch(e){ return null; }
 }
 
-// Main HR toll calculator — tries live API first, fallback to estimate
-async function calcHRToll(hrEntryCC, hrExitCC, hrDistKm, steps, vehicleCat){
+// Find first and last HR point in route polyline for precise GPS-based HAC call
+function findHREntryExitGPS(path, countrySegments){
+  const segs = countrySegments.filter(Boolean);
+  let firstHR = null, lastHR = null;
+  for(let i=0; i<segs.length; i++){
+    if(segs[i]?.cc === 'HR'){
+      if(!firstHR) firstHR = segs[i];
+      lastHR = segs[i];
+    }
+  }
+  return {firstHR, lastHR};
+}
+
+// Main HR toll calculator — uses GPS coordinates from actual route
+async function calcHRToll(hrEntryCC, hrExitCC, hrDistKm, steps, vehicleCat, countrySegments, path){
   const cat = vehicleCat || 'I';
 
-  // 1. Detect station names from Google Maps step instructions
-  const detected = detectHACStationNames(steps);
+  // 1. Get actual GPS entry/exit points from the route
+  const {firstHR, lastHR} = findHREntryExitGPS(path, countrySegments);
 
-  // 2. Determine likely entry/exit stations
-  const entryStations = HAC_BORDER_STATION[hrEntryCC] || detected.slice(0,1);
-  const exitStations  = HAC_BORDER_STATION[hrExitCC]  || detected.slice(-1);
-
-  const entryStation = entryStations[0];
-  const exitStation  = exitStations[0];
-
-  // 3. Try live HAC API
-  if(entryStation && exitStation && entryStation !== exitStation){
-    const result = await fetchHACToll(entryStation, exitStation, cat);
-    if(result){
+  // 2. Try GPS-based HAC API call — most precise!
+  if(firstHR && lastHR && (firstHR.lat !== lastHR.lat || firstHR.lng !== lastHR.lng)){
+    // HAC API format with coordinates: lng,lat (note: longitude first!)
+    const entryCoord = `${firstHR.lng.toFixed(6)},${firstHR.lat.toFixed(6)}`;
+    const exitCoord  = `${lastHR.lng.toFixed(6)},${lastHR.lat.toFixed(6)}`;
+    const gpsResult = await fetchHACToll(entryCoord, exitCoord, cat);
+    if(gpsResult && gpsResult.total > 0){
       return {
-        amount: result.total,
-        segments: result.segments,
-        entry: entryStation,
-        exit: exitStation,
+        amount: gpsResult.total,
+        segments: gpsResult.segments,
+        entry: gpsResult.segments[0]?.entry || 'GPS entry',
+        exit:  gpsResult.segments[gpsResult.segments.length-1]?.exit || 'GPS exit',
         live: true,
         precise: true,
+        method: 'GPS',
       };
     }
   }
 
-  // 4. Fallback — distance-based estimate
+  // 3. Fallback — station name based on border country
+  const stationEntry = HAC_BORDER_STATION.entry[hrEntryCC];
+  const stationExit  = HAC_BORDER_STATION.exit[hrExitCC];
+
+  if(stationEntry && stationExit && stationEntry !== stationExit){
+    const nameResult = await fetchHACToll(stationEntry, stationExit, cat);
+    if(nameResult && nameResult.total > 0){
+      return {
+        amount: nameResult.total,
+        segments: nameResult.segments,
+        entry: stationEntry,
+        exit: stationExit,
+        live: true,
+        precise: false,
+        method: 'border-station',
+      };
+    }
+  }
+
+  // 4. Distance-based estimate
   const catMult = {'I':1,'IA':1,'II':1.576,'III':2.516,'IV':3.2};
   const mult = catMult[cat] || 1;
-  let base = hrDistKm < 50  ? 3.0 :
-             hrDistKm < 100 ? 6.0 :
-             hrDistKm < 180 ? 10.0 :
-             hrDistKm < 280 ? 16.0 :
+  let base = hrDistKm < 50  ? 3.0 : hrDistKm < 100 ? 6.0 :
+             hrDistKm < 180 ? 10.0 : hrDistKm < 280 ? 16.0 :
              hrDistKm < 380 ? 22.0 : 28.0;
   return {
     amount: parseFloat((base * mult).toFixed(2)),
     segments: [],
-    entry: entryStation||null,
-    exit: exitStation||null,
-    live: false,
-    precise: false,
+    entry: stationEntry || '?',
+    exit:  stationExit  || '?',
+    live: false, precise: false, method: 'estimate',
   };
 }
 
@@ -1394,7 +1425,7 @@ async function calcMapRoute(){
           const cc=results[0].address_components.find(c=>c.types.includes('country'))?.short_name;
           if(cc){
             if(!countryCodes.has(cc)){ countryCodes.add(cc); countryOrder.push(cc); }
-            countrySegments[i]={cc,lat:pt.lat(),lng:pt.lng()};
+            countrySegments[i]={cc, lat:pt.lat(), lng:pt.lng()};
           }
         }
         res();
@@ -1442,21 +1473,19 @@ async function calcMapRoute(){
 
       } else if(country.type==='toll'){
         if(id==='hr'){
-          // Use live HAC API
           const allSteps=result.routes[0].legs.flatMap(l=>l.steps);
-          const hacResult=await calcHRToll(hrEntryCC,hrExitCC,hrDistKm,allSteps,vehicleCat);
+          const hacResult=await calcHRToll(hrEntryCC,hrExitCC,hrDistKm,allSteps,vehicleCat,countrySegments,path);
           priceEur=hacResult.amount;
           priceStr=toEurStr(priceEur);
-          const srcLabel=hacResult.live
-            ? `🟢 Live HAC API · ${hacResult.entry} → ${hacResult.exit}`
-            : `🟡 Estimated · ${hacResult.entry||'?'} → ${hacResult.exit||'?'}`;
-          action=`Distance-based toll · ${catLabel} · ${srcLabel}`;
-          // Show segments if available
-          if(hacResult.segments?.length>1){
-            note=hacResult.segments.map(s=>`${s.entry}→${s.exit}: €${s.amount}`).join(' + ')
-              +` · ENC saves 21% → ${toEurStr(priceEur*0.7826)}`;
+          const srcIcon=hacResult.live
+            ? (hacResult.method==='GPS' ? '🟢 Live HAC · GPS precise' : '🟡 Live HAC · border estimate')
+            : '🟠 Distance estimate';
+          action=`Distance-based toll · ${catLabel} · ${srcIcon}`;
+          if(hacResult.segments?.length){
+            const segText=hacResult.segments.map(s=>`<strong>${s.entry}</strong>→<strong>${s.exit}</strong>: €${s.amount.toFixed(2)}`).join(' + ');
+            note=`${segText}<br>ENC 21% → ${toEurStr(priceEur*0.7826)} · <a href="https://karta.hac.hr/map/map" target="_blank" style="color:var(--accent)">karta.hac.hr ↗</a>`;
           } else {
-            note=`ENC saves 21% → ${toEurStr(priceEur*0.7826)} · <a href="https://karta.hac.hr/map/map" target="_blank" style="color:var(--accent)">Verify at karta.hac.hr ↗</a>`;
+            note=`${hacResult.entry}→${hacResult.exit} · ENC 21% → ${toEurStr(priceEur*0.7826)} · <a href="https://karta.hac.hr/map/map" target="_blank" style="color:var(--accent)">karta.hac.hr ↗</a>`;
           }
           needsPay=true; totalEur+=priceEur;
         } else if(FREE_LOCAL[id]){
