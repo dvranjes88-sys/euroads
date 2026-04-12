@@ -1301,12 +1301,12 @@ async function calcHRToll(hrEntryCC, hrExitCC, hrDistKm, steps, vehicleCat, coun
 
   if(firstHR){
     const nearest = nearestHACStation(firstHR.lat, firstHR.lng);
-    if(nearest.dist < 0.5) entryStation = nearest.name; // within ~50km
+    if(nearest.dist < 0.25) entryStation = nearest.name;
     console.log('[HAC] Nearest entry station:', nearest);
   }
   if(lastHR){
     const nearest = nearestHACStation(lastHR.lat, lastHR.lng);
-    if(nearest.dist < 0.5) exitStation = nearest.name;
+    if(nearest.dist < 0.25) exitStation = nearest.name;
     console.log('[HAC] Nearest exit station:', nearest);
   }
 
@@ -1640,7 +1640,7 @@ async function renderRoute(result){
     }
 
     // ── Draw colored polylines per STEP based on road type ──
-    renderer.setMap(null); mrRenderers=[];
+    mrRenderers.forEach(r=>r.setMap(null)); mrRenderers=[];
     mrPolylines.forEach(p=>p.setMap(null)); mrPolylines=[];
 
     // Road classification based on ACTUAL Google Maps step data
