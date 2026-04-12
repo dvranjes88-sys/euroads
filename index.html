@@ -1244,10 +1244,8 @@ const HAC_STATION_GPS = [
   ['Sveta Helena',        45.921, 16.274],
   // A2: Trakošćan (SLO border via Maribor) → Zagreb
   ['Trakošćan',           46.255, 15.773],
-  ['Ivanec',              46.226, 15.879],  // A2 Ivanec
   ['Krapina',             46.160, 15.874],
   ['Zabok',               46.034, 15.909],
-  ['Mokrice',             45.921, 15.908],  // A2 Mokrice
   ['Zaprešić',            45.855, 15.803],
   // A3: Bregana (SLO border via Ljubljana) → Lipovac (SRB)
   ['Bregana',             45.841, 15.666],
@@ -1297,9 +1295,12 @@ const HAC_STATION_GPS = [
   ['Ravča',               43.211, 17.323],
   ['Karamatići',          43.330, 17.271],
   ['Čarapine',            43.139, 17.417],
-  // A6/A7: Rupa (SLO border via Trieste) → Rijeka
+  // A6/A7: Rupa (SLO border via Trieste) → Zagreb; A6 Rijeka → Zagreb
   ['Rupa',                45.491, 14.256],
-  ['Rijeka',              45.327, 14.442],
+  ['Kikovica',            45.370, 14.386],
+  ['Oštrovica',           45.337, 14.457],
+  ['Delnice',             45.401, 14.804],
+  ['Bosiljevo',           45.399, 15.294],
   // A10: Ploče → Karasovići (MNE border)
   ['Ploče',               43.058, 17.432],
   ['Karasovići',          42.534, 18.434],
@@ -1319,13 +1320,22 @@ function nearestHACStation(lat, lng){
   return {name:best, dist:bestDist};
 }
 
+// Border entry stations — ONLY these are valid entry points from outside HR
+const HAC_BORDER_STATIONS = {
+  'HU': ['Goričan'],
+  'SI': ['Trakošćan', 'Bregana', 'Rupa'],  // A2, A3, A7
+  'BA': ['Stara Gradiška', 'Svilaj'],
+  'RS': ['Lipovac'],
+  'ME': ['Karasovići'],
+};
+
 // Main HR toll calculator
 async function calcHRToll(hrEntryCC, hrExitCC, hrDistKm, steps, vehicleCat, countrySegments){
   const cat = vehicleCat||'I';
   const segs = (countrySegments||[]).filter(Boolean);
 
-  // Find first and last HR points + boundary points
-  let firstHR=null, lastHR=null, preHR=null, postHR=null;
+  // Find first HR point and pre-border point
+  let firstHR=null, preHR=null, lastHR=null, postHR=null;
   for(let i=0;i<segs.length;i++){
     if(segs[i]?.cc==='HR'){
       if(!firstHR){ firstHR=segs[i]; if(i>0) preHR=segs[i-1]; }
@@ -1334,36 +1344,47 @@ async function calcHRToll(hrEntryCC, hrExitCC, hrDistKm, steps, vehicleCat, coun
     }
   }
 
-  // GPS-based station detection — priority over border defaults
-  // Use preHR (last non-HR point before border) for entry — closest to border station
-  // Use postHR (first non-HR point after border) for exit
-  let entryStation = null;
-  let exitStation = null;
+  // ENTRY: pick correct border station based on which is nearest to firstHR
+  // Only consider valid border stations for this entry country
+  const borderOptions = HAC_BORDER_STATIONS[hrEntryCC] || [HAC_BORDER_ENTRY[hrEntryCC]];
+  let entryStation = borderOptions[0]; // default = first option
 
-  // Entry: try preHR first (non-HR point just before crossing into HR)
-  const entryPt = preHR || firstHR;
-  if(entryPt){
-    const n = nearestHACStation(entryPt.lat, entryPt.lng);
-    if(n.dist < 0.5){ entryStation = n.name; }
-    console.log('[HAC] Entry GPS:', entryPt, '→', n);
-  }
-  // Fallback to border default
-  if(!entryStation) entryStation = HAC_BORDER_ENTRY[hrEntryCC] || 'Bregana';
-
-  // Exit: try postHR first (non-HR point just after leaving HR)
-  const exitBorderPt = postHR || lastHR;
-  if(exitBorderPt){
-    const n = nearestHACStation(exitBorderPt.lat, exitBorderPt.lng);
-    if(n.dist < 0.5){ exitStation = n.name; }
-    console.log('[HAC] Exit GPS:', exitBorderPt, '→', n);
+  if(firstHR && borderOptions.length > 1){
+    // Multiple border options (e.g. SI: Trakošćan, Bregana, Rupa)
+    // Pick the one nearest to firstHR GPS point
+    let bestDist = Infinity;
+    for(const stName of borderOptions){
+      const st = HAC_STATION_GPS.find(([n])=>n===stName);
+      if(!st) continue;
+      const d = Math.sqrt((firstHR.lat-st[1])**2 + (firstHR.lng-st[2])**2);
+      if(d < bestDist){ bestDist=d; entryStation=stName; }
+    }
+    console.log('[HAC] Border options:', borderOptions, '→ chosen:', entryStation, '(firstHR:', firstHR, ')');
   }
 
-  // For internal exit (BA/RS/ME) — find last toll exit in steps
-  if(!exitStation || exitStation === entryStation){
-    const exitFromStep = findHRExitFromSteps(steps);
-    if(exitFromStep) exitStation = exitFromStep;
+  // EXIT: use GPS nearest station to postHR or lastHR point
+  // For exits inside HR (destination city), use lastHR
+  // For exits to another country (BA/RS), use postHR
+  let exitStation = HAC_BORDER_ENTRY[hrExitCC] || null;
+
+  const exitSearchPt = postHR || lastHR;
+  if(exitSearchPt){
+    const n = nearestHACStation(exitSearchPt.lat, exitSearchPt.lng);
+    // Only override if nearest is NOT a border entry station of another country
+    // (avoid picking e.g. "Stara Gradiška" when we should pick "Novska")
+    if(n.dist < 0.5 && !Object.values(HAC_BORDER_STATIONS).flat().includes(n.name)){
+      exitStation = n.name;
+    } else if(n.dist < 0.3){
+      exitStation = n.name; // very close = accept even border stations
+    }
+    console.log('[HAC] Exit search:', exitSearchPt, '→ nearest:', n, '→ exit:', exitStation);
   }
-  if(!exitStation) exitStation = HAC_BORDER_ENTRY[hrExitCC] || null;
+
+  // Try last toll exit step as fallback for exit
+  if(!exitStation || exitStation === HAC_BORDER_ENTRY[hrExitCC]){
+    const fromStep = findHRExitFromSteps(steps);
+    if(fromStep) exitStation = fromStep;
+  }
 
   console.log('[HAC] Final:', entryStation, '→', exitStation);
 
