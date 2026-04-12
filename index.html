@@ -1322,7 +1322,6 @@ async function calcHRToll(hrEntryCC, hrExitCC, hrDistKm, steps, vehicleCat, coun
   return {amount:parseFloat((base*mult).toFixed(2)), segments:[],
           entry:be||'?', exit:bx||'?', live:false, precise:false};
 }
-}
 
 // Multi-stop UI
 function initStops(){
