@@ -1002,10 +1002,18 @@ function getBestVignette(prices,days){
 let FX = {};
 async function loadFX(){
   try {
-    const r=await fetch('https://api.frankfurter.app/latest?base=EUR&symbols=CZK,CHF,HUF,RON,BGN,PLN,HRK,NOK,RSD,BAM,MKD,ALL,TRY,UAH,GEL,AMD,AZN,SEK,DKK,ISK');
+    // Use open.er-api.com which has CORS enabled for browser requests
+    const r=await fetch('https://open.er-api.com/v6/latest/EUR');
     const d=await r.json();
     FX=d.rates||{};
-  } catch(e){ FX={}; }
+  } catch(e){
+    try {
+      // Fallback: exchangerate.host
+      const r2=await fetch('https://api.exchangerate.host/latest?base=EUR');
+      const d2=await r2.json();
+      FX=d2.rates||{};
+    } catch(e2){ FX={}; }
+  }
 }
 loadFX();
 
@@ -1206,89 +1214,114 @@ async function fetchHACToll(entry, exit, vehicleCat){
   } catch(e){ return null; }
 }
 
-// Detect HAC stations mentioned in Google Maps step instructions
-// Only match stations that appear near "exit", "toll", "naplata", or motorway numbers
-function detectHACStationsInSteps(steps){
-  // Get full text and also individual step texts
-  const fullText = steps.map(s=>(s.instructions||'').replace(/<[^>]+>/g,' ')).join(' ');
+// HAC station GPS coordinates for nearest-station lookup
+// [name, lat, lng]
+const HAC_STATION_GPS = [
+  ['Goričan',       46.413, 16.641],
+  ['Sveta Helena',  45.921, 16.274],
+  ['Bregana',       45.841, 15.666],
+  ['Rupa',          45.491, 14.256],
+  ['Macelj',        46.202, 15.957],
+  ['Lučko',         45.750, 15.871],
+  ['Demerje',       45.726, 15.936],
+  ['Jastrebarsko',  45.663, 15.649],
+  ['Karlovac',      45.487, 15.547],
+  ['Bosiljevo',     45.399, 15.294],
+  ['Ogulin',        45.266, 15.224],
+  ['Josipdol',      45.209, 15.147],
+  ['Zadar sjever',  44.199, 15.239],
+  ['Zadar istok',   44.134, 15.277],
+  ['Zadar zapad',   44.120, 15.219],
+  ['Šibenik',       43.745, 15.900],
+  ['Split',         43.596, 16.571],
+  ['Bisko',         43.533, 16.716],
+  ['Zagvozd',       43.439, 17.050],
+  ['Karamatići',    43.330, 17.271],
+  ['Čarapine',      43.139, 17.417],
+  ['Karasovići',    42.534, 18.434],
+  ['Kutina',        45.480, 16.774],
+  ['Novska',        45.339, 16.979],
+  ['Okučani',       45.272, 17.179],
+  ['Nova Gradiška', 45.255, 17.383],
+  ['Slavonski Brod zapad', 45.163, 17.972],
+  ['Stara Gradiška',45.048, 17.200],
+  ['Lipovac',       45.054, 19.010],
+  ['Županja',       45.077, 18.690],
+  ['Svilaj',        45.039, 17.644],
+  ['Macelj',        46.202, 15.957],
+  ['Zaprešić',      45.855, 15.803],
+  ['Ivanić-Grad',   45.710, 16.398],
+  ['Križ',          45.668, 16.541],
+];
 
-  // Stations that are also city names — need stricter matching
-  const ambiguous = new Set([
-    'Zagreb','Rijeka','Split','Zadar','Šibenik','Karlovac',
-    'Varaždin','Sisak','Kutina','Županja','Krapina','Zabok',
-    'Ogulin','Metković','Ploče','Novska',
-  ]);
-
-  const found = [];
-
-  for(const station of HAC_STATIONS){
-    if(ambiguous.has(station)){
-      // For ambiguous names: only match if in context of A-road, toll, exit ramp
-      const re = new RegExp(
-        '(A\\d|autocest|toll|naplat|izlaz|exit|čvor|interchange).{0,60}'+
-        station.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+
-        '|'+
-        station.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+
-        '.{0,60}(A\\d|autocest|toll|naplat|izlaz|exit|čvor)',
-        'i'
-      );
-      if(re.test(fullText)) found.push(station);
-    } else {
-      // Non-ambiguous stations: simple match
-      const re = new RegExp('\\b'+station.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+'\\b','i');
-      if(re.test(fullText)) found.push(station);
-    }
+// Find nearest HAC station to a GPS point
+function nearestHACStation(lat, lng){
+  let best=null, bestDist=Infinity;
+  for(const [name,slat,slng] of HAC_STATION_GPS){
+    const d=Math.sqrt((lat-slat)**2+(lng-slng)**2);
+    if(d<bestDist){ bestDist=d; best=name; }
   }
-  return found;
+  return {name:best, dist:bestDist};
 }
 
-// Main HR toll calculator
-async function calcHRToll(hrEntryCC, hrExitCC, hrDistKm, steps, vehicleCat){
+// Main HR toll calculator — uses GPS from route polyline
+async function calcHRToll(hrEntryCC, hrExitCC, hrDistKm, steps, vehicleCat, countrySegments){
   const cat = vehicleCat||'I';
 
-  // Detect stations from actual Google Maps route instructions
-  const detected = detectHACStationsInSteps(steps);
+  // Find first and last HR GPS points from countrySegments
+  const segs = (countrySegments||[]).filter(Boolean);
+  let firstHR=null, lastHR=null;
+  for(const s of segs){
+    if(s?.cc==='HR'){
+      if(!firstHR) firstHR=s;
+      lastHR=s;
+    }
+  }
 
-  // Debug: log full step text to console
-  const stepText = steps.map(s=>(s.instructions||'').replace(/<[^>]+>/g,' ')).join(' | ');
-  console.log('[HAC Debug] Steps text:', stepText.substring(0,500));
-  console.log('[HAC Debug] Detected stations:', detected);
-  console.log('[HAC Debug] Entry CC:', hrEntryCC, '→ Exit CC:', hrExitCC);
+  console.log('[HAC] HR GPS entry:', firstHR, '→ exit:', lastHR);
 
-  // Entry = border entry station OR first detected station in steps
-  const entryStation = HAC_BORDER_ENTRY[hrEntryCC] || detected[0] || null;
+  // Find nearest HAC stations to entry/exit GPS points
+  let entryStation = HAC_BORDER_ENTRY[hrEntryCC];
+  let exitStation  = HAC_BORDER_ENTRY[hrExitCC];
 
-  // Exit = last detected station that is NOT the entry
-  const exitStation = detected.filter(s=>s!==entryStation).slice(-1)[0]
-    || HAC_BORDER_ENTRY[hrExitCC]
-    || null;
+  if(firstHR){
+    const nearest = nearestHACStation(firstHR.lat, firstHR.lng);
+    if(nearest.dist < 0.5) entryStation = nearest.name; // within ~50km
+    console.log('[HAC] Nearest entry station:', nearest);
+  }
+  if(lastHR){
+    const nearest = nearestHACStation(lastHR.lat, lastHR.lng);
+    if(nearest.dist < 0.5) exitStation = nearest.name;
+    console.log('[HAC] Nearest exit station:', nearest);
+  }
 
-  // Try HAC API with detected stations
+  console.log('[HAC] Calling API:', entryStation, '→', exitStation);
+
+  // Call HAC API
   if(entryStation && exitStation && entryStation!==exitStation){
     const result = await fetchHACToll(entryStation, exitStation, cat);
     if(result?.total>0){
       return {amount:result.total, segments:result.segments,
-              entry:entryStation, exit:exitStation, live:true,
-              precise:!!detected.length, debugDetected:detected};
+              entry:entryStation, exit:exitStation, live:true, precise:true};
     }
   }
 
-  // Fallback: try border stations directly
-  const be = HAC_BORDER_ENTRY[hrEntryCC];
-  const bx = HAC_BORDER_ENTRY[hrExitCC];
+  // Fallback border stations
+  const be=HAC_BORDER_ENTRY[hrEntryCC], bx=HAC_BORDER_ENTRY[hrExitCC];
   if(be && bx && be!==bx){
     const result = await fetchHACToll(be, bx, cat);
     if(result?.total>0){
       return {amount:result.total, segments:result.segments,
-              entry:be, exit:bx, live:true, precise:false, debugDetected:detected};
+              entry:be, exit:bx, live:true, precise:false};
     }
   }
 
   // Distance estimate
-  const mult = ({'I':1,'IA':1,'II':1.576,'III':2.516,'IV':3.2})[cat]||1;
-  const base = hrDistKm<50?3:hrDistKm<100?6:hrDistKm<180?10:hrDistKm<280?16:hrDistKm<380?22:28;
+  const mult=({'I':1,'IA':1,'II':1.576,'III':2.516,'IV':3.2})[cat]||1;
+  const base=hrDistKm<50?3:hrDistKm<100?6:hrDistKm<180?10:hrDistKm<280?16:hrDistKm<380?22:28;
   return {amount:parseFloat((base*mult).toFixed(2)), segments:[],
-          entry:be||'?', exit:bx||'?', live:false, precise:false, debugDetected:detected};
+          entry:be||'?', exit:bx||'?', live:false, precise:false};
+}
 }
 
 // Multi-stop UI
@@ -1492,7 +1525,7 @@ async function calcMapRoute(){
       } else if(country.type==='toll'){
         if(id==='hr'){
           const allSteps=result.routes[0].legs.flatMap(l=>l.steps);
-          const hacResult=await calcHRToll(hrEntryCC,hrExitCC,hrDistKm,allSteps,vehicleCat);
+          const hacResult=await calcHRToll(hrEntryCC,hrExitCC,hrDistKm,allSteps,vehicleCat,countrySegments);
           priceEur=hacResult.amount;
           priceStr=toEurStr(priceEur);
           const srcIcon=hacResult.live
