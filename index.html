@@ -1350,6 +1350,8 @@ function addStop(placeholder){
     ${canRemove?`<button class="stop-remove" onclick="removeStop('${id}')" title="Remove stop">×</button>`:'<span style="width:1.6rem"></span>'}
   `;
   wrap.appendChild(div);
+  // Attach Google Places autocomplete if Maps is loaded
+  if(window.google?.maps?.places) attachAutocomplete(id);
   // re-label all
   relabelStops();
 }
@@ -1377,10 +1379,24 @@ function initMrMap(){
 
   if(!window.google){
     const s=document.createElement('script');
-    s.src=`https://maps.googleapis.com/maps/api/js?key=${GKEY}&libraries=geometry`;
+    s.src=`https://maps.googleapis.com/maps/api/js?key=${GKEY}&libraries=geometry,places`;
     s.onload=createMrMap;
     document.head.appendChild(s);
   } else { createMrMap(); }
+}
+
+function attachAutocomplete(inputId){
+  if(!window.google?.maps?.places) return;
+  const input=document.getElementById(inputId);
+  if(!input||input.dataset.ac) return;
+  input.dataset.ac='1';
+  const ac=new google.maps.places.Autocomplete(input,{
+    types:['(cities)'],
+    componentRestrictions:{}, // no country restriction — all Europe
+    fields:['name','formatted_address'],
+  });
+  // Prevent form submit on enter
+  ac.addListener('place_changed',()=>{});
 }
 
 function createMrMap(){
@@ -1390,6 +1406,8 @@ function createMrMap(){
     styles:[{featureType:'poi',stylers:[{visibility:'off'}]},{featureType:'transit',stylers:[{visibility:'off'}]}],
     zoomControl:true,streetViewControl:false,fullscreenControl:true,
   });
+  // Attach autocomplete to existing stop inputs
+  mrStops.forEach(id=>attachAutocomplete(id));
 }
 
 // Color per country type
@@ -1456,12 +1474,15 @@ async function calcMapRoute(){
     const allLegs=result.routes[0].legs;
     const totalDist=allLegs.reduce((s,l)=>s+l.distance.value,0);
     const totalDur=allLegs.reduce((s,l)=>s+l.duration.value,0);
-
-    // Sample points from overview path for country detection
     const path=result.routes[0].overview_path;
-    const step=Math.max(1,Math.floor(path.length/15));
+
+    // Sample more points for better country detection (~25 points along route)
     const samplePoints=[];
+    const step=Math.max(1,Math.floor(path.length/25));
     for(let i=0;i<path.length;i+=step) samplePoints.push(path[i]);
+    // Always include first and last point
+    if(samplePoints[samplePoints.length-1]!==path[path.length-1])
+      samplePoints.push(path[path.length-1]);
 
     // Reverse geocode — detect countries in order
     const countryOrder=[];
@@ -1469,18 +1490,27 @@ async function calcMapRoute(){
     // Also track entry/exit countries for HR toll calc
     const countrySegments=[]; // [{cc, lat, lng, distShare}]
 
+    // Geocode sample points — maintain order by index
+    const geocodeResults = new Array(samplePoints.length).fill(null);
     await Promise.all(samplePoints.map((pt,i)=>new Promise(res=>{
       geocoder.geocode({location:pt},(results,status)=>{
         if(status==='OK'&&results[0]){
           const cc=results[0].address_components.find(c=>c.types.includes('country'))?.short_name;
           if(cc){
-            if(!countryCodes.has(cc)){ countryCodes.add(cc); countryOrder.push(cc); }
-            countrySegments[i]={cc, lat:pt.lat(), lng:pt.lng()};
+            geocodeResults[i]={cc, lat:pt.lat(), lng:pt.lng()};
           }
         }
         res();
       });
     })));
+
+    // Build ordered country list from geocode results (preserving route order)
+    for(let i=0;i<geocodeResults.length;i++){
+      const r=geocodeResults[i];
+      if(!r) continue;
+      if(!countryCodes.has(r.cc)){ countryCodes.add(r.cc); countryOrder.push(r.cc); }
+      countrySegments[i]=r;
+    }
 
     // Detect HR entry/exit countries for precise toll
     let hrEntryCC=null, hrExitCC=null, hrDistKm=0;
