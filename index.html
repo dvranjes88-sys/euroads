@@ -1147,15 +1147,39 @@ const FREE_LOCAL={'ba':true,'rs':true,'me':true,'mk':true,'al':true,'xk':true,'g
 // API: https://cro3-tmp.hac.hr/tollcalculator/price/{ENTRY}/{EXIT}
 // Accepts Croatian HAC station names only
 
-// All HAC station names (as accepted by API)
+// All HAC toll station names exactly as used in the API
+// Source: hac.hr toll rates pages + karta.hac.hr API responses
 const HAC_STATIONS = [
-  'Goričan','Čakovec','Varaždin','Varaždinske Toplice','Novi Marof',
-  'Breznički Hum','Ludbreg','Komin','Sveta Helena',
-  'Bregana','Macelj','Rupa','Zaprešić','Jankomir',
-  'Zagreb','Lučko','Karlovac','Bosiljevo','Ogulin','Josipdol',
-  'Rijeka','Zadar','Šibenik','Split','Ploče','Karasovići',
-  'Ivanić-Grad','Kutina','Novska','Nova Gradiška',
-  'Slavonski Brod','Stara Gradiška','Lipovac','Osijek','Svilaj','Sisak',
+  // A4: Goričan (HU border) → Zagreb
+  'Goričan','Čakovec','Varaždin','Ludbreg','Varaždinske Toplice',
+  'Novi Marof','Breznički Hum','Komin','Sveta Helena',
+  // A1: Zagreb → Split → Ploče
+  'Lučko','Jankomir','Demerje','Donja Zdenčina','Jastrebarsko',
+  'Karlovac','Novigrad','Bosiljevo','Ogulin','Josipdol','Žuta Lokva',
+  'Otočac','Perušić','Gornja Ploča','Maslenica','Zadar sjever',
+  'Zadar istok','Zadar zapad','Benkovac','Pirovac','Šibenik',
+  'Prgomet','Dugopolje','Split','Bisko','Šestanovac','Zagvozd',
+  'Ravča','Karamatići','Čarapine',
+  // A6/A10: Rijeka → Ploče
+  'Bosiljevo','Delnice','Oštrovica','Kikovica','Rijeka',
+  'Ploče','Opuzen','Metković',
+  // A7: Rupa (SLO border) → Rijeka
+  'Rupa','Rijeka zapad',
+  // A3/A5: Bregana (SLO border) → Lipovac (SRB border)
+  'Bregana','Jankomir','Zagreb istok','Rugvica','Ivanić-Grad',
+  'Križ','Kutina','Novska','Okučani','Nova Gradiška',
+  'Slavonski Brod zapad','Slavonski Brod','Stara Gradiška',
+  'Babina Greda','Županja','Lipovac',
+  // A5: Beli Manastir → Osijek → Svilaj (BiH border)
+  'Beli Manastir','Osijek jug','Đakovo','Slavonski Brod jug','Svilaj',
+  // A2: Macelj (SLO border) → Zagreb
+  'Macelj','Krapina','Zabok','Zaprešić',
+  // A11: Zagreb → Sisak
+  'Jakuševec','Velika Gorica jug','Buševec','Lekenik','Sisak',
+  // A10: Ploče → BiH border
+  'Karasovići',
+  // Bridges/tunnels
+  'Krčki most','Sveti Ilija',
 ];
 
 // Border CC → default HAC entry station name
@@ -1183,12 +1207,39 @@ async function fetchHACToll(entry, exit, vehicleCat){
 }
 
 // Detect HAC stations mentioned in Google Maps step instructions
+// Only match stations that appear near "exit", "toll", "naplata", or motorway numbers
 function detectHACStationsInSteps(steps){
-  const text = steps.map(s=>(s.instructions||'').replace(/<[^>]+>/g,' ')).join(' ');
-  return HAC_STATIONS.filter(s=>{
-    const re = new RegExp('\\b'+s.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+'\\b','i');
-    return re.test(text);
-  });
+  // Get full text and also individual step texts
+  const fullText = steps.map(s=>(s.instructions||'').replace(/<[^>]+>/g,' ')).join(' ');
+
+  // Stations that are also city names — need stricter matching
+  const ambiguous = new Set([
+    'Zagreb','Rijeka','Split','Zadar','Šibenik','Karlovac',
+    'Varaždin','Sisak','Kutina','Županja','Krapina','Zabok',
+    'Ogulin','Metković','Ploče','Novska',
+  ]);
+
+  const found = [];
+
+  for(const station of HAC_STATIONS){
+    if(ambiguous.has(station)){
+      // For ambiguous names: only match if in context of A-road, toll, exit ramp
+      const re = new RegExp(
+        '(A\\d|autocest|toll|naplat|izlaz|exit|čvor|interchange).{0,60}'+
+        station.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+
+        '|'+
+        station.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+
+        '.{0,60}(A\\d|autocest|toll|naplat|izlaz|exit|čvor)',
+        'i'
+      );
+      if(re.test(fullText)) found.push(station);
+    } else {
+      // Non-ambiguous stations: simple match
+      const re = new RegExp('\\b'+station.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+'\\b','i');
+      if(re.test(fullText)) found.push(station);
+    }
+  }
+  return found;
 }
 
 // Main HR toll calculator
