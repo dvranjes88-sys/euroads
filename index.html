@@ -1312,9 +1312,9 @@ const HAC_STATION_GPS = [
   ['Lipovac',             45.054, 19.010],
   ['Velika Kopanica',     45.094, 18.213],
   // A5: Beli Manastir → Osijek → Svilaj (BIH border)
-  ['Sudaraž (Beli Manastir)', 45.769, 18.606],
+  ['Sudaraž (Beli Manastir)', 45.782, 18.557],
   ['Osijek',              45.575, 18.559],
-  ['Čepin',               45.533, 18.560],
+  ['Čepin',               45.504, 18.513],
   ['Đakovo',              45.308, 18.411],
   ['Svilaj',              45.039, 17.644],
   ['Sveta Helena',        45.921, 16.274],
@@ -1364,8 +1364,8 @@ function nearestHACStation(lat, lng){
 
 // Border entry stations — ONLY these are valid entry points from outside HR
 const HAC_BORDER_STATIONS = {
-  'HU': ['Goričan'],
-  'SI': ['Trakošćan', 'Bregana', 'Rupa'],  // A2, A3, A7
+  'HU': ['Goričan', 'Sudaraž (Beli Manastir)'],  // A4 north, A5 east (via Pécs/Osijek)
+  'SI': ['Trakošćan', 'Bregana', 'Rupa'],
   'BA': ['Stara Gradiška', 'Svilaj'],
   'RS': ['Lipovac'],
   'ME': ['Karasovići'],
@@ -1404,25 +1404,39 @@ async function calcHRToll(hrEntryCC, hrExitCC, hrDistKm, steps, vehicleCat, coun
     console.log('[HAC] Border options:', borderOptions, '→ chosen:', entryStation, '(firstHR:', firstHR, ')');
   }
 
-  // EXIT: use GPS nearest station to postHR or lastHR point
-  // For exits inside HR (destination city), use lastHR
-  // For exits to another country (BA/RS), use postHR
+  // EXIT: find the HR point closest to the route destination
+  // For destinations inside HR, lastHR is best; for exits to another country, postHR
   let exitStation = HAC_BORDER_ENTRY[hrExitCC] || null;
 
+  // Use all HR points — find the one with the highest lat/lng variance from entry
+  // i.e. the HR point furthest along the route (closest to destination)
   const exitSearchPt = postHR || lastHR;
   if(exitSearchPt){
     const n = nearestHACStation(exitSearchPt.lat, exitSearchPt.lng);
-    // Only override if nearest is NOT a border entry station of another country
-    // (avoid picking e.g. "Stara Gradiška" when we should pick "Novska")
     if(n.dist < 0.5 && !Object.values(HAC_BORDER_STATIONS).flat().includes(n.name)){
       exitStation = n.name;
     } else if(n.dist < 0.3){
-      exitStation = n.name; // very close = accept even border stations
+      exitStation = n.name;
     }
     console.log('[HAC] Exit search:', exitSearchPt, '→ nearest:', n, '→ exit:', exitStation);
   }
 
-  // Try last toll exit step as fallback for exit
+  // Also check ALL HR points — sometimes lastHR is not the most accurate
+  // Try nearestHACStation for each HR segment and pick the one closest to a valid station
+  if(!exitStation || exitStation === HAC_BORDER_ENTRY[hrExitCC]){
+    let bestDist = 999, bestStation = null;
+    for(const seg of segs.filter(s=>s?.cc==='HR')){
+      const n = nearestHACStation(seg.lat, seg.lng);
+      if(n.dist < bestDist && !Object.values(HAC_BORDER_STATIONS).flat().includes(n.name)){
+        // Prefer stations closer to the END of the route (higher index)
+        bestDist = n.dist; bestStation = n.name;
+      }
+    }
+    if(bestStation && bestDist < 0.4) exitStation = bestStation;
+    console.log('[HAC] Best HR station scan:', bestStation, 'dist:', bestDist);
+  }
+
+  // Try last toll exit step as fallback
   if(!exitStation || exitStation === HAC_BORDER_ENTRY[hrExitCC]){
     const fromStep = findHRExitFromSteps(steps);
     if(fromStep) exitStation = fromStep;
