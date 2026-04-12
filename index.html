@@ -1602,67 +1602,92 @@ async function calcMapRoute(){
     renderer.setMap(null); mrRenderers=[];
     mrPolylines.forEach(p=>p.setMap(null)); mrPolylines=[];
 
-    // Motorway road number patterns by country
-    const MOTORWAY_RE={
-      'SK':/\b(D\d|R\d)\b/i, 'CZ':/\b(D\d|R\d)\b/i,
-      'AT':/\b(A\d|S\d)\b/i, 'CH':/\bA\d\b/i,
-      'HU':/\bM\d\b/i, 'SI':/\b(A\d|H\d)\b/i,
-      'RO':/\bA\d\b/i, 'BG':/\bA\d\b/i,
-      'HR':/\bA\d\b/i,
-      'DE':/\bA\d\b/i, 'FR':/\bA\d\b/i, 'IT':/\bA\d\b/i,
-      'PL':/\b(A\d|S\d)\b/i, 'RS':/\bA\d\b/i,
-      'ME':/\bA\d\b/i, 'BA':/\bA\d\b/i,
-      'NL':/\bA\d\b/i, 'BE':/\b(A\d|E\d)\b/i,
-      'SE':/\bE\d\b/i, 'NO':/\bE\d\b/i, 'GR':/\bA\d\b/i,
+    // Comprehensive road classification by country
+    // Each entry: [motorwayPattern, expresswayPattern]
+    // Motorway = tolled or vignette required
+    // Based on official road numbering systems
+    const ROAD_CLASS = {
+      // Format: {m: /motorway regex/, e: /expressway regex/, free: boolean}
+      'SK': {m:/\bD\d+\b/, e:/\bR\d+\b/},          // D1,D2 motorway; R1-R7 expressway — all need vignette
+      'CZ': {m:/\bD\d+\b/, e:/\bR\d+\b/},          // D1,D5 motorway; R1,R4 expressway
+      'AT': {m:/\bA\d+\b/, e:/\bS\d+\b/},          // A1-A25 motorway; S1-S36 expressway
+      'CH': {m:/\bA\d+\b/, e:/\bA\d+\b/},          // A1-A16 — all need vignette
+      'HU': {m:/\bM\d+\b/, e:/\bM\d+\b/},          // M0-M86 — all need vignette
+      'SI': {m:/\bA\d+\b/, e:/\bH\d+\b/},          // A1-A5 motorway; H1-H6 expressway
+      'RO': {m:/\bA\d+\b/, e:/\bA\d+\b/},          // A1-A10 — need rovinieta
+      'BG': {m:/\bA\d+\b/, e:/\bA\d+\b/},          // A1-A6 — need e-vignette
+      'MD': {m:/\bA\d+\b/, e:/\bA\d+\b/},          // Moldova
+      // Toll gate countries — motorway = brown
+      'HR': {m:/\bA\d+\b/, e:/\bA\d+\b/, toll:true},   // A1-A11 — toll gates
+      'FR': {m:/\bA\d+\b/, e:/\bA\d+\b/, toll:true},   // Autoroutes
+      'IT': {m:/\bA\d+\b/, e:/\bA\d+\b/, toll:true},   // Autostrade
+      'ES': {m:/\bAP-?\d+\b|\bA-?\d+\b/, e:/\bAP-?\d+\b/, toll:true}, // AP= toll, A= free
+      'PT': {m:/\bA\d+\b/, e:/\bA\d+\b/, toll:true},
+      'PL': {m:/\bA\d+\b/, e:/\bS\d+\b/, toll:true},   // A roads toll; S expressways
+      'NO': {m:/\bE\d+\b|\bRv?\d+\b/, e:/\bE\d+\b/, toll:true},
+      'RS': {m:/\bA\d+\b/, e:/\bA\d+\b/, toll:true},
+      'ME': {m:/\bA\d+\b/, e:/\bA\d+\b/, toll:true},
+      'BA': {m:/\bA\d+\b/, e:/\bA\d+\b/, toll:true},
+      'MK': {m:/\bA\d+\b/, e:/\bA\d+\b/, toll:true},
+      'GR': {m:/\bA\d+\b/, e:/\bA\d+\b/, toll:true},
+      // Free motorway countries — blue
+      'DE': {m:/\bA\d+\b/, e:/\bA\d+\b/, free:true},
+      'NL': {m:/\bA\d+\b/, e:/\bA\d+\b/, free:true},
+      'BE': {m:/\bA\d+\b|\bE\d+\b/, e:/\bA\d+\b/, free:true},
+      'LU': {m:/\bA\d+\b/, e:/\bA\d+\b/, free:true},
+      'DK': {m:/\bE\d+\b|\bM\d+\b/, e:/\bE\d+\b/, free:true},
+      'SE': {m:/\bE\d+\b|\bRv?\d+\b/, e:/\bE\d+\b/, free:true},
+      'FI': {m:/\bE\d+\b|\bVt?\d+\b/, e:/\bE\d+\b/, free:true},
+      'LT': {m:/\bA\d+\b/, e:/\bA\d+\b/, free:true},
+      'LV': {m:/\bA\d+\b/, e:/\bA\d+\b/, free:true},
+      'EE': {m:/\bE\d+\b/, e:/\bE\d+\b/, free:true},
+      'IE': {m:/\bM\d+\b/, e:/\bN\d+\b/, toll:true},   // M= motorway toll; N= national
+      'GB': {m:/\bM\d+\b/, e:/\bA\d+M\b/, free:true},
     };
 
-    // Also detect motorways from transit_details or maneuver
-    function isStepOnMotorway(step, cc){
+    // Also detect motorways by keywords in any language
+    const MOTORWAY_KEYWORDS = /motorway|autobahn|autocesta|autoput|autoroute|autopista|autostrada|autocesta|dálnice|autocesta|autosnelweg|motorvej|moottoritie|autostrāde|greitkelis/i;
+
+    function classifyStep(step, cc){
       const instr = (step.instructions||'').replace(/<[^>]+>/g,' ');
+      const cls = cc ? ROAD_CLASS[cc] : null;
+
       // Check road number pattern
-      if(cc && MOTORWAY_RE[cc] && MOTORWAY_RE[cc].test(instr)) return true;
-      // Check for motorway keywords in any language
-      if(/motorway|autobahn|autocesta|autoput|autoroute|autopista|autostrada|autocesta/i.test(instr)) return true;
-      // Check maneuver type — ramp/merge usually means motorway
-      if(step.maneuver && /ramp|merge|fork/i.test(step.maneuver)){
-        // Only if on a motorway country
-        if(cc && MOTORWAY_RE[cc] && MOTORWAY_RE[cc].test(instr)) return true;
+      const matchesMotorway = cls?.m && cls.m.test(instr);
+      const matchesKeyword = MOTORWAY_KEYWORDS.test(instr);
+
+      if(matchesMotorway || matchesKeyword){
+        if(cls?.free) return 'free';
+        if(cls?.toll) return 'toll';
+        return 'vignette'; // default for vignette countries
       }
-      return false;
+      return 'local';
     }
 
     const allStepsOrdered = result.routes[0].legs.flatMap(l=>l.steps);
     for(const step of allStepsOrdered){
       if(!step.polyline?.points) continue;
-
-      // Decode the encoded polyline for this step
       let stepPath;
-      try {
-        stepPath = google.maps.geometry.encoding.decodePath(step.polyline.points);
-      } catch(e){ continue; }
-      if(!stepPath || stepPath.length < 2) continue;
+      try { stepPath=google.maps.geometry.encoding.decodePath(step.polyline.points); }
+      catch(e){ continue; }
+      if(!stepPath||stepPath.length<2) continue;
 
-      // Detect country from step start point using nearest sample
-      const startPt = stepPath[0];
-      let bestCC = null, bestDist = 999;
+      // Find country for this step using start point
+      const startPt=stepPath[0];
+      let bestCC=null, bestDist=999;
       for(const seg of countrySegments.filter(Boolean)){
-        const d = Math.abs(seg.lat-startPt.lat()) + Math.abs(seg.lng-startPt.lng());
-        if(d < bestDist){ bestDist=d; bestCC=seg.cc; }
+        const d=Math.abs(seg.lat-startPt.lat())+Math.abs(seg.lng-startPt.lng());
+        if(d<bestDist){ bestDist=d; bestCC=seg.cc; }
       }
 
-      const cid = bestCC ? CC_MAP[bestCC] : null;
-      const country = cid ? C.find(c=>c.id===cid) : null;
-      const onMotorway = isStepOnMotorway(step, bestCC);
+      const roadType = classifyStep(step, bestCC);
 
-      let color='#ccc', weight=3, opacity=0.45;
-      if(country && onMotorway){
-        weight=6; opacity=0.88;
-        if(country.type==='vignette') color='#1B4D3E';
-        else if(country.type==='toll')    color='#7A3200';
-        else if(country.type==='free')    color='#0F3460';
-      } else if(country && !onMotorway){
-        // Local road
-        color='#999'; weight=3; opacity=0.4;
+      let color, weight, opacity;
+      switch(roadType){
+        case 'vignette': color='#1B4D3E'; weight=6; opacity=0.88; break;
+        case 'toll':     color='#7A3200'; weight=6; opacity=0.88; break;
+        case 'free':     color='#0F3460'; weight=6; opacity=0.88; break;
+        default:         color='#999';   weight=3; opacity=0.4;  break;
       }
 
       mrPolylines.push(new google.maps.Polyline({
