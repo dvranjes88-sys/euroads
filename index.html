@@ -1149,7 +1149,7 @@ function switchTab(id,btn){
 
 // ── MAP ROUTE ──────────────────────────────────────────────
 const GKEY='AIzaSyD65WK4E-yPe5koojoRlFHqBulad5zReg0';
-let mrMap=null, mrRenderers=[], mrPolylines=[];
+let mrMap=null, mrRenderers=[], mrPolylines=[], mrMarkers=[];
 let mrStops=[]; // array of stop values
 
 const CC_MAP={
@@ -1608,9 +1608,10 @@ async function renderRoute(result){
   const resultEl=document.getElementById('mr-result');
   const geocoder=new google.maps.Geocoder();
 
-  // Clear old renderers & polylines
+  // Clear old renderers & polylines & markers
   mrRenderers.forEach(r=>r.setMap(null)); mrRenderers=[];
   mrPolylines.forEach(p=>p.setMap(null)); mrPolylines=[];
+  mrMarkers.forEach(m=>m.setMap(null)); mrMarkers=[];
 
   try {
 
@@ -1850,12 +1851,13 @@ async function renderRoute(result){
     const stopInputs=mrStops.map(id=>document.getElementById(id)?.value?.trim()).filter(Boolean);
     stopInputs.forEach((addr,i)=>{
       const labels=['A','B','C','D','E','F','G','H'];
-      new google.maps.Marker({
+      const marker = new google.maps.Marker({
         map:mrMap,
         position:result.routes[activeRouteIdx].legs[Math.min(i,result.routes[activeRouteIdx].legs.length-1)][i===0?'start_location':'end_location'],
         label:{text:labels[i]||String(i+1),color:'white',fontWeight:'bold'},
         title:addr,
       });
+      mrMarkers.push(marker);
     });
 
     // Fit map to route
