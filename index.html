@@ -356,10 +356,10 @@ main { padding:2rem; max-width:1300px; margin:0 auto; }
     <div class="mr-map-wrap">
       <div id="mr-map"></div>
       <div id="mr-legend" class="mr-legend" style="display:none;">
-        <div class="mrl-item"><span class="mrl-dot" style="background:#1B4D3E"></span> Vignette required</div>
-        <div class="mrl-item"><span class="mrl-dot" style="background:#7A3200"></span> Toll gate</div>
-        <div class="mrl-item"><span class="mrl-dot" style="background:#0F3460"></span> Free</div>
-        <div class="mrl-item"><span class="mrl-dot" style="background:#888"></span> No motorway</div>
+        <div class="mrl-item"><span class="mrl-dot" style="background:#1B4D3E"></span> Vignette motorway</div>
+        <div class="mrl-item"><span class="mrl-dot" style="background:#7A3200"></span> Toll motorway</div>
+        <div class="mrl-item"><span class="mrl-dot" style="background:#0F3460"></span> Free motorway</div>
+        <div class="mrl-item"><span class="mrl-dot" style="background:#bbb"></span> Local road (free)</div>
       </div>
     </div>
   </div>
@@ -1598,32 +1598,58 @@ async function calcMapRoute(){
       countryResults.push({cc,country,action,priceStr,priceEur,color,needsPay,note,hacInfo});
     }
 
-    // Draw colored polyline segments by country
+    // ── Draw colored polylines per STEP based on road type ──
     renderer.setMap(null); mrRenderers=[];
-    // Simplified: draw one colored polyline per country segment
-    let prevCC=null, segStart=0;
-    const pathArr=Array.from(path);
-    segs.forEach((seg,i)=>{
-      if(!seg) return;
-      if(seg.cc!==prevCC){
-        if(prevCC&&i>segStart){
-          const cid=CC_MAP[prevCC];
-          const col=countryColor(cid||'');
-          const poly=new google.maps.Polyline({
-            path:pathArr.slice(Math.floor(segStart/samplePoints.length*path.length),Math.floor(i/samplePoints.length*path.length)+1),
-            strokeColor:col,strokeWeight:5,strokeOpacity:0.85,map:mrMap
-          });
-          mrPolylines.push(poly);
-        }
-        segStart=i; prevCC=seg.cc;
+    mrPolylines.forEach(p=>p.setMap(null)); mrPolylines=[];
+
+    // Motorway road prefixes by country
+    const MOTORWAY_RE={
+      'SK':/\bD\d|R\d/i, 'CZ':/\bD\d|R\d/i, 'AT':/\bA\d|S\d/i,
+      'CH':/\bA\d/i, 'HU':/\bM\d/i, 'SI':/\bA\d|H\d/i,
+      'RO':/\bA\d/i, 'BG':/\bA\d/i, 'HR':/\bA\d/i,
+      'DE':/\bA\d/i, 'FR':/\bA\d/i, 'IT':/\bA\d/i,
+      'PL':/\bA\d|S\d/i, 'RS':/\bA\d/i, 'ME':/\bA\d/i,
+      'BA':/\bA\d/i, 'MK':/\bA\d/i, 'GR':/\bA\d/i,
+      'NL':/\bA\d/i, 'BE':/\bA\d|E\d/i, 'SE':/\bE\d/i,
+      'NO':/\bE\d/i,
+    };
+
+    // Build step segments with road type
+    const allStepsOrdered = result.routes[0].legs.flatMap(l=>l.steps);
+    for(const step of allStepsOrdered){
+      if(!step.path?.length && !step.lat_lngs?.length) continue;
+      const stepPath = step.path || step.lat_lngs || [];
+      if(stepPath.length < 2) continue;
+
+      // Detect country of this step from midpoint
+      const mid = stepPath[Math.floor(stepPath.length/2)];
+      const midCC = countrySegments.find(s=>{
+        if(!s) return false;
+        const dlat=Math.abs(s.lat-mid.lat()); const dlng=Math.abs(s.lng-mid.lng());
+        return dlat<0.3 && dlng<0.3;
+      })?.cc || null;
+
+      const cid = midCC ? CC_MAP[midCC] : null;
+      const country = cid ? C.find(c=>c.id===cid) : null;
+
+      // Determine if this step is on a motorway
+      const instrText = (step.instructions||'').replace(/<[^>]+>/g,' ');
+      const isMotorway = midCC && MOTORWAY_RE[midCC] && MOTORWAY_RE[midCC].test(instrText);
+
+      let color='#aaa'; // default: local road, grey
+      if(country){
+        if(country.type==='vignette' && isMotorway) color='#1B4D3E';      // dark green - vignette motorway
+        else if(country.type==='toll' && isMotorway) color='#7A3200';      // dark red - toll motorway
+        else if(country.type==='free' && isMotorway) color='#0F3460';      // blue - free motorway
+        else color='#bbb'; // local road
       }
-    });
-    // Last segment
-    if(prevCC){
-      const cid=CC_MAP[prevCC];
+
       const poly=new google.maps.Polyline({
-        path:pathArr.slice(Math.floor(segStart/samplePoints.length*path.length)),
-        strokeColor:countryColor(cid||''),strokeWeight:5,strokeOpacity:0.85,map:mrMap
+        path:stepPath,
+        strokeColor:color,
+        strokeWeight:isMotorway?6:4,
+        strokeOpacity:isMotorway?0.9:0.5,
+        map:mrMap,
       });
       mrPolylines.push(poly);
     }
