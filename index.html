@@ -1770,6 +1770,19 @@ async function renderRoute(result){
     }
 
     const allStepsOrdered = result.routes[activeRouteIdx].legs.flatMap(l=>l.steps);
+
+    // Build a country lookup from step start points using countrySegments
+    // Also detect country changes from step instructions ("Vchádzate do krajiny X")
+    let currentStepCC = countryOrder[0] || null;
+    const CC_NAME_MAP = {
+      'Slovensko':'SK','Maďarsko':'HU','Rakúsko':'AT','Slovinsko':'SI',
+      'Chorvátsko':'HR','Bosna a Hercegovina':'BA','Srbsko':'RS','Taliansko':'IT',
+      'Nemecko':'DE','Česko':'CZ','Poľsko':'PL','Rumunsko':'RO','Bulharsko':'BG',
+      'Grécko':'GR','Čierna Hora':'ME','Severné Macedónsko':'MK','Francúzsko':'FR',
+      'Hungary':'HU','Austria':'AT','Slovenia':'SI','Croatia':'HR',
+      'Bosnia':'BA','Serbia':'RS','Germany':'DE','Italy':'IT',
+    };
+
     for(const step of allStepsOrdered){
       if(!step.polyline?.points) continue;
       let stepPath;
@@ -1777,15 +1790,28 @@ async function renderRoute(result){
       catch(e){ continue; }
       if(!stepPath||stepPath.length<2) continue;
 
-      // Find country for this step using start point
+      // Check if this step changes country
+      const instr=(step.instructions||'').replace(/<[^>]+>/g,' ');
+      const countryChange = instr.match(/Vchádzate do krajiny\s+(.+?)(?:\s|$)/i) ||
+                            instr.match(/Entering\s+(.+?)(?:\s|$)/i);
+      if(countryChange){
+        const cname = countryChange[1].trim();
+        for(const [name,cc] of Object.entries(CC_NAME_MAP)){
+          if(cname.startsWith(name)){ currentStepCC=cc; break; }
+        }
+      }
+
+      // Find country from nearest sample point
       const startPt=stepPath[0];
-      let bestCC=null, bestDist=999;
+      let bestCC=currentStepCC, bestDist=999;
       for(const seg of countrySegments.filter(Boolean)){
         const d=Math.abs(seg.lat-startPt.lat())+Math.abs(seg.lng-startPt.lng());
         if(d<bestDist){ bestDist=d; bestCC=seg.cc; }
       }
+      // Only use sample point CC if it's close enough (within ~0.8°)
+      const stepCC = bestDist < 0.8 ? bestCC : currentStepCC;
 
-      const roadType = classifyStep(step, bestCC);
+      const roadType = classifyStep(step, stepCC);
 
       let color, weight, opacity;
       switch(roadType){
