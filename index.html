@@ -1254,15 +1254,14 @@ async function fetchHACToll(entry, exit, vehicleCat){
   return null;
 }
 
-// HAC station GPS coordinates — exact names from hak.hr/info/cestarine
+// HAC station GPS coordinates — VERIFIED against cro3-tmp.hac.hr API
+// Only stations that return valid Segments[] from the API
 const HAC_STATION_GPS = [
-  // A1: Zagreb (Lučko) → Čarapine
-  ['Zagreb (Lučko)',      45.750, 15.871],
-  ['Donja Zdenčina',      45.630, 15.715],
+  // A1: Zagreb → Čarapine (verified OK)
   ['Jastrebarsko',        45.663, 15.649],
   ['Karlovac',            45.487, 15.547],
   ['Novigrad',            45.381, 15.550],
-  ['Bosiljevo 1',         45.399, 15.294],
+  ['Bosiljevo',           45.399, 15.294],
   ['Ogulin',              45.266, 15.224],
   ['Brinje',              45.084, 15.139],
   ['Žuta Lokva',          44.934, 15.069],
@@ -1273,17 +1272,13 @@ const HAC_STATION_GPS = [
   ['Sveti Rok',           44.363, 15.656],
   ['Rovanjska',           44.281, 15.535],
   ['Posedarje',           44.214, 15.326],
-  ['Zadar zapad',         44.120, 15.219],
-  ['Zadar istok',         44.134, 15.277],
+  ['Zadar istok',         44.134, 15.277],  // "Zadar zapad" NOT valid in API!
   ['Benkovac',            44.043, 15.607],
-  ['Pirovac',             43.820, 15.673],
   ['Skradin',             43.819, 15.924],
   ['Šibenik',             43.745, 15.900],
   ['Podi',                43.715, 15.997],
-  ['Vrpolje',             43.682, 16.044],
   ['Prgomet',             43.635, 16.244],
   ['Vučevica',            43.612, 16.387],
-  ['Dugopolje',           43.583, 16.622],
   ['Bisko',               43.533, 16.716],
   ['Blato na Cetini',     43.491, 16.812],
   ['Šestanovac',          43.468, 16.912],
@@ -1292,16 +1287,16 @@ const HAC_STATION_GPS = [
   ['Vrgorac',             43.198, 17.378],
   ['Karamatići',          43.330, 17.271],
   ['Čarapine',            43.139, 17.417],
-  // A2: Zaprešić → Trakošćan (SLO border)
-  ['Zaprešić',            45.855, 15.803],
+  // A2: Trakošćan (SLO border) → Zaprešić (verified OK)
+  ['Trakošćan',           46.255, 15.773],
+  ['Đurmanec',            46.173, 15.871],
+  ['Krapina',             46.160, 15.874],
   ['Mokrice',             45.921, 15.908],
   ['Začretje',            46.005, 15.888],
-  ['Krapina',             46.160, 15.874],
-  ['Đurmanec',            46.173, 15.871],
-  ['Trakošćan',           46.255, 15.773],
-  // A3: Bregana (SLO) → Lipovac (SRB)
+  ['Zaprešić',            45.855, 15.803],
+  // A3: Bregana (SLO) → Lipovac (SRB) (verified OK)
   ['Bregana',             45.841, 15.666],
-  ['Zagreb-istok (Ježevo)',45.814, 16.064],
+  ['Zagreb Istok',        45.814, 16.064],
   ['Ivanić Grad',         45.710, 16.398],
   ['Križ',                45.668, 16.541],
   ['Popovača',            45.564, 16.621],
@@ -1311,47 +1306,27 @@ const HAC_STATION_GPS = [
   ['Okučani',             45.272, 17.179],
   ['Nova Gradiška',       45.255, 17.383],
   ['Lužani',              45.220, 17.564],
-  ['Slavonski Brod zapad',45.163, 17.972],
-  ['Slavonski Brod istok',45.152, 18.021],
-  ['Velika Kopanica',     45.094, 18.213],
   ['Babina Greda',        45.073, 18.530],
   ['Spačva',              45.060, 18.621],
   ['Županja',             45.077, 18.690],
   ['Lipovac',             45.054, 19.010],
-  // A4: Sveta Helena → Goričan (HU border)
+  ['Velika Kopanica',     45.094, 18.213],
+  // A4: Sveta Helena → Čakovec (verified OK)
   ['Sveta Helena',        45.921, 16.274],
   ['Komin',               46.043, 16.240],
   ['Breznički Hum',       46.098, 16.257],
   ['Novi Marof',          46.160, 16.327],
-  ['Varaždinske Toplice', 46.212, 16.418],
   ['Varaždin',            46.295, 16.337],
   ['Ludbreg',             46.250, 16.617],
   ['Čakovec',             46.395, 16.432],
   ['Goričan',             46.413, 16.641],
-  // A5: Sudaraž (Beli Manastir) → Svilaj (BIH)
-  ['Sudaraž (Beli Manastir)', 45.769, 18.606],
-  ['Osijek',              45.521, 18.680],
-  ['Čepin',               45.533, 18.560],
-  ['Đakovo',              45.308, 18.411],
-  ['Svilaj',              45.039, 17.644],
-  // A6: Bosiljevo → Rijeka
-  ['Bosiljevo 2',         45.350, 15.260],
-  ['Vrbovsko',            45.376, 15.076],
-  ['Ravna Gora',          45.387, 14.951],
-  ['Delnice',             45.401, 14.804],
+  // A6/A7: Rupa (SLO) → Vrata/Oštrovica (verified OK)
+  ['Rupa',                45.491, 14.256],
   ['Vrata',               45.373, 14.640],
   ['Oštrovica',           45.337, 14.457],
-  ['Rijeka',              45.327, 14.442],
-  // A7: Rupa (SLO border) → Rijeka
-  ['Rupa',                45.491, 14.256],
-  // A10: Ploče → Karasovići (MNE border)
-  ['Ploče',               43.058, 17.432],
-  ['Karasovići',          42.534, 18.434],
-  // A11: Zagreb → Sisak
-  ['Jakuševec',           45.757, 16.022],
-  ['Velika Gorica jug',   45.714, 16.076],
-  ['Lekenik',             45.534, 16.297],
-  ['Sisak',               45.467, 16.376],
+  ['Delnice',             45.401, 14.804],
+  ['Vrbovsko',            45.376, 15.076],
+  ['Ravna Gora',          45.387, 14.951],
 ];
 
 // Find nearest HAC station to a GPS point
