@@ -1149,6 +1149,7 @@ const CC_MAP={
 };
 
 // Countries where local/non-motorway roads are FREE even if route passes through
+// BUT note: HU vignette is needed even for short motorway sections
 const FREE_LOCAL={'ba':true,'rs':true,'me':true,'mk':true,'al':true,'xk':true,'ge':true,'am':true,'az':true,'md':true};
 
 // ── HAC CROATIA LIVE API ──────────────────────────────────
@@ -1548,8 +1549,16 @@ async function calcMapRoute(){
         const rec=getBestVignette(country.prices,tripDays);
         priceStr=rec.v; priceEur=parseEuro(rec.v);
         const eurNote=priceStr.startsWith('€')?'':` ≈ ${toEurStr(priceEur)}`;
+        // Check if route goes through local roads (no motorway segments detected)
+        const countryKm=(countrySegments.filter(s=>s?.cc===cc).length/countrySegments.filter(Boolean).length)*(totalDist/1000);
         action=`Buy vignette · ${rec.p}${eurNote}`;
-        needsPay=true; totalEur+=priceEur;
+        if(id==='hu'&&countryKm<30){
+          // Short HU section — might be local roads
+          note='⚠️ Route may use local roads. If you enter any HU motorway, vignette is required.';
+          needsPay=true; totalEur+=priceEur;
+        } else {
+          needsPay=true; totalEur+=priceEur;
+        }
 
       } else if(country.type==='toll'){
         if(id==='hr'){
