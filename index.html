@@ -199,6 +199,14 @@ main { padding:2rem; max-width:1300px; margin:0 auto; }
 .mr-route-stat strong { display:block; font-size:.95rem; font-weight:800; color:var(--text); }
 @media(max-width:900px){ .mr-layout{grid-template-columns:1fr;} .mr-map-wrap{height:320px;position:relative;top:0;} }
 
+/* MULTI-STOP */
+.stop-row { display:flex; align-items:center; gap:.5rem; margin-bottom:.5rem; }
+.stop-label { font-size:.68rem; font-weight:800; color:var(--muted); width:1.5rem; text-align:center; flex-shrink:0; text-transform:uppercase; }
+.stop-row input { flex:1; padding:.55rem .75rem; border:1.5px solid var(--border); border-radius:8px; font-family:'Geist',sans-serif; font-size:.82rem; background:var(--surface); color:var(--text); outline:none; transition:border-color .15s; }
+.stop-row input:focus { border-color:var(--accent); }
+.stop-remove { background:none; border:none; cursor:pointer; color:var(--muted); font-size:1.1rem; padding:.2rem; line-height:1; transition:color .15s; flex-shrink:0; }
+.stop-remove:hover { color:var(--danger,#c00); }
+
 /* ROUTE PLANNER */
 .route-row { display:grid; grid-template-columns:1fr auto 1fr; gap:.5rem; align-items:center; margin-bottom:.85rem; }
 .route-arrow { font-size:1.2rem; color:var(--muted); text-align:center; padding-top:1.4rem; }
@@ -273,8 +281,7 @@ main { padding:2rem; max-width:1300px; margin:0 auto; }
 <div class="tab-bar">
   <button class="tab active" onclick="switchTab('countries',this)">🗺️ Countries</button>
   <button class="tab" onclick="switchTab('speed',this)">⚡ Speed Limits</button>
-  <button class="tab tab-highlight" onclick="switchTab('calc',this)">🧮 Route Calculator</button>
-  <button class="tab" onclick="switchTab('maproute',this)">📍 Map Route</button>
+  <button class="tab tab-highlight" onclick="switchTab('maproute',this)">🧮 Route Calculator</button>
   <button class="tab" onclick="switchTab('enc',this)">📦 ENC Devices</button>
   <button class="tab" onclick="switchTab('game',this)">🎮 EuroTour Game</button>
 </div>
@@ -305,62 +312,6 @@ main { padding:2rem; max-width:1300px; margin:0 auto; }
   </div>
 </div>
 
-<div class="view" id="view-calc">
-  <div class="cw">
-    <div class="cpanel">
-      <h2>Route Planner</h2>
-      <p>Enter your origin and destination — we'll suggest the countries on your route and which vignettes to buy.</p>
-
-      <div class="route-row">
-        <div class="route-field">
-          <label>From</label>
-          <div class="route-select-wrap">
-            <input type="text" id="route-from" placeholder="e.g. Slovakia" oninput="filterRouteDropdown('from')" onblur="hideDropdown('from')" autocomplete="off">
-            <div class="route-dropdown" id="drop-from"></div>
-          </div>
-        </div>
-        <div class="route-arrow">→</div>
-        <div class="route-field">
-          <label>To</label>
-          <div class="route-select-wrap">
-            <input type="text" id="route-to" placeholder="e.g. Croatia" oninput="filterRouteDropdown('to')" onblur="hideDropdown('to')" autocomplete="off">
-            <div class="route-dropdown" id="drop-to"></div>
-          </div>
-        </div>
-      </div>
-
-      <button class="broute" onclick="suggestRoute()">Suggest route countries →</button>
-
-      <div class="divider-or">or select manually</div>
-
-      <div class="date-row">
-        <div class="date-field">
-          <label>Departure</label>
-          <input type="date" id="calc-date-from">
-        </div>
-        <div class="date-field">
-          <label>Return</label>
-          <input type="date" id="calc-date-to">
-        </div>
-      </div>
-
-      <div class="cc-search-wrap">
-        <span>🔍</span>
-        <input type="text" id="calc-search" placeholder="Search and add country…" oninput="filterCalcSearch()" onblur="hideCalcDrop()" autocomplete="off">
-        <div class="route-dropdown" id="drop-calc"></div>
-      </div>
-
-      <div class="selected-countries" id="selected-tags"></div>
-
-      <button class="bcalc pulse" id="calc-btn" onclick="doCalc()">Calculate my trip →</button>
-    </div>
-    <div class="cres" id="calc-result">
-      <h2>What you need</h2>
-      <div class="re">👆 Plan your route and hit Calculate</div>
-    </div>
-  </div>
-</div>
-
 <div class="view" id="view-enc">
   <div class="sh"><h2>📦 Electronic Toll Collection</h2><p>ENC devices let you pass toll gates without stopping. Here's what works where.</p></div>
   <div class="enc-grid" id="enc-grid"></div>
@@ -376,45 +327,28 @@ main { padding:2rem; max-width:1300px; margin:0 auto; }
 
 <div class="view" id="view-maproute">
   <div class="mr-layout">
-    <!-- LEFT: inputs -->
     <div class="mr-panel">
-      <h2 style="font-weight:800;font-size:1.15rem;margin-bottom:.3rem;">📍 Map Route Planner</h2>
-      <p style="font-size:.78rem;color:var(--muted);margin-bottom:1.25rem;">Enter any two cities — we'll calculate the exact route, detect which countries and motorways you cross, and show what to buy.</p>
+      <h2 style="font-weight:800;font-size:1.15rem;margin-bottom:.3rem;">🧮 Route Calculator</h2>
+      <p style="font-size:.78rem;color:var(--muted);margin-bottom:1.1rem;">Enter cities along your route — we'll calculate exact roads, detect which countries and motorways you cross, and estimate total costs.</p>
 
-      <div class="mr-field">
-        <label>From — city or address</label>
-        <input type="text" id="mr-from" placeholder="e.g. Bratislava, Slovakia" autocomplete="off">
-      </div>
-      <div class="mr-field">
-        <label>To — city or address</label>
-        <input type="text" id="mr-to" placeholder="e.g. Kozarska Dubica, Bosnia" autocomplete="off">
-      </div>
+      <div id="mr-stops-wrap"></div>
+      <button class="broute" onclick="addStop()" style="margin-bottom:.85rem;">+ Add stop</button>
 
-      <div class="date-row" style="margin-top:.75rem;">
-        <div class="date-field">
-          <label>Departure</label>
-          <input type="date" id="mr-date-from">
-        </div>
-        <div class="date-field">
-          <label>Return</label>
-          <input type="date" id="mr-date-to">
-        </div>
+      <div class="date-row">
+        <div class="date-field"><label>Departure</label><input type="date" id="mr-date-from"></div>
+        <div class="date-field"><label>Return</label><input type="date" id="mr-date-to"></div>
       </div>
 
-      <button class="bcalc pulse" id="mr-calc-btn" onclick="calcMapRoute()" style="margin-top:.85rem;width:100%;">
-        Calculate route →
-      </button>
-
+      <button class="bcalc pulse" onclick="calcMapRoute()" style="margin-top:.6rem;width:100%;">Calculate route →</button>
       <div id="mr-result" style="margin-top:1.25rem;"></div>
     </div>
 
-    <!-- RIGHT: map -->
     <div class="mr-map-wrap">
       <div id="mr-map"></div>
       <div id="mr-legend" class="mr-legend" style="display:none;">
         <div class="mrl-item"><span class="mrl-dot" style="background:#1B4D3E"></span> Vignette required</div>
         <div class="mrl-item"><span class="mrl-dot" style="background:#7A3200"></span> Toll gate</div>
-        <div class="mrl-item"><span class="mrl-dot" style="background:#0F3460"></span> Free motorway</div>
+        <div class="mrl-item"><span class="mrl-dot" style="background:#0F3460"></span> Free</div>
         <div class="mrl-item"><span class="mrl-dot" style="background:#888"></span> No motorway</div>
       </div>
     </div>
@@ -1162,16 +1096,15 @@ function switchTab(id,btn){
   document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
   document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
   btn.classList.add('active');
-  if(id==='calc') btn.classList.remove('tab-highlight');
+  if(id==='maproute'){ btn.classList.remove('tab-highlight'); initMrMap(); }
   document.getElementById('view-'+id).classList.add('active');
-  if(id==='maproute') initMrMap();
 }
 
 // ── MAP ROUTE ──────────────────────────────────────────────
 const GKEY='AIzaSyD65WK4E-yPe5koojoRlFHqBulad5zReg0';
-let mrMap=null, mrDirectionsRenderer=null, mrPolylines=[];
+let mrMap=null, mrRenderers=[], mrPolylines=[];
+let mrStops=[]; // array of stop values
 
-// Country code → EuroRoads country id mapping
 const CC_MAP={
   'SK':'sk','CZ':'cz','AT':'at','CH':'ch','HU':'hu','SI':'si','RO':'ro','BG':'bg',
   'HR':'hr','FR':'fr','IT':'it','ES':'es','PT':'pt','PL':'pl','GR':'gr','IE':'ie',
@@ -1182,64 +1115,162 @@ const CC_MAP={
   'AD':'ad','MC':'mc','SM':'sm','LI':'li',
 };
 
-// Motorway prefixes by country — if route uses these, it's a paid/vignette road
-const MOTORWAY_PREFIXES={
-  sk:['D','R'],cz:['D','R'],at:['A','S'],ch:['A'],hu:['M'],si:['A','H'],
-  ro:['A'],bg:['A'],hr:['A'],fr:['A'],it:['A'],es:['AP','A'],pt:['A','IP'],
-  pl:['A','S'],gr:['A'],de:['A'],nl:['A'],be:['A','E'],se:['E'],no:['E'],
-  rs:['A'],me:['A'],ba:['A'],mk:['A'],
+// Countries where local/non-motorway roads are FREE even if route passes through
+const FREE_LOCAL={'ba':true,'rs':true,'me':true,'mk':true,'al':true,'xk':true,'ge':true,'am':true,'az':true,'md':true};
+
+// HAC Croatia toll lookup — distance-based Category I (passenger car, EUR 2025)
+// Key: "entry-exit" normalized, value: EUR
+// Main routes from border/Zagreb entries
+const HR_TOLLS = {
+  // A3 Bregana (SLO border) entry → various exits (category I)
+  'bregana-zagreb_lucko': 1.80,
+  'bregana-zagreb_istok': 3.20,
+  'bregana-slavonski_brod': 10.50,
+  'bregana-lipovac': 13.40,
+  // A4 Goričan (HU border) → Zagreb
+  'goričan-zagreb_istok': 3.70,
+  'goričan-varaždin': 1.10,
+  // A1 Zagreb Lučko → Split/South
+  'zagreb_lucko-karlovac': 3.10,
+  'zagreb_lucko-zadar': 13.20,
+  'zagreb_lucko-split': 26.40,
+  'zagreb_lucko-ploče': 33.80,
+  'zagreb_lucko-dubrovnik': 35.00,
+  // A6 Zagreb → Rijeka
+  'zagreb_istok-rijeka': 8.60,
+  // A7 Rupa (SLO border) → Rijeka
+  'rupa-rijeka': 3.60,
+  // A2 Macelj (SLO border) → Zagreb
+  'macelj-zagreb_istok': 4.40,
+  // Stara Gradiška (BIH border) — A3
+  'stara_gradiška-zagreb_istok': 7.20,
+  'stara_gradiška-slavonski_brod': 3.40,
+  'stara_gradiška-lipovac': 5.80,
+  // Bajakovo / Lipovac (SRB border) — A3
+  'lipovac-zagreb_istok': 13.40,
+  'lipovac-slavonski_brod': 3.30,
+  // Karasovići (MNE border) — A1 south
+  'karasovići-dubrovnik': 2.50,
+  'karasovići-ploče': 12.00,
+  'karasovići-split': 18.00,
+  'karasovići-zagreb_lucko': 33.00,
 };
+
+// Estimate HR toll based on detected entry/exit country and km
+function estimateHRToll(entryCC, exitCC, distKm){
+  // Common routes
+  if(entryCC==='SI'||exitCC==='SI'){
+    if(distKm<100) return 4.50;
+    if(distKm<250) return 9.00;
+    return 18.00;
+  }
+  if(entryCC==='HU'||exitCC==='HU'){
+    if(distKm<100) return 5.00;
+    return 10.00;
+  }
+  if(entryCC==='BA'||exitCC==='BA'){
+    if(distKm<80) return 4.00;
+    if(distKm<200) return 8.00;
+    return 15.00;
+  }
+  if(entryCC==='RS'||exitCC==='RS') return 13.40;
+  if(entryCC==='ME'||exitCC==='ME') return 12.00;
+  // Transit through Croatia
+  if(distKm<100) return 6.00;
+  if(distKm<200) return 12.00;
+  if(distKm<350) return 20.00;
+  return 26.40;
+}
+
+// Multi-stop UI
+function initStops(){
+  mrStops=[];
+  const wrap=document.getElementById('mr-stops-wrap');
+  wrap.innerHTML='';
+  addStop('From — origin city');
+  addStop('To — destination city');
+}
+
+let stopCounter=0;
+function addStop(placeholder){
+  stopCounter++;
+  const id=`mr-stop-${stopCounter}`;
+  const idx=mrStops.length;
+  mrStops.push(id);
+  const wrap=document.getElementById('mr-stops-wrap');
+  const labels=['A','B','C','D','E','F','G','H'];
+  const div=document.createElement('div');
+  div.className='stop-row'; div.dataset.stopId=id;
+  const label=labels[idx]||String(idx+1);
+  const canRemove=idx>=2; // can only remove extra stops
+  div.innerHTML=`
+    <span class="stop-label">${label}</span>
+    <input type="text" id="${id}" placeholder="${placeholder||`Stop ${label} — city`}" autocomplete="off">
+    ${canRemove?`<button class="stop-remove" onclick="removeStop('${id}')" title="Remove stop">×</button>`:'<span style="width:1.6rem"></span>'}
+  `;
+  wrap.appendChild(div);
+  // re-label all
+  relabelStops();
+}
+
+function removeStop(id){
+  mrStops=mrStops.filter(s=>s!==id);
+  document.querySelector(`.stop-row[data-stop-id="${id}"]`).remove();
+  relabelStops();
+}
+
+function relabelStops(){
+  const labels=['A','B','C','D','E','F','G','H'];
+  document.querySelectorAll('.stop-row').forEach((row,i)=>{
+    row.querySelector('.stop-label').textContent=labels[i]||String(i+1);
+  });
+}
 
 function initMrMap(){
   if(mrMap) return;
-  // Set default dates
   const today=new Date();
   const nextWeek=new Date(today); nextWeek.setDate(today.getDate()+7);
   document.getElementById('mr-date-from').value=today.toISOString().split('T')[0];
   document.getElementById('mr-date-to').value=nextWeek.toISOString().split('T')[0];
+  initStops();
 
   if(!window.google){
     const s=document.createElement('script');
     s.src=`https://maps.googleapis.com/maps/api/js?key=${GKEY}&libraries=geometry`;
-    s.onload=()=>createMrMap();
+    s.onload=createMrMap;
     document.head.appendChild(s);
   } else { createMrMap(); }
 }
 
 function createMrMap(){
   mrMap=new google.maps.Map(document.getElementById('mr-map'),{
-    center:{lat:47,lng:15}, zoom:5,
+    center:{lat:47,lng:15},zoom:5,
     mapTypeId:'roadmap',
-    styles:[
-      {featureType:'poi',stylers:[{visibility:'off'}]},
-      {featureType:'transit',stylers:[{visibility:'off'}]},
-    ],
-    disableDefaultUI:false,
-    zoomControl:true,
-    streetViewControl:false,
-    fullscreenControl:true,
-  });
-  mrDirectionsRenderer=new google.maps.DirectionsRenderer({
-    map:mrMap,
-    suppressMarkers:false,
-    polylineOptions:{strokeColor:'#1B4D3E',strokeWeight:5,strokeOpacity:0.8}
+    styles:[{featureType:'poi',stylers:[{visibility:'off'}]},{featureType:'transit',stylers:[{visibility:'off'}]}],
+    zoomControl:true,streetViewControl:false,fullscreenControl:true,
   });
 }
 
+// Color per country type
+function countryColor(id){
+  const c=C.find(x=>x.id===id);
+  if(!c) return '#888';
+  if(c.type==='vignette') return '#1B4D3E';
+  if(c.type==='toll') return '#7A3200';
+  return '#0F3460';
+}
+
 async function calcMapRoute(){
-  const fromVal=document.getElementById('mr-from').value.trim();
-  const toVal=document.getElementById('mr-to').value.trim();
-  if(!fromVal||!toVal){
-    document.getElementById('mr-result').innerHTML='<div class="re" style="text-align:left;padding:.75rem;">Please enter both origin and destination.</div>';
+  const stopInputs=mrStops.map(id=>document.getElementById(id)?.value?.trim()).filter(Boolean);
+  if(stopInputs.length<2){
+    document.getElementById('mr-result').innerHTML='<div style="font-size:.8rem;color:#c00;padding:.75rem;background:#fde8e6;border-radius:8px;">Please enter at least an origin and destination.</div>';
     return;
   }
 
   const resultEl=document.getElementById('mr-result');
   resultEl.innerHTML='<div style="font-size:.8rem;color:var(--muted);padding:.5rem 0;">⏳ Calculating route...</div>';
 
-  if(!window.google||!mrMap) { initMrMap(); await new Promise(r=>setTimeout(r,2000)); }
-
-  // Load FX if needed
+  if(!window.google||!mrMap){ initMrMap(); await new Promise(r=>setTimeout(r,2500)); }
   if(!Object.keys(FX).length) await loadFX();
 
   const dateFrom=document.getElementById('mr-date-from').value;
@@ -1250,110 +1281,201 @@ async function calcMapRoute(){
     tripDays=Math.max(1,Math.ceil((d2-d1)/(1000*60*60*24)));
   }
 
+  // Clear old renderers & polylines
+  mrRenderers.forEach(r=>r.setMap(null)); mrRenderers=[];
+  mrPolylines.forEach(p=>p.setMap(null)); mrPolylines=[];
+
   const directionsService=new google.maps.DirectionsService();
+  const geocoder=new google.maps.Geocoder();
 
   try {
+    // Build waypoints for multi-stop
+    const origin=stopInputs[0];
+    const destination=stopInputs[stopInputs.length-1];
+    const waypoints=stopInputs.slice(1,-1).map(v=>({location:v,stopover:true}));
+
     const result=await new Promise((res,rej)=>{
       directionsService.route({
-        origin:fromVal,
-        destination:toVal,
+        origin,destination,waypoints,
         travelMode:google.maps.TravelMode.DRIVING,
         region:'eu',
       },(r,s)=>{ if(s==='OK') res(r); else rej(s); });
     });
 
-    mrDirectionsRenderer.setDirections(result);
+    // Render route on map with default renderer first
+    const renderer=new google.maps.DirectionsRenderer({
+      map:mrMap,
+      suppressMarkers:false,
+      polylineOptions:{strokeColor:'#1B4D3E',strokeWeight:5,strokeOpacity:0.7}
+    });
+    renderer.setDirections(result);
+    mrRenderers.push(renderer);
 
-    // Extract countries from route steps
-    const steps=result.routes[0].legs.flatMap(l=>l.steps);
-    const totalDist=result.routes[0].legs.reduce((s,l)=>s+l.distance.value,0);
-    const totalDur=result.routes[0].legs.reduce((s,l)=>s+l.duration.value,0);
+    // Gather all legs data
+    const allLegs=result.routes[0].legs;
+    const totalDist=allLegs.reduce((s,l)=>s+l.distance.value,0);
+    const totalDur=allLegs.reduce((s,l)=>s+l.duration.value,0);
 
-    // Geocode sample points along route to detect countries
+    // Sample points from overview path for country detection
     const path=result.routes[0].overview_path;
+    const step=Math.max(1,Math.floor(path.length/15));
     const samplePoints=[];
-    const step=Math.max(1,Math.floor(path.length/12));
     for(let i=0;i<path.length;i+=step) samplePoints.push(path[i]);
 
-    // Reverse geocode each sample point
-    const geocoder=new google.maps.Geocoder();
-    const countryCodes=new Set();
+    // Reverse geocode — detect countries in order
     const countryOrder=[];
+    const countryCodes=new Set();
+    // Also track entry/exit countries for HR toll calc
+    const countrySegments=[]; // [{cc, lat, lng, distShare}]
 
-    await Promise.all(samplePoints.map(pt=>new Promise(res=>{
+    await Promise.all(samplePoints.map((pt,i)=>new Promise(res=>{
       geocoder.geocode({location:pt},(results,status)=>{
         if(status==='OK'&&results[0]){
           const cc=results[0].address_components.find(c=>c.types.includes('country'))?.short_name;
-          if(cc&&!countryCodes.has(cc)){
-            countryCodes.add(cc);
-            countryOrder.push(cc);
+          if(cc){
+            if(!countryCodes.has(cc)){ countryCodes.add(cc); countryOrder.push(cc); }
+            countrySegments[i]={cc,lat:pt.lat(),lng:pt.lng()};
           }
         }
         res();
       });
     })));
 
-    // Check road types in steps for motorway detection
-    const stepInstructions=steps.map(s=>s.instructions||'').join(' ').toLowerCase();
-    const usesMotorway=stepInstructions.includes('motorway')||stepInstructions.includes('highway')||
-                       stepInstructions.includes('autobahn')||stepInstructions.includes('autoput')||
-                       /[darmah]\d+/.test(stepInstructions);
+    // Detect HR entry/exit countries for precise toll
+    let hrEntryCC=null, hrExitCC=null, hrDistKm=0;
+    const segs=countrySegments.filter(Boolean);
+    for(let i=0;i<segs.length;i++){
+      if(segs[i].cc==='HR'){
+        if(!hrEntryCC&&i>0) hrEntryCC=segs[i-1]?.cc;
+        hrExitCC=segs[i+1]?.cc||hrExitCC;
+      }
+    }
+    // Estimate HR distance share
+    if(countryCodes.has('HR')){
+      const hrCount=segs.filter(s=>s.cc==='HR').length;
+      hrDistKm=(hrCount/segs.length)*(totalDist/1000);
+    }
 
-    // Build results
+    // Build country results
     const countryResults=[];
     let totalEur=0;
+    const seen=new Set();
 
     for(const cc of countryOrder){
+      if(seen.has(cc)) continue; seen.add(cc);
       const id=CC_MAP[cc];
       const country=C.find(c=>c.id===id);
       if(!country) continue;
 
-      let action='', priceStr='', priceEur=0, color='#888', needsPay=false;
+      let action='',priceStr='',priceEur=0,color=countryColor(id),needsPay=false;
+      let note='';
 
       if(country.type==='vignette'&&country.prices.length){
         const rec=getBestVignette(country.prices,tripDays);
         priceStr=rec.v; priceEur=parseEuro(rec.v);
-        action=`Buy vignette (${rec.p})`;
-        color='#1B4D3E'; needsPay=true; totalEur+=priceEur;
+        const eurNote=priceStr.startsWith('€')?'':` ≈ ${toEurStr(priceEur)}`;
+        action=`Buy vignette · ${rec.p}${eurNote}`;
+        needsPay=true; totalEur+=priceEur;
+
       } else if(country.type==='toll'){
-        const est=country.prices[0];
-        priceStr=est?'~'+est.v:'varies'; priceEur=est?parseEuro(est.v):0;
-        action='Pay at toll gate'+(country.enc?' · ENC available':'');
-        color='#7A3200'; needsPay=true; totalEur+=priceEur;
+        if(id==='hr'){
+          // Official HAC calculator link instead of estimate
+          action='Distance-based toll · use official HAC calculator for exact price';
+          note='ENC device saves 21% · calculate exact toll at karta.hac.hr';
+          priceStr='varies'; priceEur=0;
+          needsPay=true; color='#7A3200';
+        } else if(FREE_LOCAL[id]){
+          // Country has toll on motorways but mainly local roads on this route
+          action='Local roads — free (no motorway tolls on this section)';
+          color='#0F3460'; needsPay=false;
+          note='Only motorways are tolled here';
+        } else {
+          const est=country.prices[0];
+          priceEur=est?parseEuro(est.v):0;
+          priceStr=est?`~${est.v}`:'varies';
+          action='Pay at toll gate'+(country.enc?` · ENC: ${country.enc}`:'');
+          needsPay=!!priceEur; if(needsPay) totalEur+=priceEur;
+        }
       } else {
-        action='Free — no payment needed'; color='#0F3460';
+        action='Free — no payment needed';
       }
 
-      countryResults.push({cc,country,action,priceStr,priceEur,color,needsPay});
+      countryResults.push({cc,country,action,priceStr,priceEur,color,needsPay,note});
     }
 
-    // Draw colored country segments on map (simplified — overlay polylines)
-    mrPolylines.forEach(p=>p.setMap(null)); mrPolylines=[];
+    // Draw colored polyline segments by country
+    renderer.setMap(null); mrRenderers=[];
+    // Simplified: draw one colored polyline per country segment
+    let prevCC=null, segStart=0;
+    const pathArr=Array.from(path);
+    segs.forEach((seg,i)=>{
+      if(!seg) return;
+      if(seg.cc!==prevCC){
+        if(prevCC&&i>segStart){
+          const cid=CC_MAP[prevCC];
+          const col=countryColor(cid||'');
+          const poly=new google.maps.Polyline({
+            path:pathArr.slice(Math.floor(segStart/samplePoints.length*path.length),Math.floor(i/samplePoints.length*path.length)+1),
+            strokeColor:col,strokeWeight:5,strokeOpacity:0.85,map:mrMap
+          });
+          mrPolylines.push(poly);
+        }
+        segStart=i; prevCC=seg.cc;
+      }
+    });
+    // Last segment
+    if(prevCC){
+      const cid=CC_MAP[prevCC];
+      const poly=new google.maps.Polyline({
+        path:pathArr.slice(Math.floor(segStart/samplePoints.length*path.length)),
+        strokeColor:countryColor(cid||''),strokeWeight:5,strokeOpacity:0.85,map:mrMap
+      });
+      mrPolylines.push(poly);
+    }
 
-    // Route info bar
+    // Add markers for stops
+    stopInputs.forEach((addr,i)=>{
+      const labels=['A','B','C','D','E','F','G','H'];
+      new google.maps.Marker({
+        map:mrMap,
+        position:result.routes[0].legs[Math.min(i,result.routes[0].legs.length-1)][i===0?'start_location':'end_location'],
+        label:{text:labels[i]||String(i+1),color:'white',fontWeight:'bold'},
+        title:addr,
+      });
+    });
+
+    // Fit map to route
+    const bounds=new google.maps.LatLngBounds();
+    path.forEach(p=>bounds.extend(p));
+    mrMap.fitBounds(bounds);
+
+    // Build result HTML
     const distKm=(totalDist/1000).toFixed(0);
     const durH=Math.floor(totalDur/3600);
     const durM=Math.floor((totalDur%3600)/60);
 
-    let html=`
-      <div class="mr-route-info">
-        <div class="mr-route-stat"><strong>${distKm} km</strong>distance</div>
-        <div class="mr-route-stat"><strong>${durH}h ${durM}m</strong>drive time</div>
-        <div class="mr-route-stat"><strong>${countryResults.length}</strong>countries</div>
-        <div class="mr-route-stat"><strong>${tripDays} days</strong>trip duration</div>
-      </div>`;
+    let html=`<div class="mr-route-info">
+      <div class="mr-route-stat"><strong>${distKm} km</strong>distance</div>
+      <div class="mr-route-stat"><strong>${durH}h ${durM}m</strong>drive time</div>
+      <div class="mr-route-stat"><strong>${countryResults.length}</strong>countries</div>
+      <div class="mr-route-stat"><strong>${tripDays}d</strong>trip</div>
+    </div>`;
 
-    html+='<div style="font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);margin-bottom:.6rem;">Countries on your route</div>';
+    html+='<div style="font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);margin-bottom:.6rem;">Countries on route</div>';
 
     countryResults.forEach(r=>{
-      const eurNote=r.priceStr&&!r.priceStr.startsWith('€')&&r.priceEur?` <span style="color:var(--muted);font-size:.68rem;">≈ ${toEurStr(r.priceEur)}</span>`:'';
+      const isHR=r.country.id==='hr';
+      const hacBtn=isHR?`<a href="https://karta.hac.hr/map/map" target="_blank" style="display:inline-flex;align-items:center;gap:.35rem;margin-top:.5rem;padding:.35rem .75rem;background:#7A3200;color:#fff;border-radius:6px;font-size:.7rem;font-weight:600;text-decoration:none;">🔗 Calculate exact HR toll →</a>`:'';
       html+=`<div class="mr-country-item" style="border-left:4px solid ${r.color};">
         <div class="mr-ci-code">${r.cc}</div>
         <div class="mr-ci-info">
           <div class="mr-ci-name">${r.country.name}</div>
-          <div class="mr-ci-sub">${r.action}${r.country.buy?` · <a href="${r.country.buy}" target="_blank" style="color:var(--accent);text-decoration:none;">${r.country.bl} ↗</a>`:''}</div>
+          <div class="mr-ci-sub">${r.action}${r.country.buy&&r.needsPay&&!isHR?` · <a href="${r.country.buy}" target="_blank" style="color:var(--accent);text-decoration:none;">${r.country.bl} ↗</a>`:''}</div>
+          ${r.note?`<div style="font-size:.65rem;color:var(--enc);margin-top:.15rem;">ℹ️ ${r.note}</div>`:''}
+          ${hacBtn}
         </div>
-        ${r.needsPay?`<div class="mr-ci-price">${r.priceStr}${eurNote}</div>`:'<div style="color:var(--f);font-weight:700;font-size:.8rem;">FREE</div>'}
+        ${r.needsPay&&!isHR?`<div class="mr-ci-price">${r.priceStr}</div>`:''}
+        ${!r.needsPay?'<div style="color:var(--f);font-weight:700;font-size:.8rem;">FREE</div>':''}
       </div>`;
     });
 
@@ -1361,19 +1483,18 @@ async function calcMapRoute(){
       html+=`<div class="mr-total-box">
         <div class="mr-total-label">💰 Estimated total road costs</div>
         <div class="mr-total-row">
-          <div style="font-size:.78rem;color:var(--muted);">Vignettes + tolls · all in EUR${Object.keys(FX).length?' · live rates':''}</div>
+          <div style="font-size:.75rem;color:var(--muted);">Vignettes + tolls · EUR${Object.keys(FX).length?' · live rates':''}</div>
           <div class="mr-total-amt">${toEurStr(totalEur)}</div>
         </div>
       </div>`;
     }
 
-    html+='<div class="rnote" style="margin-top:.75rem;">⚠️ Toll estimates are approximate. Free roads in some countries (e.g. BiH local roads) are not charged even if on the route. Always check country-specific rules.</div>';
-
+    html+='<div class="rnote" style="margin-top:.75rem;">⚠️ Estimates are approximate. Croatian tolls are distance-based — exact price depends on your entry/exit point. BiH/RS/ME local roads are free even if route passes through.</div>';
     resultEl.innerHTML=html;
     document.getElementById('mr-legend').style.display='block';
 
-  } catch(err) {
-    resultEl.innerHTML=`<div style="font-size:.8rem;color:var(--danger,#c00);padding:.75rem;background:#fde8e6;border-radius:8px;">Could not calculate route: ${err}. Please check the city names and try again.</div>`;
+  } catch(err){
+    resultEl.innerHTML=`<div style="font-size:.8rem;color:#c00;padding:.75rem;background:#fde8e6;border-radius:8px;">Could not calculate route: <strong>${err}</strong>. Check city names and try again.</div>`;
   }
 }
 
