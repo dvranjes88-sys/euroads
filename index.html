@@ -1713,7 +1713,8 @@ async function renderRoute(result){
       }));
     }
 
-    // Add markers for stops
+    // Add markers for stops — derive stopInputs from current mrStops
+    const stopInputs=mrStops.map(id=>document.getElementById(id)?.value?.trim()).filter(Boolean);
     stopInputs.forEach((addr,i)=>{
       const labels=['A','B','C','D','E','F','G','H'];
       new google.maps.Marker({
