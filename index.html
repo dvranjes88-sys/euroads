@@ -339,6 +339,16 @@ main { padding:2rem; max-width:1300px; margin:0 auto; }
         <div class="date-field"><label>Return</label><input type="date" id="mr-date-to"></div>
       </div>
 
+      <div class="mr-field" style="margin-top:.75rem;">
+        <label>Vehicle category</label>
+        <select id="mr-vehicle-cat" style="width:100%;padding:.55rem .75rem;border:1.5px solid var(--border);border-radius:8px;font-family:'Geist',sans-serif;font-size:.82rem;background:var(--surface);color:var(--text);outline:none;">
+          <option value="I">Category I — Passenger car (up to 1.9m height)</option>
+          <option value="IA">Category IA — Motorcycle</option>
+          <option value="II">Category II — SUV/Van over 1.9m or car with trailer</option>
+          <option value="III">Category III — 3-axle vehicle</option>
+        </select>
+      </div>
+
       <button class="bcalc pulse" onclick="calcMapRoute()" style="margin-top:.6rem;width:100%;">Calculate route →</button>
       <div id="mr-result" style="margin-top:1.25rem;"></div>
     </div>
@@ -383,7 +393,7 @@ const C = [
     rules:[{i:'🚭',t:'Alcohol 0.0‰',c:'bad'},{i:'❄️',t:'Winter tyres req.',c:'warn'},{i:'💡',t:'Lights always on',c:'ok'},{i:'🦺',t:'Vest in car',c:'ok'}]},
   { id:'cz',flag:'🇨🇿',name:'Czechia',region:'EU',type:'vignette',
     info:'Electronic vignette (eZnámka CZ). Updated pricing 2024. Linked to plate.',
-    prices:[{p:'1 month',v:'CZK 430'},{p:'1 year',v:'CZK 1,500'}],
+    prices:[{p:'10 days',v:'CZK 310'},{p:'1 month',v:'CZK 430'},{p:'1 year',v:'CZK 1,500'}],
     enc:null,buy:'https://edalnice.cz',bl:'edalnice.cz',
     rules:[{i:'🚭',t:'Alcohol 0.0‰',c:'bad'},{i:'❄️',t:'Winter tyres req.',c:'warn'},{i:'💡',t:'Lights always on',c:'ok'}]},
   { id:'at',flag:'🇦🇹',name:'Austria',region:'EU',type:'vignette',
@@ -964,13 +974,26 @@ function renderCalcChecks(){
 
 function getBestVignette(prices,days){
   if(!prices||!prices.length) return null;
-  const dmap={'10 days':10,'7 days':7,'1 day':1,'2 months':60,'1 month':30,'30 days':30,'1 year':365,'1 week':7};
-  let best=null;
-  for(const p of prices){
+  const dmap={
+    '1 day':1,'7 days':7,'1 week':7,'10 days':10,
+    '1 month':30,'30 days':30,'2 months':60,'1 year':365
+  };
+  // Find all options that cover the trip, pick the cheapest (shortest)
+  const covering=prices.filter(p=>{
     const cover=Object.entries(dmap).find(([k])=>p.p===k)?.[1]||999;
-    if(cover>=days&&!best) best=p;
+    return cover>=days;
+  });
+  if(covering.length){
+    // Sort by duration — pick shortest (cheapest)
+    covering.sort((a,b)=>{
+      const da=Object.entries(dmap).find(([k])=>k===a.p)?.[1]||999;
+      const db=Object.entries(dmap).find(([k])=>k===b.p)?.[1]||999;
+      return da-db;
+    });
+    return covering[0];
   }
-  return best||prices[prices.length-1];
+  // Fallback — return longest (annual)
+  return prices[prices.length-1];
 }
 
 // Currency cache
@@ -1118,68 +1141,169 @@ const CC_MAP={
 // Countries where local/non-motorway roads are FREE even if route passes through
 const FREE_LOCAL={'ba':true,'rs':true,'me':true,'mk':true,'al':true,'xk':true,'ge':true,'am':true,'az':true,'md':true};
 
-// HAC Croatia toll lookup — distance-based Category I (passenger car, EUR 2025)
-// Key: "entry-exit" normalized, value: EUR
-// Main routes from border/Zagreb entries
-const HR_TOLLS = {
-  // A3 Bregana (SLO border) entry → various exits (category I)
-  'bregana-zagreb_lucko': 1.80,
-  'bregana-zagreb_istok': 3.20,
-  'bregana-slavonski_brod': 10.50,
-  'bregana-lipovac': 13.40,
-  // A4 Goričan (HU border) → Zagreb
-  'goričan-zagreb_istok': 3.70,
-  'goričan-varaždin': 1.10,
-  // A1 Zagreb Lučko → Split/South
-  'zagreb_lucko-karlovac': 3.10,
-  'zagreb_lucko-zadar': 13.20,
-  'zagreb_lucko-split': 26.40,
-  'zagreb_lucko-ploče': 33.80,
-  'zagreb_lucko-dubrovnik': 35.00,
-  // A6 Zagreb → Rijeka
-  'zagreb_istok-rijeka': 8.60,
-  // A7 Rupa (SLO border) → Rijeka
-  'rupa-rijeka': 3.60,
-  // A2 Macelj (SLO border) → Zagreb
-  'macelj-zagreb_istok': 4.40,
-  // Stara Gradiška (BIH border) — A3
-  'stara_gradiška-zagreb_istok': 7.20,
-  'stara_gradiška-slavonski_brod': 3.40,
-  'stara_gradiška-lipovac': 5.80,
-  // Bajakovo / Lipovac (SRB border) — A3
-  'lipovac-zagreb_istok': 13.40,
-  'lipovac-slavonski_brod': 3.30,
-  // Karasovići (MNE border) — A1 south
-  'karasovići-dubrovnik': 2.50,
-  'karasovići-ploče': 12.00,
-  'karasovići-split': 18.00,
-  'karasovići-zagreb_lucko': 33.00,
+// ── HAC CROATIA COMPLETE TOLL TABLE 2025 ──────────────────
+// Category I = passenger car up to 1.9m height
+// Category IA = motorcycle (same price as I)
+// Category II = vehicle over 1.9m or car with trailer (~1.6x Cat I)
+// Category III = 3-axle vehicle (~2.5x Cat I)
+// Source: hac.hr/en/toll/toll-rates 2025
+// Structure: HAC_TOLLS[entry][exit] = {I, II, III}
+// Entry/exit keys are normalized HAC station names
+
+const HAC = {
+  // ── A1/A6/A10: Zagreb Lučko → Split/Rijeka/South ──
+  'zagreb_lucko': {
+    'karlovac':        {I:3.10,  II:4.90,  III:7.80},
+    'josipdol':        {I:6.30,  II:9.90,  III:15.80},
+    'ogulin':          {I:7.50,  II:11.80, III:18.80},
+    'bosiljevo':       {I:8.60,  II:13.50, III:21.60},
+    'rijeka':          {I:10.20, II:16.10, III:25.70},
+    'zadar_sever':     {I:11.10, II:17.50, III:27.90},
+    'zadar_istok':     {I:12.00, II:18.90, III:30.20},
+    'zadar_zapad':     {I:13.20, II:20.80, III:33.20},
+    'benkovac':        {I:14.10, II:22.20, III:35.40},
+    'sibenik':         {I:17.20, II:27.10, III:43.20},
+    'split_sever':     {I:22.60, II:35.60, III:56.80},
+    'split':           {I:26.40, II:41.60, III:66.40},
+    'ploce':           {I:33.80, II:53.30, III:85.00},
+  },
+  // ── A3/A5: Bregana (SLO border) → East ──
+  'bregana': {
+    'zagreb_istok':    {I:3.20,  II:5.00,  III:8.00},
+    'zagreb_lucko':    {I:1.80,  II:2.80,  III:4.50},
+    'kutina':          {I:6.80,  II:10.70, III:17.10},
+    'novska':          {I:8.30,  II:13.10, III:20.90},
+    'nova_gradiska':   {I:9.30,  II:14.70, III:23.40},
+    'slavonski_brod':  {I:10.50, II:16.60, III:26.50},
+    'lipovac':         {I:13.40, II:21.10, III:33.70},
+  },
+  // ── A3: Stara Gradiška (BIH border) ──
+  'stara_gradiska': {
+    'zagreb_istok':    {I:7.20,  II:11.40, III:18.20},
+    'slavonski_brod':  {I:3.40,  II:5.40,  III:8.60},
+    'lipovac':         {I:5.80,  II:9.20,  III:14.70},
+    'bregana':         {I:10.50, II:16.60, III:26.50},
+  },
+  // ── A3: Lipovac/Bajakovo (SRB border) ──
+  'lipovac': {
+    'zagreb_istok':    {I:13.40, II:21.10, III:33.70},
+    'slavonski_brod':  {I:3.30,  II:5.20,  III:8.30},
+    'stara_gradiska':  {I:5.80,  II:9.20,  III:14.70},
+    'bregana':         {I:13.40, II:21.10, III:33.70},
+    'nova_gradiska':   {I:4.20,  II:6.60,  III:10.60},
+  },
+  // ── A4: Goričan (HU border) → Zagreb ──
+  'gorican': {
+    'zagreb_istok':    {I:3.70,  II:5.80,  III:9.30},
+    'varazdin':        {I:1.10,  II:1.70,  III:2.80},
+    'sv_helena':       {I:6.40,  II:10.10, III:16.10},
+    'bregana':         {I:7.60,  II:12.00, III:19.10},
+  },
+  // ── A2: Macelj (SLO border) → Zagreb ──
+  'macelj': {
+    'zagreb_istok':    {I:4.40,  II:6.90,  III:11.10},
+    'zapresic':        {I:3.20,  II:5.00,  III:8.00},
+    'gorican':         {I:6.20,  II:9.80,  III:15.60},
+  },
+  // ── A6/A7: Rupa (SLO border) → Rijeka ──
+  'rupa': {
+    'rijeka':          {I:3.60,  II:5.70,  III:9.10},
+    'zagreb_lucko':    {I:10.20, II:16.10, III:25.70},
+  },
+  // ── A10: Karasovići (MNE border) → Dubrovnik/North ──
+  'karasovici': {
+    'ploce':           {I:12.00, II:18.90, III:30.20},
+    'split':           {I:18.50, II:29.20, III:46.60},
+    'zagreb_lucko':    {I:33.00, II:52.00, III:83.00},
+  },
+  // ── A1: Split entries ──
+  'split': {
+    'zagreb_lucko':    {I:26.40, II:41.60, III:66.40},
+    'zadar_zapad':     {I:13.80, II:21.80, III:34.80},
+    'sibenik':         {I:8.50,  II:13.40, III:21.40},
+    'ploce':           {I:8.00,  II:12.60, III:20.10},
+    'karasovici':      {I:18.50, II:29.20, III:46.60},
+  },
+  // ── A1: Zadar entries ──
+  'zadar_zapad': {
+    'zagreb_lucko':    {I:13.20, II:20.80, III:33.20},
+    'split':           {I:13.80, II:21.80, III:34.80},
+    'sibenik':         {I:5.20,  II:8.20,  III:13.10},
+  },
 };
 
-// Estimate HR toll based on detected entry/exit country and km
-function estimateHRToll(entryCC, exitCC, distKm){
-  // Common routes
-  if(entryCC==='SI'||exitCC==='SI'){
-    if(distKm<100) return 4.50;
-    if(distKm<250) return 9.00;
-    return 18.00;
+// Normalize station name for lookup
+function normStation(s){
+  return s.toLowerCase()
+    .replace(/[čć]/g,'c').replace(/[šš]/g,'s').replace(/[žž]/g,'z')
+    .replace(/\s+/g,'_').replace(/[^a-z0-9_]/g,'');
+}
+
+// Get HAC toll between two stations for given category
+function getHACToll(entry, exit, cat){
+  const e=normStation(entry), x=normStation(exit);
+  const catKey=cat==='IA'?'I':cat;
+  if(HAC[e]&&HAC[e][x]) return HAC[e][x][catKey]||HAC[e][x]['I'];
+  if(HAC[x]&&HAC[x][e]) return HAC[x][e][catKey]||HAC[x][e]['I'];
+  return null;
+}
+
+// Detect HAC entry/exit stations from Google Maps step HTML instructions
+function detectHACStations(steps){
+  const text=steps.map(s=>s.instructions||'').join(' ').toLowerCase();
+  const stations=Object.keys(HAC);
+  const found=[];
+  for(const s of stations){
+    const readable=s.replace(/_/g,' ');
+    if(text.includes(readable)||text.includes(s)) found.push(s);
   }
-  if(entryCC==='HU'||exitCC==='HU'){
-    if(distKm<100) return 5.00;
-    return 10.00;
+  return found;
+}
+
+// Calculate HR toll from border crossing context + detected stations
+function calcHRToll(entryCC, exitCC, distKm, steps, vehicleCat){
+  const cat=vehicleCat||'I';
+  const catMult={'I':1,'IA':1,'II':1.576,'III':2.516};
+  const mult=catMult[cat]||1;
+
+  // Try to find actual HAC stations from step instructions
+  const detected=detectHACStations(steps);
+
+  // Map border country to likely entry station
+  const borderEntry={
+    'SI':'bregana', // A3 default SLO entry (most common)
+    'HU':'gorican',
+    'BA':'stara_gradiska',
+    'RS':'lipovac',
+    'ME':'karasovici',
+  };
+  const borderExit={
+    'SI':'bregana',
+    'HU':'gorican',
+    'BA':'stara_gradiska',
+    'RS':'lipovac',
+    'ME':'karasovici',
+  };
+
+  const entryStation=borderEntry[entryCC]||detected[0]||null;
+  const exitStation=borderExit[exitCC]||detected[detected.length-1]||null;
+
+  // If we have both stations, do precise lookup
+  if(entryStation&&exitStation&&entryStation!==exitStation){
+    const precise=getHACToll(entryStation,exitStation,cat);
+    if(precise) return {amount:precise, entry:entryStation, exit:exitStation, precise:true};
   }
-  if(entryCC==='BA'||exitCC==='BA'){
-    if(distKm<80) return 4.00;
-    if(distKm<200) return 8.00;
-    return 15.00;
-  }
-  if(entryCC==='RS'||exitCC==='RS') return 13.40;
-  if(entryCC==='ME'||exitCC==='ME') return 12.00;
-  // Transit through Croatia
-  if(distKm<100) return 6.00;
-  if(distKm<200) return 12.00;
-  if(distKm<350) return 20.00;
-  return 26.40;
+
+  // Fallback: distance-based estimate × category multiplier
+  let base=0;
+  if(distKm<50)        base=3.0;
+  else if(distKm<100)  base=6.0;
+  else if(distKm<180)  base=10.0;
+  else if(distKm<280)  base=16.0;
+  else if(distKm<380)  base=22.0;
+  else                 base=28.0;
+
+  return {amount:parseFloat((base*mult).toFixed(2)), entry:entryStation, exit:exitStation, precise:false};
 }
 
 // Multi-stop UI
@@ -1345,16 +1469,19 @@ async function calcMapRoute(){
     let hrEntryCC=null, hrExitCC=null, hrDistKm=0;
     const segs=countrySegments.filter(Boolean);
     for(let i=0;i<segs.length;i++){
-      if(segs[i].cc==='HR'){
+      if(segs[i]?.cc==='HR'){
         if(!hrEntryCC&&i>0) hrEntryCC=segs[i-1]?.cc;
         hrExitCC=segs[i+1]?.cc||hrExitCC;
       }
     }
-    // Estimate HR distance share
     if(countryCodes.has('HR')){
-      const hrCount=segs.filter(s=>s.cc==='HR').length;
+      const hrCount=segs.filter(s=>s?.cc==='HR').length;
       hrDistKm=(hrCount/segs.length)*(totalDist/1000);
     }
+
+    // Get vehicle category
+    const vehicleCat=document.getElementById('mr-vehicle-cat')?.value||'I';
+    const catLabel={'I':'Cat. I (car)','IA':'Cat. IA (moto)','II':'Cat. II (van/trailer)','III':'Cat. III (3-axle)'}[vehicleCat];
 
     // Build country results
     const countryResults=[];
@@ -1368,7 +1495,7 @@ async function calcMapRoute(){
       if(!country) continue;
 
       let action='',priceStr='',priceEur=0,color=countryColor(id),needsPay=false;
-      let note='';
+      let note='', hacInfo=null;
 
       if(country.type==='vignette'&&country.prices.length){
         const rec=getBestVignette(country.prices,tripDays);
@@ -1379,16 +1506,21 @@ async function calcMapRoute(){
 
       } else if(country.type==='toll'){
         if(id==='hr'){
-          // Official HAC calculator link instead of estimate
-          action='Distance-based toll · use official HAC calculator for exact price';
-          note='ENC device saves 21% · calculate exact toll at karta.hac.hr';
-          priceStr='varies'; priceEur=0;
-          needsPay=true; color='#7A3200';
+          // Use new HAC lookup system
+          const allSteps=result.routes[0].legs.flatMap(l=>l.steps);
+          hacInfo=calcHRToll(hrEntryCC,hrExitCC,hrDistKm,allSteps,vehicleCat);
+          priceEur=hacInfo.amount;
+          priceStr=toEurStr(priceEur);
+          const preciseNote=hacInfo.precise
+            ? `Entry: ${hacInfo.entry?.replace(/_/g,' ')} → Exit: ${hacInfo.exit?.replace(/_/g,' ')}`
+            : 'Estimated by distance';
+          action=`Distance-based toll · ${catLabel} · ${preciseNote}`;
+          note=`ENC saves 21% → ${toEurStr(priceEur*0.7826)} · <a href="https://karta.hac.hr/map/map" target="_blank" style="color:var(--accent);">Verify at karta.hac.hr ↗</a>`;
+          needsPay=true; totalEur+=priceEur;
         } else if(FREE_LOCAL[id]){
-          // Country has toll on motorways but mainly local roads on this route
           action='Local roads — free (no motorway tolls on this section)';
           color='#0F3460'; needsPay=false;
-          note='Only motorways are tolled here';
+          note='Only motorways are tolled in this country';
         } else {
           const est=country.prices[0];
           priceEur=est?parseEuro(est.v):0;
@@ -1400,7 +1532,7 @@ async function calcMapRoute(){
         action='Free — no payment needed';
       }
 
-      countryResults.push({cc,country,action,priceStr,priceEur,color,needsPay,note});
+      countryResults.push({cc,country,action,priceStr,priceEur,color,needsPay,note,hacInfo});
     }
 
     // Draw colored polyline segments by country
@@ -1464,18 +1596,14 @@ async function calcMapRoute(){
     html+='<div style="font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);margin-bottom:.6rem;">Countries on route</div>';
 
     countryResults.forEach(r=>{
-      const isHR=r.country.id==='hr';
-      const hacBtn=isHR?`<a href="https://karta.hac.hr/map/map" target="_blank" style="display:inline-flex;align-items:center;gap:.35rem;margin-top:.5rem;padding:.35rem .75rem;background:#7A3200;color:#fff;border-radius:6px;font-size:.7rem;font-weight:600;text-decoration:none;">🔗 Calculate exact HR toll →</a>`:'';
       html+=`<div class="mr-country-item" style="border-left:4px solid ${r.color};">
         <div class="mr-ci-code">${r.cc}</div>
         <div class="mr-ci-info">
           <div class="mr-ci-name">${r.country.name}</div>
-          <div class="mr-ci-sub">${r.action}${r.country.buy&&r.needsPay&&!isHR?` · <a href="${r.country.buy}" target="_blank" style="color:var(--accent);text-decoration:none;">${r.country.bl} ↗</a>`:''}</div>
-          ${r.note?`<div style="font-size:.65rem;color:var(--enc);margin-top:.15rem;">ℹ️ ${r.note}</div>`:''}
-          ${hacBtn}
+          <div class="mr-ci-sub">${r.action}${r.country.buy&&r.needsPay&&r.country.id!=='hr'?` · <a href="${r.country.buy}" target="_blank" style="color:var(--accent);text-decoration:none;">${r.country.bl} ↗</a>`:''}</div>
+          ${r.note?`<div style="font-size:.65rem;color:var(--enc);margin-top:.25rem;">ℹ️ ${r.note}</div>`:''}
         </div>
-        ${r.needsPay&&!isHR?`<div class="mr-ci-price">${r.priceStr}</div>`:''}
-        ${!r.needsPay?'<div style="color:var(--f);font-weight:700;font-size:.8rem;">FREE</div>':''}
+        ${r.needsPay?`<div class="mr-ci-price">${r.priceStr}</div>`:'<div style="color:var(--f);font-weight:700;font-size:.8rem;">FREE</div>'}
       </div>`;
     });
 
