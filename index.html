@@ -1215,14 +1215,23 @@ const HAC_BORDER_ENTRY = {
 async function fetchHACToll(entry, exit, vehicleCat){
   const cat = vehicleCat || 'I';
 
-  // Try exact name first, then without suffix (zapad/istok/sjever/jug)
-  const exitVariants = [exit];
-  const suffixMatch = exit?.match(/^(.+?)\s+(zapad|istok|sjever|jug|zapad|north|south|east|west)$/i);
-  if(suffixMatch) exitVariants.push(suffixMatch[1]); // e.g. "Zadar zapad" → "Zadar"
+  // Try exact name first, then common variants
+  const makeVariants = (name) => {
+    if(!name) return [];
+    const v = [name];
+    // Remove parenthetical suffix: "Zagreb (Lučko)" → "Zagreb"
+    const parenMatch = name.match(/^(.+?)\s*\([^)]+\)$/);
+    if(parenMatch) v.push(parenMatch[1].trim());
+    // Remove directional suffix: "Zadar zapad" → "Zadar"
+    const suffixMatch = name.match(/^(.+?)\s+(zapad|istok|sjever|jug|north|south|east|west|1|2)$/i);
+    if(suffixMatch) v.push(suffixMatch[1].trim());
+    // "Zagreb-istok (Ježevo)" → "Zagreb istok"
+    v.push(name.replace('-', ' ').replace(/\s*\([^)]+\)/, '').trim());
+    return [...new Set(v)];
+  };
 
-  const entryVariants = [entry];
-  const entryMatch = entry?.match(/^(.+?)\s+(zapad|istok|sjever|jug)$/i);
-  if(entryMatch) entryVariants.push(entryMatch[1]);
+  const exitVariants = makeVariants(exit);
+  const entryVariants = makeVariants(entry);
 
   for(const e of entryVariants){
     for(const x of exitVariants){
@@ -1245,95 +1254,104 @@ async function fetchHACToll(entry, exit, vehicleCat){
   return null;
 }
 
-// HAC station GPS coordinates — names exactly as used in HAC API
-// Source: karta.hac.hr map
+// HAC station GPS coordinates — exact names from hak.hr/info/cestarine
 const HAC_STATION_GPS = [
-  // A4: Goričan (HU border) → Zagreb
-  ['Goričan',             46.413, 16.641],
-  ['Čakovec',             46.395, 16.432],
-  ['Ludbreg',             46.250, 16.617],
-  ['Varaždin',            46.295, 16.337],
-  ['Varaždinske Toplice', 46.212, 16.418],
-  ['Novi Marof',          46.160, 16.327],
-  ['Breznički Hum',       46.098, 16.257],
-  ['Komin',               46.043, 16.240],
-  ['Sveta Helena',        45.921, 16.274],
-  // A2: Trakošćan (SLO border via Maribor) → Zagreb
-  ['Trakošćan',           46.255, 15.773],
-  ['Đurmanec',            46.173, 15.871],
-  ['Krapina',             46.160, 15.874],
-  ['Zabok',               46.034, 15.909],
-  ['Zaprešić',            45.855, 15.803],
-  // A3: Bregana (SLO border) → Lipovac (SRB border)
-  ['Bregana',             45.841, 15.666],
-  ['Zagreb Lučko',        45.750, 15.871],
-  ['Demerje',             45.726, 15.936],
-  ['Zagreb Istok',        45.814, 16.064],
-  ['Rugvica',             45.747, 16.218],
-  ['Ivanić-Grad',         45.710, 16.398],
-  ['Križ',                45.668, 16.541],
-  ['Popovača',            45.564, 16.621],
-  ['Lipovljani',          45.488, 16.792],
-  ['Novska',              45.339, 16.979],
-  ['Okučani',             45.272, 17.179],
-  ['Nova Gradiška',       45.255, 17.383],
-  ['Slavonski Brod zapad',45.163, 17.972],
-  ['Slavonski Brod',      45.152, 18.021],
-  ['Stara Gradiška',      45.048, 17.200],
-  ['Babina Greda',        45.073, 18.530],
-  ['Županja',             45.077, 18.690],
-  ['Lipovac',             45.054, 19.010],
-  // A5: Beli Manastir → Osijek → Svilaj (BIH border)
-  ['Beli Manastir',       45.769, 18.606],
-  ['Osijek',              45.521, 18.680],
-  ['Đakovo',              45.308, 18.411],
-  ['Svilaj',              45.039, 17.644],
-  // A1: Zagreb → Split → Ploče
-  ['Jastrebarsko',        45.663, 15.649],
+  // A1: Zagreb (Lučko) → Čarapine
+  ['Zagreb (Lučko)',      45.750, 15.871],
   ['Donja Zdenčina',      45.630, 15.715],
+  ['Jastrebarsko',        45.663, 15.649],
   ['Karlovac',            45.487, 15.547],
   ['Novigrad',            45.381, 15.550],
-  ['Bosiljevo',           45.399, 15.294],
+  ['Bosiljevo 1',         45.399, 15.294],
   ['Ogulin',              45.266, 15.224],
-  ['Josipdol',            45.209, 15.147],
+  ['Brinje',              45.084, 15.139],
   ['Žuta Lokva',          44.934, 15.069],
   ['Otočac',              44.870, 15.233],
   ['Perušić',             44.651, 15.374],
+  ['Gospić',              44.547, 15.374],
   ['Gornja Ploča',        44.468, 15.313],
-  ['Maslenica',           44.231, 15.534],
-  ['Zadar sjever',        44.199, 15.239],
+  ['Sveti Rok',           44.363, 15.656],
+  ['Rovanjska',           44.281, 15.535],
+  ['Posedarje',           44.214, 15.326],
   ['Zadar zapad',         44.120, 15.219],
   ['Zadar istok',         44.134, 15.277],
   ['Benkovac',            44.043, 15.607],
   ['Pirovac',             43.820, 15.673],
+  ['Skradin',             43.819, 15.924],
   ['Šibenik',             43.745, 15.900],
-  ['Vrpol',               43.682, 16.044],
+  ['Podi',                43.715, 15.997],
+  ['Vrpolje',             43.682, 16.044],
   ['Prgomet',             43.635, 16.244],
+  ['Vučevica',            43.612, 16.387],
   ['Dugopolje',           43.583, 16.622],
-  ['Split',               43.596, 16.571],
   ['Bisko',               43.533, 16.716],
+  ['Blato na Cetini',     43.491, 16.812],
   ['Šestanovac',          43.468, 16.912],
   ['Zagvozd',             43.439, 17.050],
   ['Ravča',               43.211, 17.323],
   ['Vrgorac',             43.198, 17.378],
   ['Karamatići',          43.330, 17.271],
   ['Čarapine',            43.139, 17.417],
-  // A6/A7: Rupa (SLO border via Trieste) → Bosiljevo
-  ['Rupa',                45.491, 14.256],
-  ['Kikovica',            45.370, 14.386],
-  ['Oštrovica',           45.337, 14.457],
+  // A2: Zaprešić → Trakošćan (SLO border)
+  ['Zaprešić',            45.855, 15.803],
+  ['Mokrice',             45.921, 15.908],
+  ['Začretje',            46.005, 15.888],
+  ['Krapina',             46.160, 15.874],
+  ['Đurmanec',            46.173, 15.871],
+  ['Trakošćan',           46.255, 15.773],
+  // A3: Bregana (SLO) → Lipovac (SRB)
+  ['Bregana',             45.841, 15.666],
+  ['Zagreb-istok (Ježevo)',45.814, 16.064],
+  ['Ivanić Grad',         45.710, 16.398],
+  ['Križ',                45.668, 16.541],
+  ['Popovača',            45.564, 16.621],
+  ['Kutina',              45.480, 16.774],
+  ['Lipovljani',          45.488, 16.792],
+  ['Novska',              45.339, 16.979],
+  ['Okučani',             45.272, 17.179],
+  ['Nova Gradiška',       45.255, 17.383],
+  ['Lužani',              45.220, 17.564],
+  ['Slavonski Brod zapad',45.163, 17.972],
+  ['Slavonski Brod istok',45.152, 18.021],
+  ['Velika Kopanica',     45.094, 18.213],
+  ['Babina Greda',        45.073, 18.530],
+  ['Spačva',              45.060, 18.621],
+  ['Županja',             45.077, 18.690],
+  ['Lipovac',             45.054, 19.010],
+  // A4: Sveta Helena → Goričan (HU border)
+  ['Sveta Helena',        45.921, 16.274],
+  ['Komin',               46.043, 16.240],
+  ['Breznički Hum',       46.098, 16.257],
+  ['Novi Marof',          46.160, 16.327],
+  ['Varaždinske Toplice', 46.212, 16.418],
+  ['Varaždin',            46.295, 16.337],
+  ['Ludbreg',             46.250, 16.617],
+  ['Čakovec',             46.395, 16.432],
+  ['Goričan',             46.413, 16.641],
+  // A5: Sudaraž (Beli Manastir) → Svilaj (BIH)
+  ['Sudaraž (Beli Manastir)', 45.769, 18.606],
+  ['Osijek',              45.521, 18.680],
+  ['Čepin',               45.533, 18.560],
+  ['Đakovo',              45.308, 18.411],
+  ['Svilaj',              45.039, 17.644],
+  // A6: Bosiljevo → Rijeka
+  ['Bosiljevo 2',         45.350, 15.260],
+  ['Vrbovsko',            45.376, 15.076],
+  ['Ravna Gora',          45.387, 14.951],
   ['Delnice',             45.401, 14.804],
+  ['Vrata',               45.373, 14.640],
+  ['Oštrovica',           45.337, 14.457],
+  ['Rijeka',              45.327, 14.442],
+  // A7: Rupa (SLO border) → Rijeka
+  ['Rupa',                45.491, 14.256],
   // A10: Ploče → Karasovići (MNE border)
   ['Ploče',               43.058, 17.432],
   ['Karasovići',          42.534, 18.434],
   // A11: Zagreb → Sisak
   ['Jakuševec',           45.757, 16.022],
   ['Velika Gorica jug',   45.714, 16.076],
+  ['Lekenik',             45.534, 16.297],
   ['Sisak',               45.467, 16.376],
-  // A9/Istria (Bina Istra)
-  ['Kanfanar',            45.121, 13.842],
-  ['Vodnjan sjever',      44.975, 13.851],
-  ['Pula',                44.867, 13.848],
 ];
 
 // Find nearest HAC station to a GPS point
