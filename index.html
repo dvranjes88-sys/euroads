@@ -968,8 +968,10 @@ function suggestRoute(){
 function renderCalcChecks(){
   const today=new Date();
   const nextWeek=new Date(today); nextWeek.setDate(today.getDate()+7);
-  document.getElementById('calc-date-from').value=today.toISOString().split('T')[0];
-  document.getElementById('calc-date-to').value=nextWeek.toISOString().split('T')[0];
+  const f=document.getElementById('calc-date-from');
+  const t=document.getElementById('calc-date-to');
+  if(f) f.value=today.toISOString().split('T')[0];
+  if(t) t.value=nextWeek.toISOString().split('T')[0];
 }
 
 function getBestVignette(prices,days){
@@ -1035,8 +1037,8 @@ async function doCalc(){
 
   if(!Object.keys(FX).length) await loadFX();
 
-  const dateFrom=document.getElementById('calc-date-from').value;
-  const dateTo=document.getElementById('calc-date-to').value;
+  const dateFrom=document.getElementById('calc-date-from')?.value||'';
+  const dateTo=document.getElementById('calc-date-to')?.value||'';
   let tripDays=7;
   if(dateFrom&&dateTo){
     const d1=new Date(dateFrom),d2=new Date(dateTo);
