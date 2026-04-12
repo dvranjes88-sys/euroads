@@ -1211,26 +1211,42 @@ const HAC_BORDER_ENTRY = {
   'RS':'Lipovac', 'ME':'Karasovići',
 };
 
-// Call HAC live API with station names
+// Call HAC live API with station names — tries variants if needed
 async function fetchHACToll(entry, exit, vehicleCat){
   const cat = vehicleCat || 'I';
-  const url = `https://cro3-tmp.hac.hr/tollcalculator/price/${encodeURIComponent(entry)}/${encodeURIComponent(exit)}`;
-  try {
-    const r = await fetch(url);
-    if(!r.ok) return null;
-    const data = await r.json();
-    let total = 0;
-    const segments = [];
-    for(const seg of (data.Segments||[])){
-      const price = seg.Prices?.find(p=>p.Category===cat)||seg.Prices?.find(p=>p.Category==='I');
-      if(price){ total+=price.Amount; segments.push({entry:seg.EntryName,exit:seg.ExitName,amount:price.Amount}); }
+
+  // Try exact name first, then without suffix (zapad/istok/sjever/jug)
+  const exitVariants = [exit];
+  const suffixMatch = exit?.match(/^(.+?)\s+(zapad|istok|sjever|jug|zapad|north|south|east|west)$/i);
+  if(suffixMatch) exitVariants.push(suffixMatch[1]); // e.g. "Zadar zapad" → "Zadar"
+
+  const entryVariants = [entry];
+  const entryMatch = entry?.match(/^(.+?)\s+(zapad|istok|sjever|jug)$/i);
+  if(entryMatch) entryVariants.push(entryMatch[1]);
+
+  for(const e of entryVariants){
+    for(const x of exitVariants){
+      if(!e || !x || e===x) continue;
+      const url=`https://cro3-tmp.hac.hr/tollcalculator/price/${encodeURIComponent(e)}/${encodeURIComponent(x)}`;
+      try {
+        const r=await fetch(url);
+        if(!r.ok) continue;
+        const data=await r.json();
+        if(!data.Segments?.length) continue;
+        let total=0; const segments=[];
+        for(const seg of data.Segments){
+          const price=seg.Prices?.find(p=>p.Category===cat)||seg.Prices?.find(p=>p.Category==='I');
+          if(price){ total+=price.Amount; segments.push({entry:seg.EntryName,exit:seg.ExitName,amount:price.Amount}); }
+        }
+        if(total>0){ console.log('[HAC] API success:', e, '→', x); return {total,segments}; }
+      } catch(err){ continue; }
     }
-    return total>0 ? {total,segments} : null;
-  } catch(e){ return null; }
+  }
+  return null;
 }
 
 // HAC station GPS coordinates — names exactly as used in HAC API
-// Source: karta.hac.hr
+// Source: karta.hac.hr map
 const HAC_STATION_GPS = [
   // A4: Goričan (HU border) → Zagreb
   ['Goričan',             46.413, 16.641],
@@ -1244,20 +1260,20 @@ const HAC_STATION_GPS = [
   ['Sveta Helena',        45.921, 16.274],
   // A2: Trakošćan (SLO border via Maribor) → Zagreb
   ['Trakošćan',           46.255, 15.773],
+  ['Đurmanec',            46.173, 15.871],
   ['Krapina',             46.160, 15.874],
   ['Zabok',               46.034, 15.909],
   ['Zaprešić',            45.855, 15.803],
-  // A3: Bregana (SLO border via Ljubljana) → Lipovac (SRB)
+  // A3: Bregana (SLO border) → Lipovac (SRB border)
   ['Bregana',             45.841, 15.666],
-  ['Jankomir',            45.789, 15.904],
-  ['Lučko',               45.750, 15.871],
+  ['Zagreb Lučko',        45.750, 15.871],
   ['Demerje',             45.726, 15.936],
   ['Zagreb Istok',        45.814, 16.064],
   ['Rugvica',             45.747, 16.218],
   ['Ivanić-Grad',         45.710, 16.398],
   ['Križ',                45.668, 16.541],
   ['Popovača',            45.564, 16.621],
-  ['Kutina',              45.480, 16.774],
+  ['Lipovljani',          45.488, 16.792],
   ['Novska',              45.339, 16.979],
   ['Okučani',             45.272, 17.179],
   ['Nova Gradiška',       45.255, 17.383],
@@ -1267,9 +1283,9 @@ const HAC_STATION_GPS = [
   ['Babina Greda',        45.073, 18.530],
   ['Županja',             45.077, 18.690],
   ['Lipovac',             45.054, 19.010],
-  // A5: Osijek → Svilaj (BIH)
+  // A5: Beli Manastir → Osijek → Svilaj (BIH border)
   ['Beli Manastir',       45.769, 18.606],
-  ['Osijek jug',          45.521, 18.680],
+  ['Osijek',              45.521, 18.680],
   ['Đakovo',              45.308, 18.411],
   ['Svilaj',              45.039, 17.644],
   // A1: Zagreb → Split → Ploče
@@ -1283,24 +1299,30 @@ const HAC_STATION_GPS = [
   ['Žuta Lokva',          44.934, 15.069],
   ['Otočac',              44.870, 15.233],
   ['Perušić',             44.651, 15.374],
+  ['Gornja Ploča',        44.468, 15.313],
+  ['Maslenica',           44.231, 15.534],
   ['Zadar sjever',        44.199, 15.239],
-  ['Zadar istok',         44.134, 15.277],
   ['Zadar zapad',         44.120, 15.219],
+  ['Zadar istok',         44.134, 15.277],
+  ['Benkovac',            44.043, 15.607],
+  ['Pirovac',             43.820, 15.673],
   ['Šibenik',             43.745, 15.900],
-  ['Split',               43.596, 16.571],
+  ['Vrpol',               43.682, 16.044],
+  ['Prgomet',             43.635, 16.244],
   ['Dugopolje',           43.583, 16.622],
+  ['Split',               43.596, 16.571],
   ['Bisko',               43.533, 16.716],
   ['Šestanovac',          43.468, 16.912],
   ['Zagvozd',             43.439, 17.050],
   ['Ravča',               43.211, 17.323],
+  ['Vrgorac',             43.198, 17.378],
   ['Karamatići',          43.330, 17.271],
   ['Čarapine',            43.139, 17.417],
-  // A6/A7: Rupa (SLO border via Trieste) → Zagreb; A6 Rijeka → Zagreb
+  // A6/A7: Rupa (SLO border via Trieste) → Bosiljevo
   ['Rupa',                45.491, 14.256],
   ['Kikovica',            45.370, 14.386],
   ['Oštrovica',           45.337, 14.457],
   ['Delnice',             45.401, 14.804],
-  ['Bosiljevo',           45.399, 15.294],
   // A10: Ploče → Karasovići (MNE border)
   ['Ploče',               43.058, 17.432],
   ['Karasovići',          42.534, 18.434],
@@ -1308,6 +1330,10 @@ const HAC_STATION_GPS = [
   ['Jakuševec',           45.757, 16.022],
   ['Velika Gorica jug',   45.714, 16.076],
   ['Sisak',               45.467, 16.376],
+  // A9/Istria (Bina Istra)
+  ['Kanfanar',            45.121, 13.842],
+  ['Vodnjan sjever',      44.975, 13.851],
+  ['Pula',                44.867, 13.848],
 ];
 
 // Find nearest HAC station to a GPS point
