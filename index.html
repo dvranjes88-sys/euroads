@@ -1436,23 +1436,27 @@ function countryColor(id){
 
 // Store last directions result for route switching
 let lastDirectionsResult = null;
+let activeRouteIdx = 0;
 
 function switchRoute(idx){
   if(!lastDirectionsResult) return;
-  activeRouteIdx=idx;
-  // Update tab styles
+  activeRouteIdx = idx;
+  updateRouteTabs();
+  renderRoute(lastDirectionsResult);
+}
+
+function updateRouteTabs(){
+  if(!lastDirectionsResult) return;
   lastDirectionsResult.routes.forEach((_,i)=>{
     const btn=document.getElementById(`rtab-${i}`);
     if(!btn) return;
-    btn.style.border=`2px solid ${i===idx?'var(--accent)':'var(--border)'}`;
-    btn.style.background=i===idx?'var(--accent)':'var(--surface)';
-    btn.style.color=i===idx?'#000':'var(--text)';
+    btn.style.border=`2px solid ${i===activeRouteIdx?'var(--accent)':'var(--border)'}`;
+    btn.style.background=i===activeRouteIdx?'var(--accent)':'var(--surface)';
+    btn.style.color=i===activeRouteIdx?'#000':'var(--text)';
   });
-  // Recalculate with selected route
-  calcMapRoute(lastDirectionsResult, idx);
 }
 
-async function calcMapRoute(existingResult, routeIdx){
+async function calcMapRoute(){
   const stopInputs=mrStops.map(id=>document.getElementById(id)?.value?.trim()).filter(Boolean);
   if(stopInputs.length<2){
     document.getElementById('mr-result').innerHTML='<div style="font-size:.8rem;color:#c00;padding:.75rem;background:#fde8e6;border-radius:8px;">Please enter at least an origin and destination.</div>';
@@ -1465,6 +1469,32 @@ async function calcMapRoute(existingResult, routeIdx){
   if(!window.google||!mrMap){ initMrMap(); await new Promise(r=>setTimeout(r,2500)); }
   if(!Object.keys(FX).length) await loadFX();
 
+  const directionsService=new google.maps.DirectionsService();
+
+  try {
+    const origin=stopInputs[0];
+    const destination=stopInputs[stopInputs.length-1];
+    const waypoints=stopInputs.slice(1,-1).map(v=>({location:v,stopover:true}));
+
+    const result=await new Promise((res,rej)=>{
+      directionsService.route({
+        origin,destination,waypoints,
+        travelMode:google.maps.TravelMode.DRIVING,
+        provideRouteAlternatives: waypoints.length===0,
+        region:'eu',
+      },(r,s)=>{ if(s==='OK') res(r); else rej(s); });
+    });
+
+    lastDirectionsResult=result;
+    activeRouteIdx=0;
+    await renderRoute(result);
+
+  } catch(err){
+    document.getElementById('mr-result').innerHTML=`<div style="font-size:.8rem;color:#c00;padding:.75rem;background:#fde8e6;border-radius:8px;">Could not calculate route: ${err}</div>`;
+  }
+}
+
+async function renderRoute(result){
   const dateFrom=document.getElementById('mr-date-from').value;
   const dateTo=document.getElementById('mr-date-to').value;
   let tripDays=7;
@@ -1473,44 +1503,14 @@ async function calcMapRoute(existingResult, routeIdx){
     tripDays=Math.max(1,Math.ceil((d2-d1)/(1000*60*60*24)));
   }
 
+  const resultEl=document.getElementById('mr-result');
+  const geocoder=new google.maps.Geocoder();
+
   // Clear old renderers & polylines
   mrRenderers.forEach(r=>r.setMap(null)); mrRenderers=[];
   mrPolylines.forEach(p=>p.setMap(null)); mrPolylines=[];
 
-  const directionsService=new google.maps.DirectionsService();
-  const geocoder=new google.maps.Geocoder();
-
-  let activeRouteIdx = routeIdx||0;
-
   try {
-    // Build waypoints for multi-stop
-    const origin=stopInputs[0];
-    const destination=stopInputs[stopInputs.length-1];
-    const waypoints=stopInputs.slice(1,-1).map(v=>({location:v,stopover:true}));
-
-    let result;
-    if(existingResult){
-      result=existingResult;
-    } else {
-      result=await new Promise((res,rej)=>{
-        directionsService.route({
-          origin,destination,waypoints,
-          travelMode:google.maps.TravelMode.DRIVING,
-          provideRouteAlternatives: waypoints.length===0,
-          region:'eu',
-        },(r,s)=>{ if(s==='OK') res(r); else rej(s); });
-      });
-      lastDirectionsResult=result;
-    }
-
-    // Render route on map with default renderer first
-    const renderer=new google.maps.DirectionsRenderer({
-      map:mrMap,
-      suppressMarkers:false,
-      polylineOptions:{strokeColor:'#1B4D3E',strokeWeight:5,strokeOpacity:0.7}
-    });
-    renderer.setDirections(result);
-    mrRenderers.push(renderer);
 
     // Gather all legs data
     const allLegs=result.routes[activeRouteIdx].legs;
@@ -1761,27 +1761,6 @@ async function calcMapRoute(existingResult, routeIdx){
     const fuelCost=parseFloat(((totalDist/1000)*fuelConsumption/100*fuelPrice).toFixed(2));
     const grandTotal=parseFloat((totalEur+fuelCost).toFixed(2));
 
-    // Route tabs (for alternatives)
-    const routeTabs=document.getElementById('mr-route-tabs');
-    if(result.routes.length>1){
-      routeTabs.style.display='flex';
-      routeTabs.style.gap='.4rem';
-      routeTabs.style.flexWrap='wrap';
-      routeTabs.innerHTML=result.routes.map((r,i)=>{
-        const km=(r.legs.reduce((s,l)=>s+l.distance.value,0)/1000).toFixed(0);
-        const dur=r.legs.reduce((s,l)=>s+l.duration.value,0);
-        const h=Math.floor(dur/3600), m=Math.floor((dur%3600)/60);
-        return `<button onclick="switchRoute(${i})" id="rtab-${i}"
-          style="padding:.4rem .8rem;border-radius:8px;border:2px solid ${i===0?'var(--accent)':'var(--border)'};
-          background:${i===0?'var(--accent)':'var(--surface)'};color:${i===0?'#000':'var(--text)'};
-          font-size:.75rem;font-weight:700;cursor:pointer;font-family:'Geist',sans-serif;">
-          Route ${i+1} · ${km}km · ${h}h${m}m
-        </button>`;
-      }).join('');
-    } else {
-      routeTabs.style.display='none';
-    }
-
     if(totalEur>0||fuelCost>0){
       html+=`<div class="mr-total-box">
         <div class="mr-total-label">💰 Estimated total trip costs</div>
@@ -1798,8 +1777,33 @@ async function calcMapRoute(existingResult, routeIdx){
     resultEl.innerHTML=html;
     document.getElementById('mr-legend').style.display='block';
 
+    // Render route tabs after result
+    const routeTabs=document.getElementById('mr-route-tabs');
+    if(result.routes.length>1){
+      routeTabs.style.display='flex';
+      routeTabs.style.gap='.4rem';
+      routeTabs.style.flexWrap='wrap';
+      routeTabs.innerHTML=result.routes.map((r,i)=>{
+        const km=(r.legs.reduce((s,l)=>s+l.distance.value,0)/1000).toFixed(0);
+        const dur=r.legs.reduce((s,l)=>s+l.duration.value,0);
+        const h=Math.floor(dur/3600), m=Math.floor((dur%3600)/60);
+        const isActive=i===activeRouteIdx;
+        return `<button onclick="switchRoute(${i})" id="rtab-${i}"
+          style="padding:.4rem .8rem;border-radius:8px;
+          border:2px solid ${isActive?'var(--accent)':'var(--border)'};
+          background:${isActive?'var(--accent)':'var(--surface)'};
+          color:${isActive?'#000':'var(--text)'};
+          font-size:.75rem;font-weight:700;cursor:pointer;font-family:'Geist',sans-serif;">
+          Route ${i+1} · ${km}km · ${h}h${m}m
+        </button>`;
+      }).join('');
+    } else {
+      routeTabs.style.display='none';
+    }
+
   } catch(err){
-    resultEl.innerHTML=`<div style="font-size:.8rem;color:#c00;padding:.75rem;background:#fde8e6;border-radius:8px;">Could not calculate route: <strong>${err}</strong>. Check city names and try again.</div>`;
+    document.getElementById('mr-result').innerHTML=`<div style="font-size:.8rem;color:#c00;padding:.75rem;background:#fde8e6;border-radius:8px;">Could not render route: <strong>${err}</strong>.</div>`;
+    console.error('renderRoute error:', err);
   }
 }
 
