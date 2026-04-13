@@ -6,7 +6,6 @@
 <title>EuroRoads — Complete European Highway Guide</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700;800;900&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flag-icons@7.2.3/css/flag-icons.min.css"/>
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 :root {
@@ -24,11 +23,12 @@ header { background:var(--text); color:#fff; height:58px; display:flex; align-it
 .hm { font-size:.7rem; color:rgba(255,255,255,.4); letter-spacing:.1em; text-transform:uppercase; }
 
 .hero { background:var(--text); color:#fff; padding:2.5rem 2rem 2rem; position:relative; overflow:hidden; }
-.hero::after { content:'🛣️'; position:absolute; font-size:14rem; right:-1rem; top:-2rem; opacity:.04; pointer-events:none; }
-.hero h1 { font-family:'Geist',sans-serif; font-weight:800; font-size:clamp(1.6rem,4vw,2.8rem); letter-spacing:-0.03em; line-height:1.05; margin-bottom:.6rem; }
+.hero::after { content:''; }
+#heroCanvas { position:absolute; inset:0; width:100%; height:100%; pointer-events:none; z-index:0; opacity:.6; }
+.hero h1 { font-family:'Geist',sans-serif; font-weight:800; font-size:clamp(1.6rem,4vw,2.8rem); letter-spacing:-0.03em; line-height:1.05; margin-bottom:.6rem; position:relative; z-index:1; }
 .hero h1 em { color:var(--accent); font-style:normal; }
-.hero p { color:rgba(255,255,255,.5); font-size:.82rem; max-width:500px; margin-bottom:1.5rem; }
-.hstats { display:flex; gap:2rem; flex-wrap:wrap; }
+.hero p { color:rgba(255,255,255,.5); font-size:.82rem; max-width:500px; margin-bottom:1.5rem; position:relative; z-index:1; }
+.hstats { display:flex; gap:2rem; flex-wrap:wrap; position:relative; z-index:1; }
 .hstat-n { font-family:'Geist',sans-serif; font-weight:800; font-size:1.4rem; color:var(--accent); }
 .hstat-l { font-size:.65rem; color:rgba(255,255,255,.4); letter-spacing:.08em; text-transform:uppercase; }
 
@@ -54,10 +54,8 @@ main { padding:2rem; max-width:1300px; margin:0 auto; }
 .cc { background:var(--surface); border:1.5px solid var(--border); border-radius:var(--r); overflow:hidden; transition:all .2s; display:flex; flex-direction:column; }
 .cc:hover { transform:translateY(-3px); box-shadow:0 10px 28px rgba(0,0,0,.09); }
 .cc-top { padding:1rem 1.2rem .8rem; border-bottom:1px solid var(--border); display:flex; align-items:flex-start; gap:.8rem; }
-.cc-fl { width:3rem; height:2rem; flex-shrink:0; border-radius:4px; overflow:hidden; box-shadow:0 1px 4px rgba(0,0,0,.18); display:flex; align-items:center; justify-content:center; }
-.cc-fl .fi { width:100%; height:100%; background-size:cover; background-position:center; display:block; }
-.cc-nm { font-family:'Geist',sans-serif; font-weight:800; font-size:.95rem; letter-spacing:-.01em; display:flex; align-items:center; gap:.4rem; }
-.cc-code { font-size:.62rem; font-weight:700; color:var(--muted); background:var(--bg); border:1.5px solid var(--border); border-radius:4px; padding:.1rem .35rem; letter-spacing:.06em; }
+.cc-fl { font-size:1.9rem; line-height:1; flex-shrink:0; }
+.cc-nm { font-family:'Geist',sans-serif; font-weight:800; font-size:.95rem; letter-spacing:-.01em; }
 .cc-rg { font-size:.58rem; color:var(--muted); letter-spacing:.08em; text-transform:uppercase; margin-top:.1rem; }
 .tbadge { font-size:.57rem; font-weight:500; letter-spacing:.1em; text-transform:uppercase; padding:.16rem .5rem; border-radius:100px; margin-top:.28rem; display:inline-block; }
 .tbv { background:var(--vl); color:var(--v); }
@@ -428,6 +426,7 @@ main { padding:2rem; max-width:1300px; margin:0 auto; }
 </header>
 
 <div class="hero">
+  <canvas id="heroCanvas"></canvas>
   <h1>Every road in <em>Europe</em>,<br>one place.</h1>
   <p>Vignettes, tolls, speed limits and driving rules for every European country — from Portugal to Greece, from Norway to Turkey.</p>
   <div class="hstats">
@@ -895,9 +894,9 @@ function renderCC(filter='all',search=''){
   grid.innerHTML=items.map(c=>`
     <div class="cc" data-type="${c.type}">
       <div class="cc-top">
-        <div class="cc-fl"><span class="fi fi-${c.id}" style="width:100%;height:100%;background-size:cover;background-position:center;display:block;"></span></div>
+        <div class="cc-fl">${c.flag}</div>
         <div>
-          <div class="cc-nm">${c.name} <span class="cc-code">${c.id.toUpperCase()}</span></div>
+          <div class="cc-nm">${c.name}</div>
           <div class="cc-rg">${c.region}</div>
           <span class="tbadge ${tc[c.type]}">${tl[c.type]}</span>
         </div>
@@ -2141,6 +2140,73 @@ async function renderRoute(result){
 
 document.getElementById('stat-countries').textContent=C.length;
 renderCC(); renderSpeed(); renderCalcChecks(); renderENC();
+
+// ── HERO ROAD ANIMATION ──
+(function() {
+  const canvas = document.getElementById('heroCanvas');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  let dashOffset = 0;
+
+  function resize() {
+    canvas.width  = canvas.offsetWidth;
+    canvas.height = canvas.offsetHeight;
+  }
+  window.addEventListener('resize', resize);
+  resize();
+
+  function draw() {
+    const W = canvas.width, H = canvas.height;
+    if (!W || !H) { requestAnimationFrame(draw); return; }
+    ctx.clearRect(0, 0, W, H);
+
+    const vx = W * 0.78, vy = H * 0.32;
+    const ease = t => t * t * t;
+
+    // Road surface
+    const grad = ctx.createLinearGradient(vx, vy, vx, H);
+    grad.addColorStop(0,   'rgba(8,7,15,0)');
+    grad.addColorStop(0.25,'rgba(8,7,15,0.5)');
+    grad.addColorStop(1,   'rgba(5,5,12,0.85)');
+    ctx.beginPath();
+    ctx.moveTo(vx, vy);
+    ctx.lineTo(W * 0.30, H);
+    ctx.lineTo(W * 1.06, H);
+    ctx.closePath();
+    ctx.fillStyle = grad;
+    ctx.fill();
+
+    // Road edges
+    [[0.30, 0.13],[1.06, 0.09]].forEach(([ex, alpha]) => {
+      ctx.beginPath(); ctx.moveTo(vx, vy); ctx.lineTo(W * ex, H);
+      ctx.strokeStyle = `rgba(255,255,255,${alpha})`; ctx.lineWidth = 1; ctx.stroke();
+    });
+
+    // Lane dashes
+    const N = 13;
+    const lane = (xFrac, rgb, alpha) => {
+      for (let i = 0; i < N; i++) {
+        const t0 = ((i / N) + dashOffset) % 1;
+        const t1 = ((i + 0.38) / N + dashOffset) % 1;
+        if (t0 < 0.05 || t1 < 0.05) continue;
+        const e0 = ease(t0), e1 = ease(t1);
+        const x0 = vx + (W * xFrac - vx) * e0, y0 = vy + (H - vy) * e0;
+        const x1 = vx + (W * xFrac - vx) * e1, y1 = vy + (H - vy) * e1;
+        const a = Math.min(1, t0 * 2.5) * alpha;
+        ctx.strokeStyle = `rgba(${rgb},${a.toFixed(2)})`;
+        ctx.lineWidth = 1 + e0 * 3.2;
+        ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1, y1); ctx.stroke();
+      }
+    };
+    lane(0.68, '212,130,10', 0.95);  // amber center
+    lane(0.53, '255,255,255', 0.2);  // left
+    lane(0.85, '255,255,255', 0.2);  // right
+
+    dashOffset = (dashOffset + 0.004) % 1;
+    requestAnimationFrame(draw);
+  }
+  draw();
+})();
 
 // ── LANDING LOGIC ──
 (function() {
