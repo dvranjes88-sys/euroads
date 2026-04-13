@@ -259,9 +259,165 @@ main { padding:2rem; max-width:1300px; margin:0 auto; }
   font-size: .6rem;
   color: var(--v);
 }
+
+/* ── LANDING SCREEN ── */
+#landing {
+  position: fixed; inset: 0; z-index: 9999;
+  background: #0D1117;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  overflow: hidden;
+  transition: opacity .6s ease, transform .6s ease;
+}
+#landing.hide {
+  opacity: 0; transform: scale(1.04); pointer-events: none;
+}
+.land-road {
+  position: absolute; inset: 0; pointer-events: none; overflow: hidden;
+}
+.land-road canvas {
+  position: absolute; inset: 0; width: 100%; height: 100%;
+}
+#roadCanvas {
+  position: absolute; inset: 0; width: 100%; height: 100%; z-index: 1;
+}
+@keyframes dashMove {
+  from { stroke-dashoffset: 0; }
+  to   { stroke-dashoffset: -120; }
+}
+.land-stars {
+  position: absolute; inset: 0; pointer-events: none;
+}
+.land-star {
+  position: absolute; background: #fff; border-radius: 50%;
+  animation: twinkle 3s infinite ease-in-out;
+}
+@keyframes twinkle {
+  0%,100% { opacity: .15; } 50% { opacity: .7; }
+}
+.land-content {
+  position: relative; z-index: 2; text-align: center; padding: 2rem;
+  max-width: 640px;
+}
+.land-logo {
+  font-family: 'Geist', sans-serif; font-weight: 900;
+  font-size: clamp(2.5rem, 8vw, 4.5rem);
+  letter-spacing: -.04em; color: #fff; line-height: 1;
+  margin-bottom: .4rem;
+}
+.land-logo span { color: #D4820A; }
+.land-tagline {
+  font-size: clamp(.85rem, 2vw, 1.05rem);
+  color: rgba(255,255,255,.45); margin-bottom: 2.5rem;
+  letter-spacing: .02em;
+}
+.land-features {
+  display: flex; gap: 1rem; justify-content: center;
+  flex-wrap: wrap; margin-bottom: 2.8rem;
+}
+.land-feat {
+  background: rgba(255,255,255,.06);
+  border: 1px solid rgba(255,255,255,.1);
+  border-radius: 12px; padding: .85rem 1.2rem;
+  min-width: 140px; text-align: center;
+  transform: translateY(20px); opacity: 0;
+  animation: featIn .5s forwards;
+}
+.land-feat:nth-child(1) { animation-delay: .3s; }
+.land-feat:nth-child(2) { animation-delay: .5s; }
+.land-feat:nth-child(3) { animation-delay: .7s; }
+@keyframes featIn {
+  to { opacity: 1; transform: translateY(0); }
+}
+.land-feat-icon { font-size: 1.6rem; margin-bottom: .35rem; }
+.land-feat-title {
+  font-family: 'Geist', sans-serif; font-weight: 700;
+  font-size: .78rem; color: #fff; margin-bottom: .2rem;
+}
+.land-feat-desc { font-size: .68rem; color: rgba(255,255,255,.4); line-height: 1.4; }
+.land-cta {
+  display: inline-flex; align-items: center; gap: .6rem;
+  background: #D4820A; color: #000;
+  font-family: 'Geist', sans-serif; font-weight: 800;
+  font-size: 1rem; letter-spacing: -.01em;
+  padding: .9rem 2.2rem; border-radius: 100px;
+  border: none; cursor: pointer;
+  box-shadow: 0 0 40px rgba(212,130,10,.35);
+  transition: all .2s; transform: translateY(20px); opacity: 0;
+  animation: featIn .5s .9s forwards;
+}
+.land-cta:hover { background: #e8920b; transform: scale(1.04); box-shadow: 0 0 60px rgba(212,130,10,.5); }
+.land-cta svg { width: 18px; height: 18px; }
+.land-skip {
+  position: absolute; bottom: 1.5rem; right: 1.5rem;
+  font-size: .7rem; color: rgba(255,255,255,.25);
+  cursor: pointer; transition: color .2s;
+  background: none; border: none;
+}
+.land-skip:hover { color: rgba(255,255,255,.6); }
+.land-counter {
+  display: flex; gap: 2rem; justify-content: center;
+  margin-bottom: 2rem; transform: translateY(20px); opacity: 0;
+  animation: featIn .5s .15s forwards;
+}
+.land-cnt-n {
+  font-family: 'Geist', sans-serif; font-weight: 900;
+  font-size: 2rem; color: #D4820A; line-height: 1;
+}
+.land-cnt-l {
+  font-size: .62rem; color: rgba(255,255,255,.35);
+  letter-spacing: .1em; text-transform: uppercase; margin-top: .2rem;
+}
 </style>
 </head>
 <body>
+
+<!-- ── LANDING SCREEN ── -->
+<div id="landing">
+  <div class="land-stars" id="landStars"></div>
+  <canvas id="roadCanvas"></canvas>
+  <div class="land-road"></div>
+
+  <div class="land-content">
+    <div class="land-logo">Euro<span>Roads</span></div>
+    <p class="land-tagline">Your complete European road trip companion</p>
+
+    <div class="land-counter">
+      <div><div class="land-cnt-n">50</div><div class="land-cnt-l">Countries</div></div>
+      <div><div class="land-cnt-n">3</div><div class="land-cnt-l">Road systems</div></div>
+      <div><div class="land-cnt-n">8</div><div class="land-cnt-l">ENC devices</div></div>
+      <div><div class="land-cnt-n">0</div><div class="land-cnt-l">Surprises</div></div>
+    </div>
+
+    <div class="land-features">
+      <div class="land-feat">
+        <div class="land-feat-icon">🏷️</div>
+        <div class="land-feat-title">Vignettes & Tolls</div>
+        <div class="land-feat-desc">Prices for every country, updated 2026</div>
+      </div>
+      <div class="land-feat">
+        <div class="land-feat-icon">🗺️</div>
+        <div class="land-feat-title">Route Calculator</div>
+        <div class="land-feat-desc">Total road costs for your exact trip</div>
+      </div>
+      <div class="land-feat">
+        <div class="land-feat-icon">⚡</div>
+        <div class="land-feat-title">Speed Limits</div>
+        <div class="land-feat-desc">Urban, rural & motorway — every country</div>
+      </div>
+    </div>
+
+    <button class="land-cta" onclick="dismissLanding()">
+      Plan my trip
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M5 12h14M12 5l7 7-7 7"/>
+      </svg>
+    </button>
+  </div>
+
+  <button class="land-skip" onclick="dismissLanding()">Skip intro ✕</button>
+</div>
+<!-- ── END LANDING ── -->
 
 <header>
   <div class="logo">Euro<span>Roads</span></div>
@@ -1296,7 +1452,7 @@ const HAC_STATION_GPS = [
   ['Zaprešić',            45.855, 15.803],
   // A3: Bregana (SLO) → Lipovac (SRB) (verified OK)
   ['Bregana',             45.841, 15.666],
-  ['Zagreb Istok',        45.814, 16.064],
+  ['Zagreb Istok',        45.754, 16.271],  // from HAC API: 45.7544991, 16.271342
   ['Ivanić Grad',         45.710, 16.398],
   ['Križ',                45.668, 16.541],
   ['Popovača',            45.564, 16.621],
@@ -1362,11 +1518,11 @@ function nearestHACStation(lat, lng){
   return {name:best, dist:bestDist};
 }
 
-// Border entry stations — ONLY these are valid entry points from outside HR
+// Border entry stations — valid HAC API entry points
 const HAC_BORDER_STATIONS = {
-  'HU': ['Goričan', 'Sudaraž (Beli Manastir)'],  // A4 north, A5 east (via Pécs/Osijek)
+  'HU': ['Goričan', 'Zagreb Istok'],  // A4 via Goričan; A5 via Beli Manastir enters near Zagreb Istok
   'SI': ['Trakošćan', 'Bregana', 'Rupa'],
-  'BA': ['Stara Gradiška', 'Svilaj'],
+  'BA': ['Stara Gradiška', 'Novska', 'Slavonski Brod zapad'],  // nearest toll stations to BA border
   'RS': ['Lipovac'],
   'ME': ['Karasovići'],
 };
@@ -1982,6 +2138,113 @@ async function renderRoute(result){
 
 document.getElementById('stat-countries').textContent=C.length;
 renderCC(); renderSpeed(); renderCalcChecks(); renderENC();
+
+// ── LANDING LOGIC ──
+(function() {
+  const starsEl = document.getElementById('landStars');
+
+  // Stars
+  for (let i = 0; i < 80; i++) {
+    const s = document.createElement('div');
+    s.className = 'land-star';
+    const size = Math.random() * 2.5 + 0.5;
+    s.style.cssText = `width:${size}px;height:${size}px;top:${Math.random()*80}%;left:${Math.random()*100}%;animation-delay:${Math.random()*3}s;animation-duration:${2+Math.random()*3}s;`;
+    starsEl.appendChild(s);
+  }
+
+  // ── PERSPECTIVE ROAD ──
+  const canvas = document.getElementById('roadCanvas');
+  const ctx = canvas.getContext('2d');
+  let dashOffset = 0, animId;
+
+  function resize() {
+    canvas.width  = window.innerWidth;
+    canvas.height = window.innerHeight;
+  }
+  window.addEventListener('resize', resize);
+  resize();
+
+  function drawRoad() {
+    const W = canvas.width, H = canvas.height;
+    ctx.clearRect(0, 0, W, H);
+
+    const vx = W * 0.5;   // vanishing point X — center
+    const vy = H * 0.42;  // vanishing point Y — slightly above center
+    const ease = t => t * t * t; // cubic — strong perspective rush
+
+    // Road surface
+    const grad = ctx.createLinearGradient(vx, vy, vx, H);
+    grad.addColorStop(0,   'rgba(12,16,26,0)');
+    grad.addColorStop(0.25,'rgba(12,16,26,0.55)');
+    grad.addColorStop(1,   'rgba(8,11,20,0.92)');
+    ctx.beginPath();
+    ctx.moveTo(vx, vy);
+    ctx.lineTo(W * 0.02, H);
+    ctx.lineTo(W * 0.98, H);
+    ctx.closePath();
+    ctx.fillStyle = grad;
+    ctx.fill();
+
+    // Road edges
+    const drawEdge = (ex) => {
+      ctx.beginPath();
+      ctx.moveTo(vx, vy);
+      ctx.lineTo(ex, H);
+      ctx.strokeStyle = 'rgba(255,255,255,0.12)';
+      ctx.lineWidth = 1.2;
+      ctx.stroke();
+    };
+    drawEdge(W * 0.02);
+    drawEdge(W * 0.98);
+
+    // Lane dividers (perspective-correct dashes)
+    const numDashes = 14;
+    const drawLane = (xFraction, color, alpha) => {
+      for (let i = 0; i < numDashes; i++) {
+        const t0 = ((i / numDashes) + dashOffset) % 1;
+        const t1 = ((i + 0.42) / numDashes + dashOffset) % 1;
+        if (t0 < 0.04 || t1 < 0.04) continue;
+
+        const e0 = ease(t0), e1 = ease(t1);
+        const x0 = vx + (W * xFraction - vx) * e0;
+        const y0 = vy + (H - vy) * e0;
+        const x1 = vx + (W * xFraction - vx) * e1;
+        const y1 = vy + (H - vy) * e1;
+
+        const a = Math.min(1, t0 * 2.8) * alpha;
+        ctx.strokeStyle = color.replace('A', a.toFixed(2));
+        ctx.lineWidth = 1.2 + e0 * 4;
+        ctx.beginPath();
+        ctx.moveTo(x0, y0);
+        ctx.lineTo(x1, y1);
+        ctx.stroke();
+      }
+    };
+
+    // Center line — amber
+    drawLane(0.5,  'rgba(212,130,10,A)', 0.9);
+    // Left lane marker
+    drawLane(0.28, 'rgba(255,255,255,A)', 0.28);
+    // Right lane marker
+    drawLane(0.72, 'rgba(255,255,255,A)', 0.28);
+
+    dashOffset = (dashOffset + 0.0045) % 1;
+    animId = requestAnimationFrame(drawRoad);
+  }
+
+  drawRoad();
+  window._stopRoadAnim = () => cancelAnimationFrame(animId);
+})();
+
+function dismissLanding() {
+  const landing = document.getElementById('landing');
+  landing.classList.add('hide');
+  if (window._stopRoadAnim) window._stopRoadAnim();
+  setTimeout(() => { landing.style.display = 'none'; }, 650);
+  if (typeof gtag !== 'undefined') {
+    gtag('event', 'landing_cta_click', { event_category: 'engagement', event_label: 'Plan my trip' });
+  }
+}
 </script>
 </body>
 </html>
