@@ -415,7 +415,7 @@ main { padding:2rem; max-width:1300px; margin:0 auto; }
     </button>
   </div>
 
-  <button class="land-skip" onclick="dismissLanding()">Skip intro ✕</button>
+
 </div>
 <!-- ── END LANDING ── -->
 
@@ -2240,7 +2240,10 @@ function dismissLanding() {
   const landing = document.getElementById('landing');
   landing.classList.add('hide');
   if (window._stopRoadAnim) window._stopRoadAnim();
-  setTimeout(() => { landing.style.display = 'none'; }, 650);
+  setTimeout(() => {
+    landing.style.display = 'none';
+    window.scrollTo({ top: 0, behavior: 'instant' });
+  }, 650);
   if (typeof gtag !== 'undefined') {
     gtag('event', 'landing_cta_click', { event_category: 'engagement', event_label: 'Plan my trip' });
   }
