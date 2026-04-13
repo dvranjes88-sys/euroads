@@ -1696,7 +1696,7 @@ function initMrMap(){
 
   if(!window.google){
     const s=document.createElement('script');
-    s.src=`https://maps.googleapis.com/maps/api/js?key=${GKEY}&libraries=geometry,places`;
+    s.src=`https://maps.googleapis.com/maps/api/js?key=${GKEY}&libraries=geometry,places&language=en`;
     s.onload=createMrMap;
     document.head.appendChild(s);
   } else { createMrMap(); }
@@ -1720,6 +1720,7 @@ function createMrMap(){
   mrMap=new google.maps.Map(document.getElementById('mr-map'),{
     center:{lat:47,lng:15},zoom:5,
     mapTypeId:'roadmap',
+    language:'en',
     styles:[{featureType:'poi',stylers:[{visibility:'off'}]},{featureType:'transit',stylers:[{visibility:'off'}]}],
     zoomControl:true,streetViewControl:false,fullscreenControl:true,
   });
