@@ -5,7 +5,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>EuroRoads — Complete European Highway Guide</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flag-icons@7.2.3/css/flag-icons.min.css"/>
 <link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700;800;900&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -16,7 +15,7 @@
   --accent: #D4820A; --r: 10px;
 }
 html { scroll-behavior: smooth; }
-body { background:var(--bg); color:var(--text); font-family:'Geist',sans-serif; font-size:15px; line-height:1.6; overflow-x:hidden; }
+body { background:#0D1117; color:#E2E8F0; font-family:'Geist',sans-serif; font-size:15px; line-height:1.6; overflow-x:hidden; }
 
 header { background:var(--text); color:#fff; height:58px; display:flex; align-items:center; justify-content:space-between; padding:0 2rem; position:sticky; top:0; z-index:200; border-bottom:3px solid var(--accent); }
 .logo { font-family:'Geist',sans-serif; font-weight:900; font-size:1.2rem; letter-spacing:-0.04em; }
@@ -24,80 +23,89 @@ header { background:var(--text); color:#fff; height:58px; display:flex; align-it
 .hm { font-size:.7rem; color:rgba(255,255,255,.4); letter-spacing:.1em; text-transform:uppercase; }
 
 .hero { background:var(--text); color:#fff; padding:2.5rem 2rem 2rem; position:relative; overflow:hidden; }
-.hero::after { content:''; }
-#heroCanvas { position:absolute; inset:0; width:100%; height:100%; pointer-events:none; z-index:0; opacity:.6; }
-.hero h1 { font-family:'Geist',sans-serif; font-weight:800; font-size:clamp(1.6rem,4vw,2.8rem); letter-spacing:-0.03em; line-height:1.05; margin-bottom:.6rem; position:relative; z-index:1; }
+.hero::after { content:'🛣️'; position:absolute; font-size:14rem; right:-1rem; top:-2rem; opacity:.04; pointer-events:none; }
+.hero h1 { font-family:'Geist',sans-serif; font-weight:800; font-size:clamp(1.6rem,4vw,2.8rem); letter-spacing:-0.03em; line-height:1.05; margin-bottom:.6rem; }
 .hero h1 em { color:var(--accent); font-style:normal; }
-.hero h1 .char { display:inline-block; animation:charFloat 3s ease-in-out infinite; }
-.hero h1 .char-space { display:inline-block; width:0.28em; }
-@keyframes charFloat { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-5px)} }
-.hero p { color:rgba(255,255,255,.5); font-size:.82rem; max-width:500px; margin-bottom:1.5rem; position:relative; z-index:1; }
-.hstats { display:flex; gap:2rem; flex-wrap:wrap; position:relative; z-index:1; }
+.hero p { color:rgba(255,255,255,.5); font-size:.82rem; max-width:500px; margin-bottom:1.5rem; }
+.hstats { display:flex; gap:2rem; flex-wrap:wrap; }
 .hstat-n { font-family:'Geist',sans-serif; font-weight:800; font-size:1.4rem; color:var(--accent); }
 .hstat-l { font-size:.65rem; color:rgba(255,255,255,.4); letter-spacing:.08em; text-transform:uppercase; }
 
-.tab-bar { display:flex; background:var(--surface); border-bottom:2px solid var(--border); padding:0 2rem; position:sticky; top:58px; z-index:190; overflow-x:auto; gap:.25rem; }
-.tab { padding:.75rem 1.3rem; font-family:'Geist',sans-serif; font-weight:700; font-size:.72rem; letter-spacing:.04em; text-transform:uppercase; border:none; background:none; cursor:pointer; color:var(--muted); border-bottom:3px solid transparent; margin-bottom:-2px; white-space:nowrap; transition:all .18s; border-radius:6px 6px 0 0; display:flex; align-items:center; gap:.4rem; }
-.tab.active { color:var(--text); border-bottom-color:var(--accent); background:rgba(212,130,10,0.06); }
-.tab:hover:not(.active) { color:var(--text); background:var(--bg); }
+.tab-bar { display:flex; background:#18160F; border-bottom:1px solid rgba(255,255,255,.07); padding:0 2rem; position:sticky; top:58px; z-index:190; overflow-x:auto; gap:0; scrollbar-width:none; }
+.tab-bar::-webkit-scrollbar { display:none; }
+.tab { padding:.85rem 1.1rem; font-family:'Geist',sans-serif; font-weight:700; font-size:.68rem; letter-spacing:.05em; text-transform:uppercase; border:none; background:none; cursor:pointer; color:rgba(255,255,255,.3); border-bottom:2.5px solid transparent; margin-bottom:-1px; white-space:nowrap; transition:all .15s; display:flex; align-items:center; gap:.4rem; }
+.tab svg { opacity:.5; transition:opacity .15s; flex-shrink:0; }
+.tab.active { color:#fff; border-bottom-color:var(--accent); }
+.tab.active svg { opacity:1; }
+.tab:hover:not(.active) { color:rgba(255,255,255,.65); }
+.tab:hover:not(.active) svg { opacity:.75; }
+.tab-badge { font-size:.46rem; background:var(--accent); color:#000; font-weight:900; padding:.1rem .28rem; border-radius:3px; letter-spacing:.04em; }
 
-main { padding:2rem; max-width:1300px; margin:0 auto; }
+main { padding:1.2rem 2rem 2rem; max-width:1300px; margin:0 auto; background:#0D1117; min-height:60vh; }
 .view { display:none; }
 .view.active { display:block; }
 
-.toolbar { display:flex; gap:.5rem; margin-bottom:1.5rem; flex-wrap:wrap; align-items:center; }
-.fb { padding:.38rem .85rem; border-radius:100px; border:1.5px solid var(--border); background:var(--surface); font-size:.73rem; font-weight:500; cursor:pointer; transition:all .15s; color:var(--muted); white-space:nowrap; }
-.fb:hover, .fb.active { border-color:var(--text); background:var(--text); color:#fff; }
-.fb.fv.active { background:var(--v); border-color:var(--v); }
-.fb.ft.active { background:var(--t); border-color:var(--t); }
-.fb.ff.active { background:var(--f); border-color:var(--f); }
-.sbox { margin-left:auto; display:flex; align-items:center; gap:.4rem; background:var(--surface); border:1.5px solid var(--border); border-radius:100px; padding:.38rem .9rem; }
-.sbox input { border:none; outline:none; font-family:'Geist',sans-serif; font-size:.78rem; background:transparent; width:150px; color:var(--text); }
+.toolbar { display:flex; gap:.4rem; margin-bottom:1.2rem; flex-wrap:nowrap; align-items:center; overflow-x:auto; scrollbar-width:none; padding-bottom:.2rem; }
+.toolbar::-webkit-scrollbar { display:none; }
+.fb { display:flex; align-items:center; gap:.3rem; padding:.38rem .82rem; border-radius:100px; border:1.5px solid rgba(255,255,255,.1); background:transparent; font-family:'Geist',sans-serif; font-size:.65rem; font-weight:700; cursor:pointer; transition:all .15s; color:rgba(255,255,255,.4); white-space:nowrap; letter-spacing:.03em; }
+.fb:hover { border-color:rgba(255,255,255,.28); color:rgba(255,255,255,.75); }
+.fb.active { background:#fff; border-color:#fff; color:#18160F; }
+.fb.fv.active { background:rgba(27,77,62,.25); border-color:#1B4D3E; color:#5DCEA8; }
+.fb.ft.active { background:rgba(122,50,0,.25); border-color:#7A3200; color:#F4A45A; }
+.fb.ff.active { background:rgba(15,52,96,.25); border-color:#0F3460; color:#6EB3F7; }
+.count-tag { margin-left:auto; font-size:.62rem; color:rgba(255,255,255,.18); white-space:nowrap; flex-shrink:0; }
+.sbox { display:flex; align-items:center; gap:.5rem; background:rgba(255,255,255,.05); border:1.5px solid rgba(255,255,255,.09); border-radius:10px; padding:.55rem .85rem .55rem 2.5rem; position:relative; flex:1; min-width:160px; max-width:280px; }
+.sbox-wrap { position:relative; flex:1; min-width:160px; max-width:280px; margin-left:auto; }
+.sbox-icon { position:absolute; left:.85rem; top:50%; transform:translateY(-50%); color:rgba(255,255,255,.25); pointer-events:none; z-index:1; }
+.sbox input { border:none; outline:none; font-family:'Geist',sans-serif; font-size:.78rem; background:transparent; width:100%; color:#fff; padding:.55rem .85rem .55rem 2.5rem; border:1.5px solid rgba(255,255,255,.09); border-radius:10px; background:rgba(255,255,255,.05); transition:border-color .15s; }
+.sbox input::placeholder { color:rgba(255,255,255,.22); }
+.sbox input:focus { border-color:rgba(212,130,10,.45); background:rgba(255,255,255,.07); outline:none; }
 
-.cc-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(300px,1fr)); gap:.85rem; }
-.cc { background:var(--surface); border:1.5px solid var(--border); border-radius:var(--r); overflow:hidden; transition:all .2s; display:flex; flex-direction:column; }
-.cc:hover { transform:translateY(-3px); box-shadow:0 10px 28px rgba(0,0,0,.09); }
-.cc-top { padding:1rem 1.2rem .8rem; border-bottom:1px solid var(--border); display:flex; align-items:center; gap:.85rem; }
-.cc-fl { width:3rem; height:2rem; flex-shrink:0; border-radius:4px; overflow:hidden; box-shadow:0 1px 4px rgba(0,0,0,.18); }
+.cc-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(300px,1fr)); gap:.65rem; }
+.cc { background:#141922; border:1px solid rgba(255,255,255,.07); border-radius:12px; overflow:hidden; transition:all .2s; display:flex; flex-direction:column; }
+.cc:hover { transform:translateY(-2px); box-shadow:0 8px 28px rgba(0,0,0,.3); border-color:rgba(212,130,10,.25); }
+.cc-top { padding:.85rem 1rem .7rem; border-bottom:1px solid rgba(255,255,255,.05); display:flex; align-items:center; gap:.75rem; }
+.cc-fl { width:2.8rem; height:1.85rem; flex-shrink:0; border-radius:4px; overflow:hidden; box-shadow:0 1px 4px rgba(0,0,0,.3); }
 .cc-fl .fi { width:100%; height:100%; background-size:cover; background-position:center; display:block; }
-.cc-nm { font-family:'Geist',sans-serif; font-weight:800; font-size:.95rem; letter-spacing:-.01em; display:flex; align-items:center; gap:.4rem; }
-.cc-code { font-size:.62rem; font-weight:700; color:var(--muted); background:var(--bg); border:1.5px solid var(--border); border-radius:4px; padding:.1rem .35rem; letter-spacing:.06em; }
-.cc-rg { font-size:.58rem; color:var(--muted); letter-spacing:.08em; text-transform:uppercase; margin-top:.15rem; }
-.tbadge { font-size:.57rem; font-weight:500; letter-spacing:.1em; text-transform:uppercase; padding:.16rem .5rem; border-radius:100px; margin-top:.28rem; display:inline-block; }
-.tbv { background:var(--vl); color:var(--v); }
-.tbt { background:var(--tl); color:var(--t); }
-.tbf { background:var(--fl); color:var(--f); }
+.cc-nm { font-family:'Geist',sans-serif; font-weight:800; font-size:.9rem; letter-spacing:-.01em; display:flex; align-items:center; gap:.38rem; color:#fff; }
+.cc-code { font-size:.55rem; font-weight:700; color:rgba(255,255,255,.25); background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.09); border-radius:3px; padding:.08rem .3rem; letter-spacing:.06em; }
+.cc-rg { font-size:.55rem; color:rgba(255,255,255,.25); letter-spacing:.08em; text-transform:uppercase; margin-top:.08rem; }
+.tbadge { font-size:.52rem; font-weight:700; letter-spacing:.07em; text-transform:uppercase; padding:.13rem .42rem; border-radius:100px; margin-top:.22rem; display:inline-flex; align-items:center; gap:.25rem; }
+.tbv { background:rgba(27,77,62,.2); color:#5DCEA8; border:1px solid rgba(93,206,168,.15); }
+.tbt { background:rgba(122,50,0,.2); color:#F4A45A; border:1px solid rgba(244,164,90,.15); }
+.tbf { background:rgba(15,52,96,.2); color:#6EB3F7; border:1px solid rgba(110,179,247,.15); }
 
-.cc-body { padding:.9rem 1.2rem; flex:1; }
-.cc-info { font-size:.75rem; color:var(--muted); line-height:1.7; margin-bottom:.75rem; }
-.prices { display:flex; flex-direction:column; gap:.28rem; margin-bottom:.75rem; }
-.pr { display:flex; justify-content:space-between; font-size:.73rem; }
-.pr-p { color:var(--muted); }
-.pr-v { font-family:'Geist',sans-serif; font-weight:700; }
-.epill { display:inline-flex; align-items:center; gap:.3rem; font-size:.65rem; color:var(--enc); background:var(--encl); padding:.22rem .6rem; border-radius:100px; margin-bottom:.75rem; font-weight:500; }
-.rules { display:flex; flex-wrap:wrap; gap:.3rem; margin-bottom:.6rem; }
-.rp { font-size:.62rem; padding:.18rem .48rem; border-radius:4px; display:flex; align-items:center; gap:.2rem; }
-.rp-ok { background:#e6f2ee; color:#1B4D3E; }
-.rp-warn { background:#fdf3e3; color:#8A5A00; }
-.rp-bad { background:#fde8e6; color:#9B2D22; }
+.cc-body { padding:.75rem 1rem; flex:1; }
+.cc-info { font-size:.72rem; color:rgba(255,255,255,.3); line-height:1.65; margin-bottom:.65rem; }
+.prices { display:flex; flex-direction:column; gap:.2rem; margin-bottom:.65rem; }
+.pr { display:flex; justify-content:space-between; font-size:.72rem; padding:.18rem 0; border-bottom:1px solid rgba(255,255,255,.04); }
+.pr:last-child { border-bottom:none; }
+.pr-p { color:rgba(255,255,255,.3); }
+.pr-v { font-family:'Geist',sans-serif; font-weight:800; color:#fff; }
+.epill { display:inline-flex; align-items:center; gap:.3rem; font-size:.62rem; color:#C084FC; background:rgba(192,132,252,.1); border:1px solid rgba(192,132,252,.15); padding:.18rem .55rem; border-radius:100px; margin-bottom:.65rem; font-weight:500; }
+.rules { display:flex; flex-wrap:wrap; gap:.28rem; margin-bottom:.55rem; }
+.rp { font-size:.6rem; padding:.15rem .42rem; border-radius:4px; display:flex; align-items:center; gap:.2rem; }
+.rp-ok { background:rgba(27,77,62,.2); color:#5DCEA8; }
+.rp-warn { background:rgba(122,80,0,.2); color:#F4A45A; }
+.rp-bad { background:rgba(153,60,50,.2); color:#F87171; }
 
-.cc-foot { padding:0 1.2rem 1rem; }
-.bbuy { width:100%; padding:.58rem; background:var(--text); color:#fff; border:none; border-radius:7px; font-family:'Geist',sans-serif; font-size:.73rem; font-weight:500; cursor:pointer; text-decoration:none; display:flex; align-items:center; justify-content:center; gap:.3rem; transition:all .15s; }
-.bbuy:hover { background:#333; }
-.bbuy.na { background:var(--border); color:var(--muted); cursor:default; pointer-events:none; }
+.cc-foot { padding:0 1rem .85rem; }
+.bbuy { width:100%; padding:.52rem; background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.09); border-radius:8px; font-family:'Geist',sans-serif; font-size:.68rem; font-weight:600; cursor:pointer; text-decoration:none; display:flex; align-items:center; justify-content:center; gap:.35rem; transition:all .15s; color:rgba(255,255,255,.4); }
+.bbuy:hover { background:var(--accent); border-color:var(--accent); color:#000; }
+.bbuy.na { background:rgba(255,255,255,.03); color:rgba(255,255,255,.18); cursor:default; pointer-events:none; border-color:rgba(255,255,255,.05); }
 
 /* SPEED TABLE */
 .speed-table-wrap { overflow-x:auto; }
-.speed-table { width:100%; border-collapse:collapse; font-size:.8rem; background:var(--surface); border-radius:var(--r); overflow:hidden; border:1.5px solid var(--border); }
-.speed-table th { background:var(--text); color:#fff; font-family:'Geist',sans-serif; font-weight:700; font-size:.68rem; letter-spacing:.06em; text-transform:uppercase; padding:.7rem .9rem; text-align:left; white-space:nowrap; }
-.speed-table td { padding:.6rem .9rem; border-bottom:1px solid var(--border); vertical-align:middle; }
+.speed-table { width:100%; border-collapse:collapse; font-size:.8rem; background:#141922; border-radius:12px; overflow:hidden; border:1px solid rgba(255,255,255,.07); }
+.speed-table th { background:#0D1117; color:rgba(255,255,255,.5); font-family:'Geist',sans-serif; font-weight:700; font-size:.65rem; letter-spacing:.08em; text-transform:uppercase; padding:.7rem .9rem; text-align:left; white-space:nowrap; border-bottom:1px solid rgba(255,255,255,.07); }
+.speed-table td { padding:.6rem .9rem; border-bottom:1px solid rgba(255,255,255,.04); vertical-align:middle; color:#fff; }
 .speed-table tr:last-child td { border-bottom:none; }
-.speed-table tr:hover td { background:var(--bg); }
-.spd { font-family:'Geist',sans-serif; font-weight:700; }
-.spd.fast { color:var(--t); }
-.spd.slow { color:var(--f); }
-.spd.none { color:var(--muted); font-size:.72rem; font-weight:400; }
-.nc { font-size:.7rem; color:var(--muted); }
+.speed-table tr:hover td { background:rgba(255,255,255,.03); }
+.spd { font-family:'Geist',sans-serif; font-weight:700; color:#fff; }
+.spd.fast { color:#F4A45A; }
+.spd.slow { color:#6EB3F7; }
+.spd.none { color:rgba(255,255,255,.3); font-size:.72rem; font-weight:400; }
+.nc { font-size:.7rem; color:rgba(255,255,255,.3); }
 
 /* CALC */
 .cw { display:grid; grid-template-columns:1fr 1fr; gap:1.5rem; align-items:start; }
@@ -127,19 +135,20 @@ main { padding:2rem; max-width:1300px; margin:0 auto; }
 
 /* ENC */
 .enc-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(260px,1fr)); gap:1rem; margin-top:1.2rem; }
-.enc-card { background:var(--surface); border:1.5px solid var(--border); border-radius:var(--r); padding:1.3rem; }
+.enc-card { background:#141922; border:1px solid rgba(255,255,255,.07); border-radius:12px; padding:1.2rem; transition:border-color .2s; }
+.enc-card:hover { border-color:rgba(212,130,10,.25); }
 .enc-h { display:flex; align-items:center; gap:.7rem; margin-bottom:.7rem; }
-.enc-ico { width:38px; height:38px; background:var(--encl); border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:1.1rem; flex-shrink:0; }
-.enc-ti { font-family:'Geist',sans-serif; font-weight:800; font-size:.9rem; }
-.enc-sc { font-size:.65rem; color:var(--enc); font-weight:500; }
-.enc-tl { font-size:.73rem; color:var(--muted); font-style:italic; margin-bottom:.55rem; }
-.enc-d { font-size:.75rem; color:var(--muted); line-height:1.7; margin-bottom:.8rem; }
+.enc-ico { width:38px; height:38px; background:rgba(192,132,252,.1); border:1px solid rgba(192,132,252,.15); border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:1.1rem; flex-shrink:0; }
+.enc-ti { font-family:'Geist',sans-serif; font-weight:800; font-size:.9rem; color:#fff; }
+.enc-sc { font-size:.65rem; color:#C084FC; font-weight:500; }
+.enc-tl { font-size:.73rem; color:rgba(255,255,255,.3); font-style:italic; margin-bottom:.55rem; }
+.enc-d { font-size:.75rem; color:rgba(255,255,255,.3); line-height:1.7; margin-bottom:.8rem; }
 .enc-tags { display:flex; flex-wrap:wrap; gap:.3rem; }
-.enc-tag { font-size:.63rem; background:var(--bg); border:1px solid var(--border); padding:.16rem .42rem; border-radius:4px; color:var(--muted); }
+.enc-tag { font-size:.63rem; background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.08); padding:.16rem .42rem; border-radius:4px; color:rgba(255,255,255,.35); }
 
 .sh { margin-bottom:1.3rem; }
-.sh h2 { font-family:'Geist',sans-serif; font-weight:800; font-size:1.3rem; letter-spacing:-0.02em; }
-.sh p { font-size:.8rem; color:var(--muted); margin-top:.2rem; }
+.sh h2 { font-family:'Geist',sans-serif; font-weight:800; font-size:1.3rem; letter-spacing:-0.02em; color:#fff; }
+.sh p { font-size:.8rem; color:rgba(255,255,255,.35); margin-top:.2rem; }
 
 /* CAMERAS */
 .cam-note { background:var(--accent-l,#FDF3E3); border:1.5px solid #f0d090; border-radius:8px; padding:.7rem 1rem; font-size:.75rem; color:#7A5000; margin-bottom:1.5rem; }
@@ -256,16 +265,10 @@ main { padding:2rem; max-width:1300px; margin:0 auto; }
   50%      { box-shadow:0 0 0 8px rgba(27,77,62,0); background:rgba(27,77,62,0.16); color:#1B4D3E; }
 }
 .tab-highlight {
-  color: var(--v) !important;
-  border-bottom-color: var(--v) !important;
-  animation: pulse-tab 1.8s ease-in-out infinite;
-  font-weight: 800 !important;
+  color: rgba(255,255,255,.55) !important;
+  border-bottom-color: transparent !important;
 }
-.tab-highlight::after {
-  content: ' ✦';
-  font-size: .6rem;
-  color: var(--v);
-}
+.tab-highlight .tab-badge { display:inline-block; }
 
 /* ── LANDING SCREEN ── */
 #landing {
@@ -329,6 +332,12 @@ main { padding:2rem; max-width:1300px; margin:0 auto; }
   min-width: 140px; text-align: center;
   transform: translateY(20px); opacity: 0;
   animation: featIn .5s forwards;
+  cursor: pointer; transition: background .2s, border-color .2s, transform .2s;
+}
+.land-feat:hover {
+  background: rgba(212,130,10,.15);
+  border-color: rgba(212,130,10,.5);
+  transform: translateY(-3px) !important;
 }
 .land-feat:nth-child(1) { animation-delay: .3s; }
 .land-feat:nth-child(2) { animation-delay: .5s; }
@@ -336,12 +345,14 @@ main { padding:2rem; max-width:1300px; margin:0 auto; }
 @keyframes featIn {
   to { opacity: 1; transform: translateY(0); }
 }
-.land-feat-icon { font-size: 1.6rem; margin-bottom: .35rem; }
+.land-feat-icon { margin-bottom: .5rem; display:flex; align-items:center; justify-content:center; }
+.land-feat-icon svg { width:28px; height:28px; stroke: #D4820A; }
 .land-feat-title {
   font-family: 'Geist', sans-serif; font-weight: 700;
   font-size: .78rem; color: #fff; margin-bottom: .2rem;
 }
 .land-feat-desc { font-size: .68rem; color: rgba(255,255,255,.4); line-height: 1.4; }
+.land-feat-arrow { font-size: .58rem; color: rgba(212,130,10,.6); margin-top: .35rem; letter-spacing: .05em; text-transform: uppercase; font-weight: 700; }
 .land-cta {
   display: inline-flex; align-items: center; gap: .6rem;
   background: #D4820A; color: #000;
@@ -390,27 +401,36 @@ main { padding:2rem; max-width:1300px; margin:0 auto; }
     <p class="land-tagline">Your complete European road trip companion</p>
 
     <div class="land-counter">
-      <div><div class="land-cnt-n">49</div><div class="land-cnt-l">Countries</div></div>
+      <div><div class="land-cnt-n">50</div><div class="land-cnt-l">Countries</div></div>
       <div><div class="land-cnt-n">3</div><div class="land-cnt-l">Road systems</div></div>
       <div><div class="land-cnt-n">8</div><div class="land-cnt-l">ENC devices</div></div>
       <div><div class="land-cnt-n">0</div><div class="land-cnt-l">Surprises</div></div>
     </div>
 
     <div class="land-features">
-      <div class="land-feat">
-        <div class="land-feat-icon">🏷️</div>
+      <div class="land-feat" onclick="dismissLanding('countries')">
+        <div class="land-feat-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/></svg>
+        </div>
         <div class="land-feat-title">Vignettes & Tolls</div>
         <div class="land-feat-desc">Prices for every country, updated 2026</div>
+        <div class="land-feat-arrow">Explore →</div>
       </div>
-      <div class="land-feat">
-        <div class="land-feat-icon">🗺️</div>
+      <div class="land-feat" onclick="dismissLanding('maproute')">
+        <div class="land-feat-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="19" r="3"/><path d="M9 19h8.5a3.5 3.5 0 0 0 0-7h-11a3.5 3.5 0 0 1 0-7H15"/><circle cx="18" cy="5" r="3"/></svg>
+        </div>
         <div class="land-feat-title">Route Calculator</div>
         <div class="land-feat-desc">Total road costs for your exact trip</div>
+        <div class="land-feat-arrow">Calculate →</div>
       </div>
-      <div class="land-feat">
-        <div class="land-feat-icon">⚡</div>
+      <div class="land-feat" onclick="dismissLanding('speed')">
+        <div class="land-feat-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m12 14 4-4"/><path d="M3.34 19a10 10 0 1 1 17.32 0"/></svg>
+        </div>
         <div class="land-feat-title">Speed Limits</div>
         <div class="land-feat-desc">Urban, rural & motorway — every country</div>
+        <div class="land-feat-arrow">View →</div>
       </div>
     </div>
 
@@ -422,6 +442,7 @@ main { padding:2rem; max-width:1300px; margin:0 auto; }
     </button>
   </div>
 
+
 </div>
 <!-- ── END LANDING ── -->
 
@@ -431,42 +452,65 @@ main { padding:2rem; max-width:1300px; margin:0 auto; }
 </header>
 
 <div class="hero">
-  <canvas id="heroCanvas"></canvas>
-  <h1 id="heroTitle"></h1>
+  <h1>Every road in <em>Europe</em>,<br>one place.</h1>
   <p>Vignettes, tolls, speed limits and driving rules for every European country — from Portugal to Greece, from Norway to Turkey.</p>
   <div class="hstats">
     <div><div class="hstat-n" id="stat-countries">50</div><div class="hstat-l">Countries</div></div>
     <div><div class="hstat-n">3</div><div class="hstat-l">Road systems</div></div>
-    <div><div class="hstat-n">7</div><div class="hstat-l">ENC devices</div></div>
+    <div><div class="hstat-n">8</div><div class="hstat-l">ENC devices</div></div>
   </div>
 </div>
 
 <div class="tab-bar">
-  <button class="tab active" onclick="switchTab('countries',this)">🗺️ Countries</button>
-  <button class="tab" onclick="switchTab('speed',this)">⚡ Speed Limits</button>
-  <button class="tab tab-highlight" onclick="switchTab('maproute',this)">🧮 Route Calculator</button>
-  <button class="tab" onclick="switchTab('enc',this)">📦 ENC Devices</button>
-  <button class="tab" onclick="switchTab('game',this)">🎮 EuroTour Game</button>
+  <button class="tab active" data-tab="countries" onclick="switchTab('countries',this)">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/></svg>
+    Countries
+  </button>
+  <button class="tab" data-tab="speed" onclick="switchTab('speed',this)">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 14 4-4"/><path d="M3.34 19a10 10 0 1 1 17.32 0"/></svg>
+    Speed Limits
+  </button>
+  <button class="tab" data-tab="maproute" onclick="switchTab('maproute',this)">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="19" r="3"/><path d="M9 19h8.5a3.5 3.5 0 0 0 0-7h-11a3.5 3.5 0 0 1 0-7H15"/><circle cx="18" cy="5" r="3"/></svg>
+    Route Calculator
+    <span class="tab-badge">NEW</span>
+  </button>
+  <button class="tab" data-tab="enc" onclick="switchTab('enc',this)">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="2"/><rect x="9" y="9" width="6" height="6"/><path d="M15 2v2M9 2v2M2 15h2M2 9h2M15 22v-2M9 22v-2M22 15h-2M22 9h-2"/></svg>
+    ENC Devices
+  </button>
+  <button class="tab" data-tab="game" onclick="switchTab('game',this)">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="3 6 9 3 15 6 21 3 21 18 15 21 9 18 3 21"/><line x1="9" x2="9" y1="3" y2="18"/><line x1="15" x2="15" y1="6" y2="21"/></svg>
+    EuroTour Game
+  </button>
 </div>
 
 <main>
 <div class="view active" id="view-countries">
   <div class="toolbar">
-    <span style="font-size:.72rem;color:var(--muted);font-weight:500">Filter:</span>
-    <button class="fb active" onclick="filterCC('all',this)">All</button>
-    <button class="fb fv" onclick="filterCC('vignette',this)">🏷️ Vignette</button>
-    <button class="fb ft" onclick="filterCC('toll',this)">🚧 Toll</button>
-    <button class="fb ff" onclick="filterCC('free',this)">🆓 Free</button>
-    <div class="sbox">
-      <span style="color:var(--muted)">🔍</span>
-      <input id="cc-search" type="text" placeholder="Search country…" oninput="searchCC()">
+    <button class="fb active" onclick="filterCC('all',this)">All countries</button>
+    <button class="fb fv" onclick="filterCC('vignette',this)">
+      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12V22H4V12"/><path d="M22 7H2v5h20V7z"/><path d="M12 22V7"/></svg>
+      Vignette
+    </button>
+    <button class="fb ft" onclick="filterCC('toll',this)">
+      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M12 12h.01M17 12h.01M7 12h.01"/></svg>
+      Toll gates
+    </button>
+    <button class="fb ff" onclick="filterCC('free',this)">
+      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="m9 11 3 3L22 4"/></svg>
+      Free
+    </button>
+    <div style="margin-left:auto;position:relative;flex-shrink:0;">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.25)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="position:absolute;left:.75rem;top:50%;transform:translateY(-50%);pointer-events:none;"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+      <input id="cc-search" type="text" placeholder="Search country, e.g. Austria…" oninput="searchCC()" style="background:rgba(255,255,255,.05);border:1.5px solid rgba(255,255,255,.09);border-radius:10px;padding:.55rem .85rem .55rem 2.4rem;font-family:'Geist',sans-serif;font-size:.78rem;color:#fff;outline:none;width:220px;transition:border-color .15s;" onfocus="this.style.borderColor='rgba(212,130,10,.45)'" onblur="this.style.borderColor='rgba(255,255,255,.09)'">
     </div>
   </div>
   <div class="cc-grid" id="country-grid"></div>
 </div>
 
 <div class="view" id="view-speed">
-  <div class="sh"><h2>⚡ Speed Limits by Country</h2><p>Default limits for passenger cars in km/h. Trucks, buses and new drivers have lower limits. Always follow local signs.</p></div>
+  <div class="sh"><h2>Speed Limits by Country</h2><p>Default limits for passenger cars in km/h. Trucks, buses and new drivers have lower limits. Always follow local signs.</p></div>
   <div class="speed-table-wrap">
     <table class="speed-table">
       <thead><tr><th>Country</th><th>🏙️ Urban</th><th>🛣️ Rural</th><th>🚀 Motorway</th><th>🚛 Truck (motorway)</th><th>📝 Notes</th></tr></thead>
@@ -476,12 +520,12 @@ main { padding:2rem; max-width:1300px; margin:0 auto; }
 </div>
 
 <div class="view" id="view-enc">
-  <div class="sh"><h2>📦 Electronic Toll Collection</h2><p>ENC devices let you pass toll gates without stopping. Here's what works where.</p></div>
+  <div class="sh"><h2>Electronic Toll Collection</h2><p>ENC devices let you pass toll gates without stopping. Here's what works where.</p></div>
   <div class="enc-grid" id="enc-grid"></div>
 </div>
 
 <div class="view" id="view-game">
-  <div class="sh"><h2>🎮 EuroTour — Capital City Game</h2><p>Test your European geography knowledge. Click cities on the map to build your route!</p></div>
+  <div class="sh"><h2>EuroTour — Capital City Game</h2><p>Test your European geography knowledge. Click cities on the map to build your route!</p></div>
   <div style="border:1.5px solid var(--border);border-radius:12px;overflow:hidden;height:600px;">
     <iframe src="euro-capitals-game.html" style="width:100%;height:100%;border:none;" title="EuroTour Game"></iframe>
   </div>
@@ -565,17 +609,17 @@ const C = [
   // ── VIGNETTE ──
   { id:'sk',flag:'🇸🇰',name:'Slovakia',region:'EU',type:'vignette',
     info:'Electronic vignette (eZnámka). Linked to plate, no sticker. Camera enforced.',
-    prices:[{p:'1 day',v:'€8.10'},{p:'10 days',v:'€10.80'},{p:'1 month',v:'€17.10'},{p:'1 year',v:'€90'}],
+    prices:[{p:'10 days',v:'€10'},{p:'1 month',v:'€14'},{p:'1 year',v:'€50'}],
     enc:null,buy:'https://eznamka.sk',bl:'eznamka.sk',
     rules:[{i:'🚭',t:'Alcohol 0.0‰',c:'bad'},{i:'❄️',t:'Winter tyres req.',c:'warn'},{i:'💡',t:'Lights always on',c:'ok'},{i:'🦺',t:'Vest in car',c:'ok'}]},
   { id:'cz',flag:'🇨🇿',name:'Czechia',region:'EU',type:'vignette',
-    info:'Electronic vignette (eZnámka CZ). Linked to plate. Prices updated 2026.',
-    prices:[{p:'1 day',v:'CZK 230'},{p:'10 days',v:'CZK 300'},{p:'1 month',v:'CZK 480'},{p:'1 year',v:'CZK 2,570'}],
+    info:'Electronic vignette (eZnámka CZ). Updated pricing 2024. Linked to plate.',
+    prices:[{p:'10 days',v:'CZK 310'},{p:'1 month',v:'CZK 430'},{p:'1 year',v:'CZK 1,500'}],
     enc:null,buy:'https://edalnice.cz',bl:'edalnice.cz',
     rules:[{i:'🚭',t:'Alcohol 0.0‰',c:'bad'},{i:'❄️',t:'Winter tyres req.',c:'warn'},{i:'💡',t:'Lights always on',c:'ok'}]},
   { id:'at',flag:'🇦🇹',name:'Austria',region:'EU',type:'vignette',
-    info:'Physical or digital vignette. Some mountain tunnels (Brenner, Arlberg, Tauern) charge extra. 2026 is last year for sticker vignettes.',
-    prices:[{p:'1 day',v:'€9.60'},{p:'10 days',v:'€12.80'},{p:'2 months',v:'€32.00'},{p:'1 year',v:'€106.80'}],
+    info:'Physical or digital vignette. Some mountain tunnels (Brenner, Arlberg, Tauern) charge extra.',
+    prices:[{p:'10 days',v:'€9.90'},{p:'2 months',v:'€29.00'},{p:'1 year',v:'€96.40'}],
     enc:null,buy:'https://www.asfinag.at/toll/vignette/',bl:'asfinag.at',
     rules:[{i:'🍺',t:'Alcohol 0.5‰',c:'warn'},{i:'❄️',t:'Winter tyres req.',c:'warn'},{i:'💡',t:'Lights always on',c:'ok'},{i:'🦺',t:'Vest in car',c:'ok'}]},
   { id:'ch',flag:'🇨🇭',name:'Switzerland',region:'Non-EU',type:'vignette',
@@ -584,13 +628,13 @@ const C = [
     enc:null,buy:'https://www.bazg.admin.ch',bl:'bazg.admin.ch',
     rules:[{i:'🍺',t:'Alcohol 0.5‰',c:'warn'},{i:'💡',t:'Lights always on',c:'ok'},{i:'⛓️',t:'Winter tyres/chains',c:'warn'}]},
   { id:'hu',flag:'🇭🇺',name:'Hungary',region:'EU',type:'vignette',
-    info:'Electronic vignette (e-matrica). No sticker, linked to plate. Prices updated January 2026.',
-    prices:[{p:'1 day',v:'HUF 5,550'},{p:'10 days',v:'HUF 6,900'},{p:'1 month',v:'HUF 11,170'},{p:'1 year',v:'HUF 61,760'}],
-    enc:null,buy:'https://nemzetiutdij.hu',bl:'nemzetiutdij.hu',
+    info:'Electronic vignette (e-matrica). No sticker, linked to plate.',
+    prices:[{p:'10 days',v:'HUF 5,340'},{p:'1 month',v:'HUF 7,500'},{p:'1 year',v:'HUF 22,000'}],
+    enc:null,buy:'https://motorway.hu',bl:'motorway.hu',
     rules:[{i:'🚭',t:'Alcohol 0.0‰',c:'bad'},{i:'💡',t:'Lights always on',c:'ok'},{i:'🦺',t:'Vest in car',c:'ok'}]},
   { id:'si',flag:'🇸🇮',name:'Slovenia',region:'EU',type:'vignette',
-    info:'Physical vignette required. Available at border gas stations.',
-    prices:[{p:'7 days',v:'€7.50'},{p:'1 month',v:'€15.00'},{p:'1 year',v:'€30.00'}],
+    info:'Electronic e-vignette only (no sticker since 2022). Linked to plate. H5/H6 coastal roads toll-free from Jan 2026. Karavanke tunnel charged separately (€9).',
+    prices:[{p:'7 days',v:'€16.00'},{p:'1 month',v:'€32.00'},{p:'1 year',v:'€117.50'}],
     enc:null,buy:'https://www.dars.si',bl:'dars.si',
     rules:[{i:'🍺',t:'Alcohol 0.5‰',c:'warn'},{i:'❄️',t:'Winter tyres req.',c:'warn'},{i:'💡',t:'Lights always on',c:'ok'}]},
   { id:'ro',flag:'🇷🇴',name:'Romania',region:'EU',type:'vignette',
@@ -894,7 +938,11 @@ function renderCC(filter='all',search=''){
     const ms=!search||c.name.toLowerCase().includes(search.toLowerCase());
     return mf&&ms;
   });
-  const tl={vignette:'🏷️ Vignette',toll:'🚧 Toll gates',free:'🆓 Free'};
+  const tl={
+    vignette:'<svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12V22H4V12"/><path d="M22 7H2v5h20V7z"/><path d="M12 22V7"/><path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"/><path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"/></svg> Vignette',
+    toll:'<svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M12 12h.01M17 12h.01M7 12h.01"/></svg> Toll gates',
+    free:'<svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="m9 11 3 3L22 4"/></svg> Free'
+  };
   const tc={vignette:'tbv',toll:'tbt',free:'tbf'};
   grid.innerHTML=items.map(c=>`
     <div class="cc" data-type="${c.type}">
@@ -1696,7 +1744,7 @@ function initMrMap(){
 
   if(!window.google){
     const s=document.createElement('script');
-    s.src=`https://maps.googleapis.com/maps/api/js?key=${GKEY}&libraries=geometry,places&language=en`;
+    s.src=`https://maps.googleapis.com/maps/api/js?key=${GKEY}&libraries=geometry,places`;
     s.onload=createMrMap;
     document.head.appendChild(s);
   } else { createMrMap(); }
@@ -1720,7 +1768,6 @@ function createMrMap(){
   mrMap=new google.maps.Map(document.getElementById('mr-map'),{
     center:{lat:47,lng:15},zoom:5,
     mapTypeId:'roadmap',
-    language:'en',
     styles:[{featureType:'poi',stylers:[{visibility:'off'}]},{featureType:'transit',stylers:[{visibility:'off'}]}],
     zoomControl:true,streetViewControl:false,fullscreenControl:true,
   });
@@ -2244,100 +2291,23 @@ renderCC(); renderSpeed(); renderCalcChecks(); renderENC();
   window._stopRoadAnim = () => cancelAnimationFrame(animId);
 })();
 
-function dismissLanding() {
+function dismissLanding(targetTab) {
   const landing = document.getElementById('landing');
   landing.classList.add('hide');
   if (window._stopRoadAnim) window._stopRoadAnim();
-  setTimeout(() => { landing.style.display = 'none'; window.scrollTo({ top: 0, behavior: 'instant' }); }, 650);
+  setTimeout(() => {
+    landing.style.display = 'none';
+    window.scrollTo({ top: 0, behavior: 'instant' });
+    if (targetTab && targetTab !== 'countries') {
+      const tabBtn = document.querySelector(`.tab[data-tab="${targetTab}"]`);
+      if (tabBtn) switchTab(targetTab, tabBtn);
+      if (targetTab === 'maproute') initMrMap();
+    }
+  }, 650);
   if (typeof gtag !== 'undefined') {
-    gtag('event', 'landing_cta_click', { event_category: 'engagement', event_label: 'Plan my trip' });
+    gtag('event', 'landing_cta_click', { event_category: 'engagement', event_label: targetTab || 'plan_trip' });
   }
 }
-
-// ── HERO ROAD ANIMATION ──
-(function() {
-  const canvas = document.getElementById('heroCanvas');
-  if (!canvas) return;
-  const ctx = canvas.getContext('2d');
-  let dashOffset = 0;
-  function resize() { canvas.width = canvas.offsetWidth; canvas.height = canvas.offsetHeight; }
-  window.addEventListener('resize', resize);
-  resize();
-  function draw() {
-    const W = canvas.width, H = canvas.height;
-    if (!W || !H) { requestAnimationFrame(draw); return; }
-    ctx.clearRect(0, 0, W, H);
-    const vx = W * 0.78, vy = H * 0.32;
-    const ease = t => t * t * t;
-    const grad = ctx.createLinearGradient(vx, vy, vx, H);
-    grad.addColorStop(0, 'rgba(8,7,15,0)');
-    grad.addColorStop(0.25,'rgba(8,7,15,0.5)');
-    grad.addColorStop(1, 'rgba(5,5,12,0.85)');
-    ctx.beginPath(); ctx.moveTo(vx, vy);
-    ctx.lineTo(W * 0.30, H); ctx.lineTo(W * 1.06, H);
-    ctx.closePath(); ctx.fillStyle = grad; ctx.fill();
-    [[0.30, 0.13],[1.06, 0.09]].forEach(([ex, alpha]) => {
-      ctx.beginPath(); ctx.moveTo(vx, vy); ctx.lineTo(W * ex, H);
-      ctx.strokeStyle = `rgba(255,255,255,${alpha})`; ctx.lineWidth = 1; ctx.stroke();
-    });
-    const N = 13;
-    const lane = (xFrac, rgb, alpha) => {
-      for (let i = 0; i < N; i++) {
-        const t0 = ((i / N) + dashOffset) % 1;
-        const t1 = ((i + 0.38) / N + dashOffset) % 1;
-        if (t0 < 0.05 || t1 < 0.05) continue;
-        const e0 = ease(t0), e1 = ease(t1);
-        const x0 = vx + (W * xFrac - vx) * e0, y0 = vy + (H - vy) * e0;
-        const x1 = vx + (W * xFrac - vx) * e1, y1 = vy + (H - vy) * e1;
-        const a = Math.min(1, t0 * 2.5) * alpha;
-        ctx.strokeStyle = `rgba(${rgb},${a.toFixed(2)})`;
-        ctx.lineWidth = 1 + e0 * 3.2;
-        ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1, y1); ctx.stroke();
-      }
-    };
-    lane(0.68, '212,130,10', 0.95);
-    lane(0.53, '255,255,255', 0.2);
-    lane(0.85, '255,255,255', 0.2);
-    dashOffset = (dashOffset + 0.004) % 1;
-    requestAnimationFrame(draw);
-  }
-  draw();
-})();
-
-// ── HERO TITLE FLOAT ──
-(function() {
-  const el = document.getElementById('heroTitle');
-  if (!el) return;
-  const segments = [
-    { text: 'Every road in ', em: false },
-    { text: 'Europe', em: true },
-    { text: ',', em: false },
-    { text: '\n', em: false },
-    { text: 'one place.', em: false },
-  ];
-  let idx = 0;
-  segments.forEach(seg => {
-    if (seg.text === '\n') { el.appendChild(document.createElement('br')); return; }
-    const wrap = seg.em ? document.createElement('em') : null;
-    const target = wrap || el;
-    seg.text.split('').forEach(ch => {
-      if (ch === ' ') {
-        const sp = document.createElement('span');
-        sp.className = 'char-space';
-        target.appendChild(sp);
-        idx++;
-        return;
-      }
-      const span = document.createElement('span');
-      span.className = 'char';
-      span.textContent = ch;
-      span.style.animationDelay = (idx * 0.05) + 's';
-      target.appendChild(span);
-      idx++;
-    });
-    if (wrap) el.appendChild(wrap);
-  });
-})();
 </script>
 </body>
 </html>
