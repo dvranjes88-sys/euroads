@@ -59,38 +59,35 @@ main { padding:1.2rem 2rem 2rem; max-width:1300px; margin:0 auto; background:#0D
 .fb.ft.active { background:rgba(122,50,0,.25); border-color:#7A3200; color:#F4A45A; }
 .fb.ff.active { background:rgba(15,52,96,.25); border-color:#0F3460; color:#6EB3F7; }
 
-.cc-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(300px,1fr)); gap:.65rem; }
-.cc { background:#141922; border:1px solid rgba(255,255,255,.07); border-radius:12px; overflow:hidden; transition:all .2s; display:flex; flex-direction:column; }
-.cc:hover { transform:translateY(-2px); box-shadow:0 8px 28px rgba(0,0,0,.3); border-color:rgba(212,130,10,.25); }
-.cc-top { padding:.85rem 1rem .7rem; border-bottom:1px solid rgba(255,255,255,.05); display:flex; align-items:center; gap:.75rem; }
-.cc-fl { width:2.8rem; height:1.85rem; flex-shrink:0; border-radius:4px; overflow:hidden; box-shadow:0 1px 4px rgba(0,0,0,.3); }
-.cc-fl .fi { width:100%; height:100%; background-size:cover; background-position:center; display:block; }
-.cc-nm { font-family:'Geist',sans-serif; font-weight:800; font-size:.9rem; letter-spacing:-.01em; display:flex; align-items:center; gap:.38rem; color:#fff; }
-.cc-code { font-size:.55rem; font-weight:700; color:rgba(255,255,255,.25); background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.09); border-radius:3px; padding:.08rem .3rem; letter-spacing:.06em; }
-.cc-rg { font-size:.55rem; color:rgba(255,255,255,.25); letter-spacing:.08em; text-transform:uppercase; margin-top:.08rem; }
-.tbadge { font-size:.52rem; font-weight:700; letter-spacing:.07em; text-transform:uppercase; padding:.13rem .42rem; border-radius:100px; margin-top:.22rem; display:inline-flex; align-items:center; gap:.25rem; }
-.tbv { background:rgba(27,77,62,.2); color:#5DCEA8; border:1px solid rgba(93,206,168,.15); }
-.tbt { background:rgba(122,50,0,.2); color:#F4A45A; border:1px solid rgba(244,164,90,.15); }
-.tbf { background:rgba(15,52,96,.2); color:#6EB3F7; border:1px solid rgba(110,179,247,.15); }
+.cc-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(300px,1fr)); gap:.85rem; }
+.cc { background:var(--surface); border:1.5px solid var(--border); border-radius:var(--r); overflow:hidden; transition:all .2s; display:flex; flex-direction:column; }
+.cc:hover { transform:translateY(-3px); box-shadow:0 10px 28px rgba(0,0,0,.09); }
+.cc-top { padding:1rem 1.2rem .8rem; border-bottom:1px solid var(--border); display:flex; align-items:flex-start; gap:.8rem; }
+.cc-fl { font-size:1.9rem; line-height:1; flex-shrink:0; }
+.cc-nm { font-family:'Geist',sans-serif; font-weight:800; font-size:.95rem; letter-spacing:-.01em; }
+.cc-rg { font-size:.58rem; color:var(--muted); letter-spacing:.08em; text-transform:uppercase; margin-top:.1rem; }
+.tbadge { font-size:.57rem; font-weight:500; letter-spacing:.1em; text-transform:uppercase; padding:.16rem .5rem; border-radius:100px; margin-top:.28rem; display:inline-block; }
+.tbv { background:var(--vl); color:var(--v); }
+.tbt { background:var(--tl); color:var(--t); }
+.tbf { background:var(--fl); color:var(--f); }
 
-.cc-body { padding:.75rem 1rem; flex:1; }
-.cc-info { font-size:.72rem; color:rgba(255,255,255,.3); line-height:1.65; margin-bottom:.65rem; }
-.prices { display:flex; flex-direction:column; gap:.2rem; margin-bottom:.65rem; }
-.pr { display:flex; justify-content:space-between; font-size:.72rem; padding:.18rem 0; border-bottom:1px solid rgba(255,255,255,.04); }
-.pr:last-child { border-bottom:none; }
-.pr-p { color:rgba(255,255,255,.3); }
-.pr-v { font-family:'Geist',sans-serif; font-weight:800; color:#fff; }
-.epill { display:inline-flex; align-items:center; gap:.3rem; font-size:.62rem; color:#C084FC; background:rgba(192,132,252,.1); border:1px solid rgba(192,132,252,.15); padding:.18rem .55rem; border-radius:100px; margin-bottom:.65rem; font-weight:500; }
-.rules { display:flex; flex-wrap:wrap; gap:.28rem; margin-bottom:.55rem; }
-.rp { font-size:.6rem; padding:.15rem .42rem; border-radius:4px; display:flex; align-items:center; gap:.2rem; }
-.rp-ok { background:rgba(27,77,62,.2); color:#5DCEA8; }
-.rp-warn { background:rgba(122,80,0,.2); color:#F4A45A; }
-.rp-bad { background:rgba(153,60,50,.2); color:#F87171; }
+.cc-body { padding:.9rem 1.2rem; flex:1; }
+.cc-info { font-size:.75rem; color:var(--muted); line-height:1.7; margin-bottom:.75rem; }
+.prices { display:flex; flex-direction:column; gap:.28rem; margin-bottom:.75rem; }
+.pr { display:flex; justify-content:space-between; font-size:.73rem; }
+.pr-p { color:var(--muted); }
+.pr-v { font-family:'Geist',sans-serif; font-weight:700; }
+.epill { display:inline-flex; align-items:center; gap:.3rem; font-size:.65rem; color:var(--enc); background:var(--encl); padding:.22rem .6rem; border-radius:100px; margin-bottom:.75rem; font-weight:500; }
+.rules { display:flex; flex-wrap:wrap; gap:.3rem; margin-bottom:.6rem; }
+.rp { font-size:.62rem; padding:.18rem .48rem; border-radius:4px; display:flex; align-items:center; gap:.2rem; }
+.rp-ok { background:#e6f2ee; color:#1B4D3E; }
+.rp-warn { background:#fdf3e3; color:#8A5A00; }
+.rp-bad { background:#fde8e6; color:#9B2D22; }
 
-.cc-foot { padding:0 1rem .85rem; }
-.bbuy { width:100%; padding:.52rem; background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.09); border-radius:8px; font-family:'Geist',sans-serif; font-size:.68rem; font-weight:600; cursor:pointer; text-decoration:none; display:flex; align-items:center; justify-content:center; gap:.35rem; transition:all .15s; color:rgba(255,255,255,.4); }
-.bbuy:hover { background:var(--accent); border-color:var(--accent); color:#000; }
-.bbuy.na { background:rgba(255,255,255,.03); color:rgba(255,255,255,.18); cursor:default; pointer-events:none; border-color:rgba(255,255,255,.05); }
+.cc-foot { padding:0 1.2rem 1rem; }
+.bbuy { width:100%; padding:.58rem; background:var(--text); color:#fff; border:none; border-radius:7px; font-family:'Geist',sans-serif; font-size:.73rem; font-weight:500; cursor:pointer; text-decoration:none; display:flex; align-items:center; justify-content:center; gap:.3rem; transition:all .15s; }
+.bbuy:hover { background:#333; }
+.bbuy.na { background:var(--border); color:var(--muted); cursor:default; pointer-events:none; }
 
 /* SPEED TABLE */
 .speed-table-wrap { overflow-x:auto; }
@@ -262,7 +259,7 @@ main { padding:1.2rem 2rem 2rem; max-width:1300px; margin:0 auto; background:#0D
   0%,100% { box-shadow:0 0 0 0 rgba(27,77,62,0); background:rgba(27,77,62,0.08); color:#1B4D3E; }
   50%      { box-shadow:0 0 0 8px rgba(27,77,62,0); background:rgba(27,77,62,0.16); color:#1B4D3E; }
 }
-/* tab-highlight removed — using tab-badge instead */
+/* tab-highlight removed */
 
 /* ── LANDING SCREEN ── */
 #landing {
@@ -473,20 +470,17 @@ main { padding:1.2rem 2rem 2rem; max-width:1300px; margin:0 auto; background:#0D
   <div class="toolbar">
     <button class="fb active" onclick="filterCC('all',this)">All countries</button>
     <button class="fb fv" onclick="filterCC('vignette',this)">
-      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12V22H4V12"/><path d="M22 7H2v5h20V7z"/><path d="M12 22V7"/></svg>
-      Vignette
+      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12V22H4V12"/><path d="M22 7H2v5h20V7z"/><path d="M12 22V7"/></svg>Vignette
     </button>
     <button class="fb ft" onclick="filterCC('toll',this)">
-      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M12 12h.01M17 12h.01M7 12h.01"/></svg>
-      Toll gates
+      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M12 12h.01M17 12h.01M7 12h.01"/></svg>Toll gates
     </button>
     <button class="fb ff" onclick="filterCC('free',this)">
-      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="m9 11 3 3L22 4"/></svg>
-      Free
+      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="m9 11 3 3L22 4"/></svg>Free
     </button>
     <div style="margin-left:auto;position:relative;flex-shrink:0;">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.25)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="position:absolute;left:.75rem;top:50%;transform:translateY(-50%);pointer-events:none;"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
-      <input id="cc-search" type="text" placeholder="Search country, e.g. Austria…" oninput="searchCC()" style="background:rgba(255,255,255,.05);border:1.5px solid rgba(255,255,255,.09);border-radius:10px;padding:.55rem .85rem .55rem 2.4rem;font-family:'Geist',sans-serif;font-size:.78rem;color:#fff;outline:none;width:220px;transition:border-color .15s;" onfocus="this.style.borderColor='rgba(212,130,10,.45)'" onblur="this.style.borderColor='rgba(255,255,255,.09)'">
+      <input id="cc-search" type="text" placeholder="Search country, e.g. Austria…" oninput="searchCC()" style="background:rgba(255,255,255,.05);border:1.5px solid rgba(255,255,255,.09);border-radius:10px;padding:.55rem .85rem .55rem 2.4rem;font-family:'Geist',sans-serif;font-size:.78rem;color:#fff;outline:none;width:220px;" onfocus="this.style.borderColor='rgba(212,130,10,.45)'" onblur="this.style.borderColor='rgba(255,255,255,.09)'">
     </div>
   </div>
   <div class="cc-grid" id="country-grid"></div>
@@ -592,17 +586,17 @@ const C = [
   // ── VIGNETTE ──
   { id:'sk',flag:'🇸🇰',name:'Slovakia',region:'EU',type:'vignette',
     info:'Electronic vignette (eZnámka). Linked to plate, no sticker. Camera enforced.',
-    prices:[{p:'10 days',v:'€10'},{p:'1 month',v:'€14'},{p:'1 year',v:'€50'}],
+    prices:[{p:'1 day',v:'€8.10'},{p:'10 days',v:'€10.80'},{p:'1 month',v:'€17.10'},{p:'1 year',v:'€90'}],
     enc:null,buy:'https://eznamka.sk',bl:'eznamka.sk',
     rules:[{i:'🚭',t:'Alcohol 0.0‰',c:'bad'},{i:'❄️',t:'Winter tyres req.',c:'warn'},{i:'💡',t:'Lights always on',c:'ok'},{i:'🦺',t:'Vest in car',c:'ok'}]},
   { id:'cz',flag:'🇨🇿',name:'Czechia',region:'EU',type:'vignette',
-    info:'Electronic vignette (eZnámka CZ). Updated pricing 2024. Linked to plate.',
-    prices:[{p:'10 days',v:'CZK 310'},{p:'1 month',v:'CZK 430'},{p:'1 year',v:'CZK 1,500'}],
+    info:'Electronic vignette (eZnámka CZ). Linked to plate. Prices updated 2026.',
+    prices:[{p:'1 day',v:'CZK 230'},{p:'10 days',v:'CZK 300'},{p:'1 month',v:'CZK 480'},{p:'1 year',v:'CZK 2,570'}],
     enc:null,buy:'https://edalnice.cz',bl:'edalnice.cz',
     rules:[{i:'🚭',t:'Alcohol 0.0‰',c:'bad'},{i:'❄️',t:'Winter tyres req.',c:'warn'},{i:'💡',t:'Lights always on',c:'ok'}]},
   { id:'at',flag:'🇦🇹',name:'Austria',region:'EU',type:'vignette',
-    info:'Physical or digital vignette. Some mountain tunnels (Brenner, Arlberg, Tauern) charge extra.',
-    prices:[{p:'10 days',v:'€9.90'},{p:'2 months',v:'€29.00'},{p:'1 year',v:'€96.40'}],
+    info:'Physical or digital vignette. Some mountain tunnels (Brenner, Arlberg, Tauern) charge extra. 2026 is last year for sticker vignettes.',
+    prices:[{p:'1 day',v:'€9.60'},{p:'10 days',v:'€12.80'},{p:'2 months',v:'€32.00'},{p:'1 year',v:'€106.80'}],
     enc:null,buy:'https://www.asfinag.at/toll/vignette/',bl:'asfinag.at',
     rules:[{i:'🍺',t:'Alcohol 0.5‰',c:'warn'},{i:'❄️',t:'Winter tyres req.',c:'warn'},{i:'💡',t:'Lights always on',c:'ok'},{i:'🦺',t:'Vest in car',c:'ok'}]},
   { id:'ch',flag:'🇨🇭',name:'Switzerland',region:'Non-EU',type:'vignette',
@@ -611,9 +605,9 @@ const C = [
     enc:null,buy:'https://www.bazg.admin.ch',bl:'bazg.admin.ch',
     rules:[{i:'🍺',t:'Alcohol 0.5‰',c:'warn'},{i:'💡',t:'Lights always on',c:'ok'},{i:'⛓️',t:'Winter tyres/chains',c:'warn'}]},
   { id:'hu',flag:'🇭🇺',name:'Hungary',region:'EU',type:'vignette',
-    info:'Electronic vignette (e-matrica). No sticker, linked to plate.',
-    prices:[{p:'10 days',v:'HUF 5,340'},{p:'1 month',v:'HUF 7,500'},{p:'1 year',v:'HUF 22,000'}],
-    enc:null,buy:'https://motorway.hu',bl:'motorway.hu',
+    info:'Electronic vignette (e-matrica). No sticker, linked to plate. Prices updated January 2026.',
+    prices:[{p:'1 day',v:'HUF 5,550'},{p:'10 days',v:'HUF 6,900'},{p:'1 month',v:'HUF 11,170'},{p:'1 year',v:'HUF 61,760'}],
+    enc:null,buy:'https://nemzetiutdij.hu',bl:'nemzetiutdij.hu',
     rules:[{i:'🚭',t:'Alcohol 0.0‰',c:'bad'},{i:'💡',t:'Lights always on',c:'ok'},{i:'🦺',t:'Vest in car',c:'ok'}]},
   { id:'si',flag:'🇸🇮',name:'Slovenia',region:'EU',type:'vignette',
     info:'Electronic e-vignette only (no sticker since 2022). Linked to plate. H5/H6 coastal roads toll-free from Jan 2026. Karavanke tunnel charged separately (€9).',
@@ -2360,18 +2354,13 @@ function dismissLanding(targetTab) {
     const target = wrap || el;
     seg.text.split('').forEach(ch => {
       if (ch === ' ') {
-        const sp = document.createElement('span');
-        sp.className = 'char-space';
-        target.appendChild(sp);
-        idx++;
-        return;
+        const sp = document.createElement('span'); sp.className = 'char-space';
+        target.appendChild(sp); idx++; return;
       }
       const span = document.createElement('span');
-      span.className = 'char';
-      span.textContent = ch;
+      span.className = 'char'; span.textContent = ch;
       span.style.animationDelay = (idx * 0.05) + 's';
-      target.appendChild(span);
-      idx++;
+      target.appendChild(span); idx++;
     });
     if (wrap) el.appendChild(wrap);
   });
