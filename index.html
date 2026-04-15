@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>EuroRoads — Complete European Highway Guide</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flag-icons@7.2.3/css/flag-icons.min.css"/>
 <link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700;800;900&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -23,43 +24,40 @@ header { background:var(--text); color:#fff; height:58px; display:flex; align-it
 .hm { font-size:.7rem; color:rgba(255,255,255,.4); letter-spacing:.1em; text-transform:uppercase; }
 
 .hero { background:var(--text); color:#fff; padding:2.5rem 2rem 2rem; position:relative; overflow:hidden; }
-.hero::after { content:'🛣️'; position:absolute; font-size:14rem; right:-1rem; top:-2rem; opacity:.04; pointer-events:none; }
-.hero h1 { font-family:'Geist',sans-serif; font-weight:800; font-size:clamp(1.6rem,4vw,2.8rem); letter-spacing:-0.03em; line-height:1.05; margin-bottom:.6rem; }
+.hero::after { content:''; }
+#heroCanvas { position:absolute; inset:0; width:100%; height:100%; pointer-events:none; z-index:0; opacity:.6; }
+.hero h1 { font-family:'Geist',sans-serif; font-weight:800; font-size:clamp(1.6rem,4vw,2.8rem); letter-spacing:-0.03em; line-height:1.05; margin-bottom:.6rem; position:relative; z-index:1; }
 .hero h1 em { color:var(--accent); font-style:normal; }
-.hero p { color:rgba(255,255,255,.5); font-size:.82rem; max-width:500px; margin-bottom:1.5rem; }
-.hstats { display:flex; gap:2rem; flex-wrap:wrap; }
+.hero h1 .char { display:inline-block; animation:charFloat 3s ease-in-out infinite; }
+.hero h1 .char-space { display:inline-block; width:0.28em; }
+@keyframes charFloat { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-5px)} }
+.hero p { color:rgba(255,255,255,.5); font-size:.82rem; max-width:500px; margin-bottom:1.5rem; position:relative; z-index:1; }
+.hstats { display:flex; gap:2rem; flex-wrap:wrap; position:relative; z-index:1; }
 .hstat-n { font-family:'Geist',sans-serif; font-weight:800; font-size:1.4rem; color:var(--accent); }
 .hstat-l { font-size:.65rem; color:rgba(255,255,255,.4); letter-spacing:.08em; text-transform:uppercase; }
 
 .tab-bar { display:flex; background:#18160F; border-bottom:1px solid rgba(255,255,255,.07); padding:0 2rem; position:sticky; top:58px; z-index:190; overflow-x:auto; gap:0; scrollbar-width:none; }
 .tab-bar::-webkit-scrollbar { display:none; }
-.tab { padding:.85rem 1.1rem; font-family:'Geist',sans-serif; font-weight:700; font-size:.68rem; letter-spacing:.05em; text-transform:uppercase; border:none; background:none; cursor:pointer; color:rgba(255,255,255,.3); border-bottom:2.5px solid transparent; margin-bottom:-1px; white-space:nowrap; transition:all .15s; display:flex; align-items:center; gap:.4rem; }
+.tab { padding:.85rem 1.1rem; font-family:'Geist',sans-serif; font-weight:700; font-size:.68rem; letter-spacing:.05em; text-transform:uppercase; border:none; background:none; cursor:pointer; color:rgba(255,255,255,.3); border-bottom:2.5px solid transparent; margin-bottom:-1px; white-space:nowrap; transition:all .15s; display:flex; align-items:center; gap:.42rem; }
 .tab svg { opacity:.5; transition:opacity .15s; flex-shrink:0; }
 .tab.active { color:#fff; border-bottom-color:var(--accent); }
 .tab.active svg { opacity:1; }
 .tab:hover:not(.active) { color:rgba(255,255,255,.65); }
 .tab:hover:not(.active) svg { opacity:.75; }
-.tab-badge { font-size:.46rem; background:var(--accent); color:#000; font-weight:900; padding:.1rem .28rem; border-radius:3px; letter-spacing:.04em; }
+.tab-badge { font-size:.46rem; background:var(--accent); color:#000; font-weight:900; padding:.1rem .28rem; border-radius:3px; }
 
 main { padding:1.2rem 2rem 2rem; max-width:1300px; margin:0 auto; background:#0D1117; min-height:60vh; }
 .view { display:none; }
 .view.active { display:block; }
 
-.toolbar { display:flex; gap:.4rem; margin-bottom:1.2rem; flex-wrap:nowrap; align-items:center; overflow-x:auto; scrollbar-width:none; padding-bottom:.2rem; }
+.toolbar { display:flex; gap:.4rem; margin-bottom:1.2rem; flex-wrap:nowrap; align-items:center; overflow-x:auto; scrollbar-width:none; }
 .toolbar::-webkit-scrollbar { display:none; }
-.fb { display:flex; align-items:center; gap:.3rem; padding:.38rem .82rem; border-radius:100px; border:1.5px solid rgba(255,255,255,.1); background:transparent; font-family:'Geist',sans-serif; font-size:.65rem; font-weight:700; cursor:pointer; transition:all .15s; color:rgba(255,255,255,.4); white-space:nowrap; letter-spacing:.03em; }
+.fb { display:flex; align-items:center; gap:.32rem; padding:.38rem .82rem; border-radius:100px; border:1.5px solid rgba(255,255,255,.1); background:transparent; font-family:'Geist',sans-serif; font-size:.65rem; font-weight:700; cursor:pointer; transition:all .15s; color:rgba(255,255,255,.4); white-space:nowrap; }
 .fb:hover { border-color:rgba(255,255,255,.28); color:rgba(255,255,255,.75); }
 .fb.active { background:#fff; border-color:#fff; color:#18160F; }
 .fb.fv.active { background:rgba(27,77,62,.25); border-color:#1B4D3E; color:#5DCEA8; }
 .fb.ft.active { background:rgba(122,50,0,.25); border-color:#7A3200; color:#F4A45A; }
 .fb.ff.active { background:rgba(15,52,96,.25); border-color:#0F3460; color:#6EB3F7; }
-.count-tag { margin-left:auto; font-size:.62rem; color:rgba(255,255,255,.18); white-space:nowrap; flex-shrink:0; }
-.sbox { display:flex; align-items:center; gap:.5rem; background:rgba(255,255,255,.05); border:1.5px solid rgba(255,255,255,.09); border-radius:10px; padding:.55rem .85rem .55rem 2.5rem; position:relative; flex:1; min-width:160px; max-width:280px; }
-.sbox-wrap { position:relative; flex:1; min-width:160px; max-width:280px; margin-left:auto; }
-.sbox-icon { position:absolute; left:.85rem; top:50%; transform:translateY(-50%); color:rgba(255,255,255,.25); pointer-events:none; z-index:1; }
-.sbox input { border:none; outline:none; font-family:'Geist',sans-serif; font-size:.78rem; background:transparent; width:100%; color:#fff; padding:.55rem .85rem .55rem 2.5rem; border:1.5px solid rgba(255,255,255,.09); border-radius:10px; background:rgba(255,255,255,.05); transition:border-color .15s; }
-.sbox input::placeholder { color:rgba(255,255,255,.22); }
-.sbox input:focus { border-color:rgba(212,130,10,.45); background:rgba(255,255,255,.07); outline:none; }
 
 .cc-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(300px,1fr)); gap:.65rem; }
 .cc { background:#141922; border:1px solid rgba(255,255,255,.07); border-radius:12px; overflow:hidden; transition:all .2s; display:flex; flex-direction:column; }
@@ -264,11 +262,7 @@ main { padding:1.2rem 2rem 2rem; max-width:1300px; margin:0 auto; background:#0D
   0%,100% { box-shadow:0 0 0 0 rgba(27,77,62,0); background:rgba(27,77,62,0.08); color:#1B4D3E; }
   50%      { box-shadow:0 0 0 8px rgba(27,77,62,0); background:rgba(27,77,62,0.16); color:#1B4D3E; }
 }
-.tab-highlight {
-  color: rgba(255,255,255,.55) !important;
-  border-bottom-color: transparent !important;
-}
-.tab-highlight .tab-badge { display:inline-block; }
+/* tab-highlight removed — using tab-badge instead */
 
 /* ── LANDING SCREEN ── */
 #landing {
@@ -334,11 +328,7 @@ main { padding:1.2rem 2rem 2rem; max-width:1300px; margin:0 auto; background:#0D
   animation: featIn .5s forwards;
   cursor: pointer; transition: background .2s, border-color .2s, transform .2s;
 }
-.land-feat:hover {
-  background: rgba(212,130,10,.15);
-  border-color: rgba(212,130,10,.5);
-  transform: translateY(-3px) !important;
-}
+.land-feat:hover { background: rgba(212,130,10,.15); border-color: rgba(212,130,10,.5); transform: translateY(-3px) !important; }
 .land-feat:nth-child(1) { animation-delay: .3s; }
 .land-feat:nth-child(2) { animation-delay: .5s; }
 .land-feat:nth-child(3) { animation-delay: .7s; }
@@ -346,7 +336,7 @@ main { padding:1.2rem 2rem 2rem; max-width:1300px; margin:0 auto; background:#0D
   to { opacity: 1; transform: translateY(0); }
 }
 .land-feat-icon { margin-bottom: .5rem; display:flex; align-items:center; justify-content:center; }
-.land-feat-icon svg { width:28px; height:28px; stroke: #D4820A; }
+.land-feat-icon svg { width:28px; height:28px; stroke: #D4820A; fill:none; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; }
 .land-feat-title {
   font-family: 'Geist', sans-serif; font-weight: 700;
   font-size: .78rem; color: #fff; margin-bottom: .2rem;
@@ -409,25 +399,19 @@ main { padding:1.2rem 2rem 2rem; max-width:1300px; margin:0 auto; background:#0D
 
     <div class="land-features">
       <div class="land-feat" onclick="dismissLanding('countries')">
-        <div class="land-feat-icon">
-          <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/></svg>
-        </div>
+        <div class="land-feat-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/></svg></div>
         <div class="land-feat-title">Vignettes & Tolls</div>
         <div class="land-feat-desc">Prices for every country, updated 2026</div>
         <div class="land-feat-arrow">Explore →</div>
       </div>
       <div class="land-feat" onclick="dismissLanding('maproute')">
-        <div class="land-feat-icon">
-          <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="19" r="3"/><path d="M9 19h8.5a3.5 3.5 0 0 0 0-7h-11a3.5 3.5 0 0 1 0-7H15"/><circle cx="18" cy="5" r="3"/></svg>
-        </div>
+        <div class="land-feat-icon"><svg viewBox="0 0 24 24"><circle cx="6" cy="19" r="3"/><path d="M9 19h8.5a3.5 3.5 0 0 0 0-7h-11a3.5 3.5 0 0 1 0-7H15"/><circle cx="18" cy="5" r="3"/></svg></div>
         <div class="land-feat-title">Route Calculator</div>
         <div class="land-feat-desc">Total road costs for your exact trip</div>
         <div class="land-feat-arrow">Calculate →</div>
       </div>
       <div class="land-feat" onclick="dismissLanding('speed')">
-        <div class="land-feat-icon">
-          <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m12 14 4-4"/><path d="M3.34 19a10 10 0 1 1 17.32 0"/></svg>
-        </div>
+        <div class="land-feat-icon"><svg viewBox="0 0 24 24"><path d="m12 14 4-4"/><path d="M3.34 19a10 10 0 1 1 17.32 0"/></svg></div>
         <div class="land-feat-title">Speed Limits</div>
         <div class="land-feat-desc">Urban, rural & motorway — every country</div>
         <div class="land-feat-arrow">View →</div>
@@ -442,7 +426,6 @@ main { padding:1.2rem 2rem 2rem; max-width:1300px; margin:0 auto; background:#0D
     </button>
   </div>
 
-
 </div>
 <!-- ── END LANDING ── -->
 
@@ -452,7 +435,8 @@ main { padding:1.2rem 2rem 2rem; max-width:1300px; margin:0 auto; background:#0D
 </header>
 
 <div class="hero">
-  <h1>Every road in <em>Europe</em>,<br>one place.</h1>
+  <canvas id="heroCanvas"></canvas>
+  <h1 id="heroTitle"></h1>
   <p>Vignettes, tolls, speed limits and driving rules for every European country — from Portugal to Greece, from Norway to Turkey.</p>
   <div class="hstats">
     <div><div class="hstat-n" id="stat-countries">50</div><div class="hstat-l">Countries</div></div>
@@ -472,8 +456,7 @@ main { padding:1.2rem 2rem 2rem; max-width:1300px; margin:0 auto; background:#0D
   </button>
   <button class="tab" data-tab="maproute" onclick="switchTab('maproute',this)">
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="19" r="3"/><path d="M9 19h8.5a3.5 3.5 0 0 0 0-7h-11a3.5 3.5 0 0 1 0-7H15"/><circle cx="18" cy="5" r="3"/></svg>
-    Route Calculator
-    <span class="tab-badge">NEW</span>
+    Route Calculator <span class="tab-badge">NEW</span>
   </button>
   <button class="tab" data-tab="enc" onclick="switchTab('enc',this)">
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="2"/><rect x="9" y="9" width="6" height="6"/><path d="M15 2v2M9 2v2M2 15h2M2 9h2M15 22v-2M9 22v-2M22 15h-2M22 9h-2"/></svg>
@@ -510,7 +493,7 @@ main { padding:1.2rem 2rem 2rem; max-width:1300px; margin:0 auto; background:#0D
 </div>
 
 <div class="view" id="view-speed">
-  <div class="sh"><h2>Speed Limits by Country</h2><p>Default limits for passenger cars in km/h. Trucks, buses and new drivers have lower limits. Always follow local signs.</p></div>
+  <div class="sh"><h2>⚡ Speed Limits by Country</h2><p>Default limits for passenger cars in km/h. Trucks, buses and new drivers have lower limits. Always follow local signs.</p></div>
   <div class="speed-table-wrap">
     <table class="speed-table">
       <thead><tr><th>Country</th><th>🏙️ Urban</th><th>🛣️ Rural</th><th>🚀 Motorway</th><th>🚛 Truck (motorway)</th><th>📝 Notes</th></tr></thead>
@@ -520,12 +503,12 @@ main { padding:1.2rem 2rem 2rem; max-width:1300px; margin:0 auto; background:#0D
 </div>
 
 <div class="view" id="view-enc">
-  <div class="sh"><h2>Electronic Toll Collection</h2><p>ENC devices let you pass toll gates without stopping. Here's what works where.</p></div>
+  <div class="sh"><h2>📦 Electronic Toll Collection</h2><p>ENC devices let you pass toll gates without stopping. Here's what works where.</p></div>
   <div class="enc-grid" id="enc-grid"></div>
 </div>
 
 <div class="view" id="view-game">
-  <div class="sh"><h2>EuroTour — Capital City Game</h2><p>Test your European geography knowledge. Click cities on the map to build your route!</p></div>
+  <div class="sh"><h2>🎮 EuroTour — Capital City Game</h2><p>Test your European geography knowledge. Click cities on the map to build your route!</p></div>
   <div style="border:1.5px solid var(--border);border-radius:12px;overflow:hidden;height:600px;">
     <iframe src="euro-capitals-game.html" style="width:100%;height:100%;border:none;" title="EuroTour Game"></iframe>
   </div>
@@ -939,7 +922,7 @@ function renderCC(filter='all',search=''){
     return mf&&ms;
   });
   const tl={
-    vignette:'<svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12V22H4V12"/><path d="M22 7H2v5h20V7z"/><path d="M12 22V7"/><path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"/><path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"/></svg> Vignette',
+    vignette:'<svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12V22H4V12"/><path d="M22 7H2v5h20V7z"/><path d="M12 22V7"/></svg> Vignette',
     toll:'<svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M12 12h.01M17 12h.01M7 12h.01"/></svg> Toll gates',
     free:'<svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="m9 11 3 3L22 4"/></svg> Free'
   };
@@ -2308,6 +2291,91 @@ function dismissLanding(targetTab) {
     gtag('event', 'landing_cta_click', { event_category: 'engagement', event_label: targetTab || 'plan_trip' });
   }
 }
+
+// ── HERO ROAD ANIMATION ──
+(function() {
+  const canvas = document.getElementById('heroCanvas');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  let dashOffset = 0;
+  function resize() { canvas.width = canvas.offsetWidth; canvas.height = canvas.offsetHeight; }
+  window.addEventListener('resize', resize);
+  resize();
+  function draw() {
+    const W = canvas.width, H = canvas.height;
+    if (!W || !H) { requestAnimationFrame(draw); return; }
+    ctx.clearRect(0, 0, W, H);
+    const vx = W * 0.78, vy = H * 0.32;
+    const ease = t => t * t * t;
+    const grad = ctx.createLinearGradient(vx, vy, vx, H);
+    grad.addColorStop(0, 'rgba(8,7,15,0)');
+    grad.addColorStop(0.25,'rgba(8,7,15,0.5)');
+    grad.addColorStop(1, 'rgba(5,5,12,0.85)');
+    ctx.beginPath(); ctx.moveTo(vx, vy);
+    ctx.lineTo(W * 0.30, H); ctx.lineTo(W * 1.06, H);
+    ctx.closePath(); ctx.fillStyle = grad; ctx.fill();
+    [[0.30, 0.13],[1.06, 0.09]].forEach(([ex, alpha]) => {
+      ctx.beginPath(); ctx.moveTo(vx, vy); ctx.lineTo(W * ex, H);
+      ctx.strokeStyle = `rgba(255,255,255,${alpha})`; ctx.lineWidth = 1; ctx.stroke();
+    });
+    const N = 13;
+    const lane = (xFrac, rgb, alpha) => {
+      for (let i = 0; i < N; i++) {
+        const t0 = ((i / N) + dashOffset) % 1;
+        const t1 = ((i + 0.38) / N + dashOffset) % 1;
+        if (t0 < 0.05 || t1 < 0.05) continue;
+        const e0 = ease(t0), e1 = ease(t1);
+        const x0 = vx + (W * xFrac - vx) * e0, y0 = vy + (H - vy) * e0;
+        const x1 = vx + (W * xFrac - vx) * e1, y1 = vy + (H - vy) * e1;
+        const a = Math.min(1, t0 * 2.5) * alpha;
+        ctx.strokeStyle = `rgba(${rgb},${a.toFixed(2)})`;
+        ctx.lineWidth = 1 + e0 * 3.2;
+        ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1, y1); ctx.stroke();
+      }
+    };
+    lane(0.68, '212,130,10', 0.95);
+    lane(0.53, '255,255,255', 0.2);
+    lane(0.85, '255,255,255', 0.2);
+    dashOffset = (dashOffset + 0.004) % 1;
+    requestAnimationFrame(draw);
+  }
+  draw();
+})();
+
+// ── HERO TITLE FLOAT ──
+(function() {
+  const el = document.getElementById('heroTitle');
+  if (!el) return;
+  const segments = [
+    { text: 'Every road in ', em: false },
+    { text: 'Europe', em: true },
+    { text: ',', em: false },
+    { text: '\n', em: false },
+    { text: 'one place.', em: false },
+  ];
+  let idx = 0;
+  segments.forEach(seg => {
+    if (seg.text === '\n') { el.appendChild(document.createElement('br')); return; }
+    const wrap = seg.em ? document.createElement('em') : null;
+    const target = wrap || el;
+    seg.text.split('').forEach(ch => {
+      if (ch === ' ') {
+        const sp = document.createElement('span');
+        sp.className = 'char-space';
+        target.appendChild(sp);
+        idx++;
+        return;
+      }
+      const span = document.createElement('span');
+      span.className = 'char';
+      span.textContent = ch;
+      span.style.animationDelay = (idx * 0.05) + 's';
+      target.appendChild(span);
+      idx++;
+    });
+    if (wrap) el.appendChild(wrap);
+  });
+})();
 </script>
 </body>
 </html>
