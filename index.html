@@ -2005,7 +2005,7 @@ function attachAutocomplete(inputId){
     delete _inputCoords[inputId];
   });
 
-  // Enter triggers calculate (ak dropdown nie je otvorený) alebo vyberie prvý item
+  // Enter triggers calculate (ak dropdown nie je otvorený) alebo vyberie prvý/aktívny item
   input.addEventListener('keydown', (e) => {
     if(e.key !== 'Enter' || e.isComposing) return;
     const drop = document.getElementById(`ac-drop-${inputId}`);
@@ -2013,14 +2013,22 @@ function attachAutocomplete(inputId){
     if(activeItem){
       // User má označený item cez šípky — vyber ho
       e.preventDefault();
-      activeItem.click();
+      if(typeof activeItem.__selectItem === 'function'){
+        activeItem.__selectItem();
+      } else {
+        activeItem.click();
+      }
       return;
     }
     // Ak je otvorený dropdown ale nič nie je aktívne, vyber prvý
     const firstItem = drop?.querySelector('[data-pred="1"]');
     if(firstItem){
       e.preventDefault();
-      firstItem.click();
+      if(typeof firstItem.__selectItem === 'function'){
+        firstItem.__selectItem();
+      } else {
+        firstItem.click();
+      }
       return;
     }
     // Žiadny dropdown → triggeruj calculate
@@ -2132,13 +2140,11 @@ function showGooglePredictions(inputId, predictions){
       ${secondary ? `<div style="font-size:.72rem;color:rgba(255,255,255,.4);margin-top:.1rem;">${secondary}</div>` : ''}
     `;
 
-    item.onmousedown = async (e) => {
-      e.preventDefault(); // Zabráni blur predtým než stihneme spracovať click
+    // Extrahovaná selection logika — volaná z mousedown (click myšou) aj z Enter (keyboard)
+    const selectItem = async () => {
       input.value = pred.description;
       removeAcDropdown(inputId);
 
-      // Namiesto drahého Place Details → Geocoding (lacnejšie, rovnaká presnosť pre GPS)
-      // place_id je z predikcie priamo
       try {
         _geocoderService.geocode({ placeId: pred.place_id }, (results, status) => {
           if(status === 'OK' && results[0]?.geometry?.location){
@@ -2146,7 +2152,6 @@ function showGooglePredictions(inputId, predictions){
               results[0].geometry.location.lng(),
               results[0].geometry.location.lat(),
             ];
-            // Použijeme aj formatted_address z geocodingu (plnejšie než description)
             const formatted = results[0].formatted_address;
             if(formatted && formatted.length > pred.description.length){
               input.value = formatted;
@@ -2162,6 +2167,14 @@ function showGooglePredictions(inputId, predictions){
 
       // Invalidate session token (session končí po final selection)
       delete _inputSessions[inputId];
+    };
+
+    // Expose selectItem na elemente aby ho mohol Enter handler zavolať priamo
+    item.__selectItem = selectItem;
+
+    item.onmousedown = (e) => {
+      e.preventDefault(); // Zabráni blur predtým než stihneme spracovať click
+      selectItem();
     };
 
     item.onmouseover = () => {
@@ -2675,8 +2688,14 @@ async function selectRoute(idx){
     addMbMarker(coord, labels[i] || String(i+1), s);
   });
 
-  // Update LEFT panel (Cost breakdown) pre novú trasu
-  await recomputeResultsPanel(route, validPts, segments, stopInputs);
+  // Update LEFT panel (Cost breakdown) pre novú trasu + dostaneme presnú cenu
+  const exactTotal = await recomputeResultsPanel(route, validPts, segments, stopInputs);
+
+  // Synchronizuj cenu v RIGHT paneli — selected karta dostane presnú cenu
+  if(typeof exactTotal === 'number'){
+    route._exactCost = exactTotal;
+    renderRouteOptionsPanel(routeData.routes, idx);
+  }
 }
 
 // ══════════════════════════════════════════════════════════
@@ -2842,6 +2861,9 @@ async function recomputeResultsPanel(route, validPts, segments, stopInputs){
     const routeLabel = route._decomposed && route.summary ? route.summary : 'Current route';
     leftSub.textContent = `${routeLabel} · ${ccList.length} countr${ccList.length===1?'y':'ies'}`;
   }
+
+  // Vráť presne vypočítanú cenu aby ju mohol callee synchronizovať s RIGHT panelom
+  return grandTotal;
 }
 
 // ══════════════════════════════════════════════════════════
@@ -2940,8 +2962,15 @@ async function calcMapRoute(){
     // 9. Render RIGHT panel — Route options karty
     renderRouteOptionsPanel(routeData.routes, 0);
 
-    // 10. Výpočet cien pre vybranú trasu a render LEFT panel
-    await recomputeResultsPanel(route, validPts, segments, stopInputs);
+    // 10. Výpočet cien pre vybranú trasu a render LEFT panel (presná cena vrátane Live HAC)
+    const exactTotal = await recomputeResultsPanel(route, validPts, segments, stopInputs);
+
+    // 11. Synchronizuj cenu v RIGHT paneli — selected karta dostane presnú cenu
+    // (ostatné karty zostávajú s odhadom)
+    if(typeof exactTotal === 'number'){
+      route._exactCost = exactTotal;
+      renderRouteOptionsPanel(routeData.routes, 0);
+    }
 
     document.getElementById('mr-legend').style.display = 'block';
 
@@ -2975,23 +3004,27 @@ function renderRouteOptionsPanel(routes, activeIdx){
   rightSub.textContent = `${routes.length} alternative${routes.length>1?'s':''} found`;
 
   // Vypočítaj savings pre Cheapest badge
-  // KĽÚČOVÉ: používame _estimatedCost (ten istý výpočet čo použila Cheapest detekcia v combineLegRoutes)
-  // — aby sa Est. Cost v UI vždy ZHODOVAL s tým čo určilo Cheapest label
+  // Priorita cien:
+  //   1. _exactCost (vrátane Live HAC) — len pre aktuálne selected trasu po recomputeResultsPanel
+  //   2. _estimatedCost (road-class klasifikácia, rovnaký výpočet čo určil Cheapest label)
+  //   3. fallback rough proxy (legacy/single-leg bez decomposition)
   const fuelCons = parseFloat(document.getElementById('mr-fuel-consumption')?.value) || 7;
   const fuelPrice = parseFloat(document.getElementById('mr-fuel-price')?.value) || 1.55;
 
   let maxPrice = 0, minPrice = Infinity;
-  const routePrices = routes.map(r => {
-    if(typeof r._estimatedCost === 'number'){
-      return r._estimatedCost; // preferovaný — konzistentný s Cheapest detekciou
+  const routeData = routes.map(r => {
+    if(typeof r._exactCost === 'number'){
+      return { price: r._exactCost, exact: true };
     }
-    // Fallback: rough estimate ak trasa neprišla z combineLegRoutes
+    if(typeof r._estimatedCost === 'number'){
+      return { price: r._estimatedCost, exact: false };
+    }
     const km = r.distance/1000;
     const fuelCost = km * fuelCons / 100 * fuelPrice;
     const tollEst = km * 0.035;
-    return fuelCost + tollEst;
+    return { price: fuelCost + tollEst, exact: false };
   });
-  routePrices.forEach(p => { if(p > maxPrice) maxPrice = p; if(p < minPrice) minPrice = p; });
+  routeData.forEach(d => { if(d.price > maxPrice) maxPrice = d.price; if(d.price < minPrice) minPrice = d.price; });
 
   // Karty
   let html = '';
@@ -3006,8 +3039,10 @@ function renderRouteOptionsPanel(routes, activeIdx){
     const ico = icons[labelLower] || '•';
 
     const isSelected = i === activeIdx;
-    const saveBadge = labelsArr.includes('Cheapest') && maxPrice > minPrice
-      ? `<div class="mr-route-save">SAVE ${toEurStr(maxPrice-minPrice)}</div>`
+    // SAVE badge len ak je úspora ≥ €0.50 (inak je rozdiel marginálny a badge je zbytočný)
+    const savings = maxPrice - minPrice;
+    const saveBadge = labelsArr.includes('Cheapest') && savings >= 0.50
+      ? `<div class="mr-route-save">SAVE ${toEurStr(savings)}</div>`
       : '';
     const selectedPill = isSelected
       ? `<span class="mr-route-selected-pill">● SELECTED</span>`
@@ -3032,7 +3067,7 @@ function renderRouteOptionsPanel(routes, activeIdx){
       <div class="mr-route-metrics">
         <div class="mr-metric"><div class="mr-metric-l">Distance</div><div class="mr-metric-v">${km} km</div></div>
         <div class="mr-metric"><div class="mr-metric-l">Time</div><div class="mr-metric-v">${h}h ${m}m</div></div>
-        <div class="mr-metric"><div class="mr-metric-l">Est. cost</div><div class="mr-metric-v ${isSelected?'accent':''}">${toEurStr(routePrices[i])}</div></div>
+        <div class="mr-metric"><div class="mr-metric-l">${routeData[i].exact ? 'Total cost' : 'Est. cost'}</div><div class="mr-metric-v ${isSelected?'accent':''}">${routeData[i].exact ? '' : '~'}${toEurStr(routeData[i].price)}</div></div>
       </div>
     </div>`;
   });
