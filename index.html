@@ -1312,26 +1312,6 @@ function switchTab(id,btn){
 }
 
 
-// ── MAPBOX HELPERS ──
-const CC_MAP={'SK':'sk','CZ':'cz','AT':'at','CH':'ch','HU':'hu','SI':'si','RO':'ro','BG':'bg','HR':'hr','FR':'fr','IT':'it','ES':'es','PT':'pt','PL':'pl','GR':'gr','IE':'ie','DE':'de','NL':'nl','BE':'be','LU':'lu','DK':'dk','SE':'se','FI':'fi','GB':'gb','LT':'lt','LV':'lv','EE':'ee','CY':'cy','MT':'mt','IS':'is','NO':'no','RS':'rs','ME':'me','BA':'ba','MK':'mk','AL':'al','XK':'xk','TR':'tr','UA':'ua','BY':'by','GE':'ge','AM':'am','AZ':'az','MD':'md','AD':'ad','MC':'mc','SM':'sm','LI':'li'};
-const FREE_LOCAL={'ba':true,'rs':true,'me':true,'mk':true,'al':true,'xk':true,'ge':true,'am':true,'az':true,'md':true};
-
-function countryColor(cc){
-  const id=CC_MAP[cc]; const country=C.find(c=>c.id===id);
-  if(!country) return '#888';
-  if(country.type==='vignette') return '#1B4D3E';
-  if(country.type==='toll') return '#7A3200';
-  return '#0F3460';
-}
-
-function addMbMarker(coords,label,name){
-  const el=document.createElement('div');
-  el.style.cssText='width:28px;height:28px;border-radius:50%;background:#D4820A;color:#000;font-family:Geist,sans-serif;font-weight:900;font-size:12px;display:flex;align-items:center;justify-content:center;border:2px solid rgba(255,255,255,.8);box-shadow:0 2px 10px rgba(0,0,0,.5);cursor:pointer;z-index:10;';
-  el.textContent=label;
-  const marker=new mapboxgl.Marker({element:el}).setLngLat(coords).setPopup(new mapboxgl.Popup({offset:20,closeButton:false}).setHTML(`<strong style="font-size:12px;">${name}</strong>`)).addTo(mrMap);
-  mrMarkers.push(marker);
-}
-
 // ── MAP ROUTE ──────────────────────────────────────────────
 const _ta='pk.eyJ1IjoiZGFuaWplbHZyYW5qZXMiLCJhIjoiY21vNWRscjZtMG9ybDJzcXB5';
 const _tb='eWYwY2swcyJ9.YY0cJRru_mlKwT8CCZZJRQ';
@@ -1788,6 +1768,14 @@ function countryColor(id){
   if(c.type==='toll') return '#7A3200';
   return '#0F3460';
 }
+function addMbMarker(coords,label,name){
+  const el=document.createElement('div');
+  el.style.cssText='width:28px;height:28px;border-radius:50%;background:#D4820A;color:#000;font-family:Geist,sans-serif;font-weight:900;font-size:12px;display:flex;align-items:center;justify-content:center;border:2px solid rgba(255,255,255,.8);box-shadow:0 2px 10px rgba(0,0,0,.5);cursor:pointer;z-index:10;';
+  el.textContent=label;
+  const marker=new mapboxgl.Marker({element:el}).setLngLat(coords).setPopup(new mapboxgl.Popup({offset:20,closeButton:false}).setHTML(`<strong style="font-size:12px;">${name}</strong>`)).addTo(mrMap);
+  mrMarkers.push(marker);
+}
+
 
 // Store last directions result for route switching
 let lastDirectionsResult = null;
@@ -1881,7 +1869,7 @@ async function renderRoute(result){
 
     // Reverse geocode cez Mapbox
     const countryResults_raw=await Promise.all(samplePoints.map(pt=>
-      fetch(`https://api.mapbox.com/geocoding/v5/mapbox.places/${pt.lng()},${pt.lat()}.json?access_token=${TOKEN_A+TOKEN_B}&types=country&limit=1`)
+      fetch(`https://api.mapbox.com/geocoding/v5/mapbox.places/${pt.lng()},${pt.lat()}.json?access_token=${_ta+_tb}&types=country&limit=1`)
         .then(r=>r.json())
         .then(d=>({cc:d.features?.[0]?.properties?.short_code?.toUpperCase()||null, lat:pt.lat(), lng:pt.lng()}))
         .catch(()=>null)
