@@ -223,10 +223,11 @@ main { padding:2rem; max-width:1300px; margin:0 auto; }
 .mr-col-head-sub { font-size: .65rem; color: var(--muted); margin-top: .15rem; }
 .mr-col-body { padding: .9rem 1rem; overflow-y: auto; flex: 1; }
 
-/* Collapse button pre bočné panely (mobile) */
-.mr-col-collapse { width: 22px; height: 22px; border-radius: 5px; background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.08); color: rgba(255,255,255,.45); font-size: .7rem; cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: all .15s; }
-.mr-col-collapse:hover { background: rgba(255,255,255,.08); color: #fff; }
+/* Collapse button pre bočné panely — len na mobile (<900px) */
+.mr-col-collapse { display: none; }
 @media(max-width: 900px){
+  .mr-col-collapse { display: flex; width: 22px; height: 22px; border-radius: 5px; background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.08); color: rgba(255,255,255,.45); font-size: .7rem; cursor: pointer; align-items: center; justify-content: center; flex-shrink: 0; transition: all .15s; }
+  .mr-col-collapse:hover { background: rgba(255,255,255,.08); color: #fff; }
   .mr-col-body { display: none; }
   .mr-col.open .mr-col-body { display: block; }
   .mr-col-collapse::after { content: '▾'; transition: transform .2s; display: inline-block; }
@@ -729,8 +730,6 @@ main { padding:2rem; max-width:1300px; margin:0 auto; }
           <div id="mr-map"></div>
           <!-- Google Maps overlay pre edit mode (draggable routes) -->
           <div id="mr-gmap" style="position:absolute;inset:0;display:none;z-index:8;"></div>
-          <!-- Prekryvná tmavá vrstva pre edit mode (nad Google mapou pre tmavší look) -->
-          <div id="mr-gmap-overlay" style="position:absolute;inset:0;display:none;z-index:9;background:rgba(13,17,23,.4);pointer-events:none;"></div>
           <div id="mr-legend" class="mr-legend" style="display:none;">
             <div class="mrl-item"><span class="mrl-dot" style="background:#22c997;"></span> Vignette motorway</div>
             <div class="mrl-item"><span class="mrl-dot" style="background:#f4a45a;"></span> Toll motorway</div>
@@ -2924,14 +2923,12 @@ async function enterCustomRouteMode(){
   customRouteState.originalRoute = route;
   customRouteState.viaWaypoints = [];
 
-  // UI: zobraz Google mapu, skry Mapbox drag events
+  // UI: zobraz Google mapu, skry Mapbox
   const gmapDiv = document.getElementById('mr-gmap');
-  const gmapOverlay = document.getElementById('mr-gmap-overlay');
   gmapDiv.style.display = 'block';
-  gmapOverlay.style.display = 'block';
-  // Mapbox zostane viditeľný ALE bez pointer-events (drag prejde do Google)
-  document.getElementById('mr-map').style.pointerEvents = 'none';
-  document.getElementById('mr-map').style.opacity = '0.15'; // Mapbox schovaný pod tmavým overlay
+  // Mapbox sa úplne skryje aby drag eventy išli priamo do Google
+  const mbMap = document.getElementById('mr-map');
+  mbMap.style.visibility = 'hidden';
 
   document.getElementById('mr-edit-btn').style.display = 'none';
   document.getElementById('mr-edit-actions').style.display = 'flex';
@@ -2947,18 +2944,29 @@ async function enterCustomRouteMode(){
       zoom: Math.floor(zoom),
       disableDefaultUI: true,
       zoomControl: true,
-      // Dark styled map aby ladil s Mapboxom
+      // Dark styled map — match Mapbox #0D1117
       styles: [
-        { elementType: 'geometry', stylers: [{ color: '#212121' }] },
-        { elementType: 'labels.text.fill', stylers: [{ color: '#9ca3af' }] },
-        { elementType: 'labels.text.stroke', stylers: [{ color: '#212121' }] },
-        { featureType: 'administrative', elementType: 'geometry', stylers: [{ color: '#757575' }] },
-        { featureType: 'administrative.country', elementType: 'labels.text.fill', stylers: [{ color: '#bdbdbd' }] },
-        { featureType: 'road', elementType: 'geometry', stylers: [{ color: '#2c2c2c' }] },
-        { featureType: 'road', elementType: 'labels.text.fill', stylers: [{ color: '#757575' }] },
-        { featureType: 'road.highway', elementType: 'geometry', stylers: [{ color: '#3c3c3c' }] },
-        { featureType: 'road.highway', elementType: 'labels.text.fill', stylers: [{ color: '#d4820a' }] },
-        { featureType: 'water', elementType: 'geometry', stylers: [{ color: '#0d2430' }] },
+        { elementType: 'geometry', stylers: [{ color: '#0D1117' }] },
+        { elementType: 'labels.text.fill', stylers: [{ color: '#8b949e' }] },
+        { elementType: 'labels.text.stroke', stylers: [{ color: '#0D1117' }] },
+        { featureType: 'administrative', elementType: 'geometry.stroke', stylers: [{ color: '#30363d' }] },
+        { featureType: 'administrative.country', elementType: 'labels.text.fill', stylers: [{ color: '#c9d1d9' }] },
+        { featureType: 'administrative.locality', elementType: 'labels.text.fill', stylers: [{ color: '#8b949e' }] },
+        { featureType: 'administrative.province', elementType: 'labels.text.fill', stylers: [{ color: '#6e7681' }] },
+        { featureType: 'administrative.land_parcel', stylers: [{ visibility: 'off' }] },
+        { featureType: 'administrative.neighborhood', stylers: [{ visibility: 'off' }] },
+        { featureType: 'road', elementType: 'geometry', stylers: [{ color: '#21262d' }] },
+        { featureType: 'road', elementType: 'geometry.stroke', stylers: [{ color: '#21262d' }] },
+        { featureType: 'road', elementType: 'labels.text.fill', stylers: [{ color: '#6e7681' }] },
+        { featureType: 'road.highway', elementType: 'geometry', stylers: [{ color: '#2c313a' }] },
+        { featureType: 'road.highway', elementType: 'geometry.stroke', stylers: [{ color: '#2c313a' }] },
+        { featureType: 'road.highway', elementType: 'labels.text.fill', stylers: [{ color: '#D4820A' }] },
+        { featureType: 'road.arterial', elementType: 'geometry', stylers: [{ color: '#1c1f24' }] },
+        { featureType: 'road.local', elementType: 'geometry', stylers: [{ color: '#15181c' }] },
+        { featureType: 'water', elementType: 'geometry', stylers: [{ color: '#050a13' }] },
+        { featureType: 'water', elementType: 'labels.text.fill', stylers: [{ color: '#3c414c' }] },
+        { featureType: 'landscape', elementType: 'geometry', stylers: [{ color: '#0D1117' }] },
+        { featureType: 'landscape.natural', elementType: 'geometry', stylers: [{ color: '#11141a' }] },
         { featureType: 'poi', stylers: [{ visibility: 'off' }] },
         { featureType: 'transit', stylers: [{ visibility: 'off' }] },
       ],
@@ -3048,58 +3056,76 @@ async function applyCustomRoute(){
   }
 
   const result = customRouteState._latestResult;
-  if(!result?.routes?.[0]){
+  const renderer = customRouteState.directionsRenderer;
+
+  if(!result?.routes?.[0] || !renderer){
     cancelCustomRoute();
     return;
   }
 
-  const route = result.routes[0];
-  console.log('[CustomRoute] Applying. Route has', route.legs.length, 'legs');
+  // KĽÚČOVÉ: Google DirectionsRenderer pri drag-u vloží nové waypointy do request.waypoints
+  // Každý nový bod má {location: LatLng, stopover: false} (via-point)
+  // Originálne waypointy z nášho requestu majú stopover: true
+  const currentRequest = renderer.getDirections().request;
+  const allWaypoints = currentRequest.waypoints || [];
 
-  // Extract waypoints from the route
-  // Origin a destination sú v legs[0].start_location a legs[last].end_location
-  // Mezwyaypointy = legs[i].end_location pre i = 0..legs.length-2
-  //                (alebo legs[i+1].start_location, je to rovnaké)
-  //
-  // Ale viac zaujímavé: Google pri drag-u pridáva "via_waypoints" — tieto sú v
-  // route.waypoint_order a route.legs sú rozdelené podľa nich
-  //
-  // Najjednoduchšie riešenie: porovnáme pôvodné stops (origStopCoords) s aktuálnou trasou
-  // a nájdeme ktoré body sú NOVÉ
+  console.log('[CustomRoute] Apply — total waypoints:', allWaypoints.length);
 
+  // Filter len tie ktoré majú stopover: false (to sú via-points pridané Googlom)
+  const viaWaypoints = allWaypoints.filter(wp => wp.stopover === false);
+  console.log('[CustomRoute] Via-waypoints (new):', viaWaypoints.length);
+
+  if(!viaWaypoints.length){
+    console.log('[CustomRoute] No via-waypoints — route was not dragged');
+    cleanupCustomRouteMode();
+    return;
+  }
+
+  // Pre každý via-waypoint urč najbližší leg (medzi ktorými originálnymi stopmi leží)
   const stopIds = mrStops.filter(id => {
     const el = document.getElementById(id);
     return el && el.value.trim().length > 0;
   });
   const origCoords = stopIds.map(id => _inputCoords[id]).filter(Boolean);
 
-  // Nové waypointy = legs[i].end_location pre i < legs.length - 1
-  // ... Ale treba odfiltrovať tie ktoré už sú v origCoords
-  const newWaypoints = [];
-  for(let i = 0; i < route.legs.length - 1; i++){
-    const endLoc = route.legs[i].end_location;
-    const wpCoord = [endLoc.lng(), endLoc.lat()];
-    // Skontroluj či tento bod nezodpovedá existujúcemu origCoord (s toleranciou)
-    const isExisting = origCoords.some(oc =>
-      Math.abs(oc[0] - wpCoord[0]) < 0.01 && Math.abs(oc[1] - wpCoord[1]) < 0.01
-    );
-    if(!isExisting){
-      newWaypoints.push({ coord: wpCoord, legIdx: i });
+  // Haversine-like distance (jednoduchá, stačí na porovnanie)
+  const dist = (p1, p2) => {
+    const dLat = (p2[1] - p1[1]);
+    const dLng = (p2[0] - p1[0]);
+    return Math.sqrt(dLat*dLat + dLng*dLng);
+  };
+
+  // Konvertuj via-waypoints LatLng na [lng, lat]
+  const viaCoords = viaWaypoints.map(wp => {
+    const loc = wp.location;
+    const lat = typeof loc.lat === 'function' ? loc.lat() : loc.lat;
+    const lng = typeof loc.lng === 'function' ? loc.lng() : loc.lng;
+    return [lng, lat];
+  });
+
+  // Pre každý via-waypoint urč insertIdx (medzi ktorými originálnymi stopmi patrí)
+  const newWaypoints = viaCoords.map(coord => {
+    let bestInsertIdx = origCoords.length - 1;
+    let minDetour = Infinity;
+    for(let i = 0; i < origCoords.length - 1; i++){
+      const detour = dist(origCoords[i], coord) + dist(coord, origCoords[i+1]);
+      if(detour < minDetour){
+        minDetour = detour;
+        bestInsertIdx = i + 1;
+      }
     }
-  }
+    return { coord, insertIdx: bestInsertIdx };
+  });
+
+  // Sort podľa insertIdx
+  newWaypoints.sort((a, b) => a.insertIdx - b.insertIdx);
 
   console.log('[CustomRoute] Detected', newWaypoints.length, 'new waypoints');
 
-  if(!newWaypoints.length){
-    // User možno len pohol kamerou, nič sa nezmenilo
-    cleanupCustomRouteMode();
-    return;
-  }
-
-  // Cleanup UI
+  // Cleanup UI (ale zachovaj directionsRenderer pre extract)
   cleanupCustomRouteMode();
 
-  // Reverse-geocode každého a pridaj do mrStops na správnu pozíciu
+  // Reverse-geocode každého
   const reverseGeocode = (lng, lat) => {
     return new Promise(resolve => {
       try {
@@ -3114,17 +3140,12 @@ async function applyCustomRoute(){
     });
   };
 
-  // Sort waypointy podľa legIdx vzostupne (aby vkladanie šlo od začiatku)
-  newWaypoints.sort((a, b) => a.legIdx - b.legIdx);
-
-  // Pre každý nový waypoint: vlož pred stop na pozícii legIdx+1 v mrStops
-  // Ale pozor — ako vkladáme, indexy sa posúvajú
+  // Pridaj do mrStops + DOM
   let insertedCount = 0;
   for(const wp of newWaypoints){
     const label = await reverseGeocode(wp.coord[0], wp.coord[1]);
     console.log('[CustomRoute] Waypoint resolved:', wp.coord, '→', label);
 
-    // Create new stop element
     stopCounter++;
     const newId = `mr-stop-${stopCounter}`;
     const newDiv = document.createElement('div');
@@ -3136,12 +3157,9 @@ async function applyCustomRoute(){
       <button class="stop-remove" onclick="removeStop('${newId}')" title="Remove waypoint">×</button>
     `;
 
-    // Actual insert position (zohľadni už pridané waypointy)
-    const actualIdx = wp.legIdx + 1 + insertedCount;
-
-    // Insert do DOM
+    const actualIdx = wp.insertIdx + insertedCount;
     const wrap = document.getElementById('mr-stops-wrap');
-    const nextStopId = mrStops[actualIdx]; // môže byť undefined ak je to na konci
+    const nextStopId = mrStops[actualIdx];
     const nextRow = nextStopId ? wrap.querySelector(`.stop-row[data-stop-id="${nextStopId}"]`) : null;
     if(nextRow){
       wrap.insertBefore(newDiv, nextRow);
@@ -3149,14 +3167,11 @@ async function applyCustomRoute(){
       wrap.appendChild(newDiv);
     }
 
-    // Insert do mrStops array
     mrStops = [...mrStops.slice(0, actualIdx), newId, ...mrStops.slice(actualIdx)];
     insertedCount++;
 
-    // Attach autocomplete
     attachAutocomplete(newId);
 
-    // Nastav hodnoty
     const inp = document.getElementById(newId);
     if(inp){
       inp.value = label;
@@ -3185,15 +3200,12 @@ function cleanupCustomRouteMode(){
     customRouteState.directionsRenderer = null;
   }
 
-  // Skry Google map overlay, vráť Mapbox
+  // Skry Google map, vráť Mapbox
   const gmapDiv = document.getElementById('mr-gmap');
-  const gmapOverlay = document.getElementById('mr-gmap-overlay');
   if(gmapDiv) gmapDiv.style.display = 'none';
-  if(gmapOverlay) gmapOverlay.style.display = 'none';
   const mbMap = document.getElementById('mr-map');
   if(mbMap){
-    mbMap.style.pointerEvents = 'auto';
-    mbMap.style.opacity = '1';
+    mbMap.style.visibility = 'visible';
   }
 
   // UI reset
