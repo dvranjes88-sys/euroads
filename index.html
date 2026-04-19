@@ -190,10 +190,11 @@ main { padding:2rem; max-width:1300px; margin:0 auto; }
 .mr-field input:focus { border-color:var(--accent); }
 .mr-map-wrap { position:sticky; top:120px; border-radius:var(--r); overflow:hidden; border:1.5px solid var(--border); height:580px; background:#0D1117; }
 #mr-map { width:100%; height:100%; }
-.mr-legend { position:absolute; bottom:1rem; left:1rem; background:rgba(255,255,255,.92); border-radius:8px; padding:.6rem .9rem; z-index:10; }
-.mrl-item { display:flex; align-items:center; gap:.5rem; font-size:.72rem; font-weight:500; margin-bottom:.25rem; }
+/* ── OPRAVA: tmavá legenda s blur efektom pre čitateľnosť na dark mape ── */
+.mr-legend { position:absolute; bottom:1rem; left:1rem; background:rgba(13,17,23,.92); border:1px solid rgba(255,255,255,.12); border-radius:8px; padding:.7rem 1rem; z-index:10; backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px); box-shadow:0 4px 20px rgba(0,0,0,.5); }
+.mrl-item { display:flex; align-items:center; gap:.55rem; font-size:.72rem; font-weight:600; color:#E2E8F0; margin-bottom:.3rem; }
 .mrl-item:last-child { margin-bottom:0; }
-.mrl-dot { width:12px; height:12px; border-radius:50%; flex-shrink:0; }
+.mrl-dot { width:14px; height:14px; border-radius:3px; flex-shrink:0; box-shadow:0 0 6px rgba(0,0,0,.4); }
 .mr-country-item { display:flex; align-items:center; gap:.85rem; border:1.5px solid var(--border); border-radius:8px; padding:.85rem 1rem; margin-bottom:.6rem; }
 .mr-ci-code { font-size:.72rem; font-weight:800; color:var(--muted); width:2.2rem; text-align:center; flex-shrink:0; }
 .mr-ci-info { flex:1; }
@@ -539,10 +540,10 @@ main { padding:2rem; max-width:1300px; margin:0 auto; }
     <div class="mr-map-wrap">
       <div id="mr-map"></div>
       <div id="mr-legend" class="mr-legend" style="display:none;">
-        <div class="mrl-item"><span class="mrl-dot" style="background:#22c997;border-radius:3px;"></span> Vignette</div>
-        <div class="mrl-item"><span class="mrl-dot" style="background:#f4a45a;border-radius:3px;"></span> Toll</div>
-        <div class="mrl-item"><span class="mrl-dot" style="background:#6eb3f7;border-radius:3px;"></span> Free</div>
-        <div class="mrl-item"><span class="mrl-dot" style="background:#c084fc;border-radius:3px;"></span> Local</div>
+        <div class="mrl-item"><span class="mrl-dot" style="background:#22c997;"></span> Vignette</div>
+        <div class="mrl-item"><span class="mrl-dot" style="background:#f4a45a;"></span> Toll</div>
+        <div class="mrl-item"><span class="mrl-dot" style="background:#6eb3f7;"></span> Free</div>
+        <div class="mrl-item"><span class="mrl-dot" style="background:#c084fc;"></span> Other</div>
       </div>
     </div>
   </div>
@@ -942,212 +943,6 @@ function renderSpeed(){
   </tr>`).join('');
 }
 
-// ── ROUTE PLANNER STATE ──
-let selectedCalcCountries = [];
-
-function filterRouteDropdown(side){
-  const input=document.getElementById(`route-${side}`);
-  const drop=document.getElementById(`drop-${side}`);
-  const val=input.value.toLowerCase().trim();
-  if(!val){drop.classList.remove('open');return;}
-  const matches=C.filter(c=>c.name.toLowerCase().includes(val)).slice(0,8);
-  if(!matches.length){drop.classList.remove('open');return;}
-  drop.innerHTML=matches.map(c=>`<div class="drop-item" onmousedown="selectRoute('${side}','${c.name}')">
-    <span>${c.name}</span><span class="di-type">${{vignette:'🏷️',toll:'🚧',free:'🆓'}[c.type]}</span>
-  </div>`).join('');
-  drop.classList.add('open');
-}
-
-function selectRoute(side,name){
-  document.getElementById(`route-${side}`).value=name;
-  document.getElementById(`drop-${side}`).classList.remove('open');
-}
-
-function hideDropdown(side){
-  setTimeout(()=>document.getElementById(`drop-${side}`).classList.remove('open'),200);
-}
-
-function filterCalcSearch(){
-  const input=document.getElementById('calc-search');
-  const drop=document.getElementById('drop-calc');
-  const val=input.value.toLowerCase().trim();
-  if(!val){drop.classList.remove('open');return;}
-  const matches=C.filter(c=>c.name.toLowerCase().includes(val)&&!selectedCalcCountries.find(s=>s.id===c.id)).slice(0,8);
-  if(!matches.length){drop.classList.remove('open');return;}
-  drop.innerHTML=matches.map(c=>`<div class="drop-item" onmousedown="addCalcCountry('${c.id}')">
-    <span>${c.name}</span><span class="di-type">${{vignette:'🏷️ Vignette',toll:'🚧 Toll',free:'🆓 Free'}[c.type]}</span>
-  </div>`).join('');
-  drop.classList.add('open');
-}
-
-function hideCalcDrop(){
-  setTimeout(()=>document.getElementById('drop-calc').classList.remove('open'),200);
-}
-
-function addCalcCountry(id){
-  const c=C.find(x=>x.id===id);
-  if(!c||selectedCalcCountries.find(x=>x.id===id)) return;
-  selectedCalcCountries.push(c);
-  document.getElementById('calc-search').value='';
-  document.getElementById('drop-calc').classList.remove('open');
-  renderTags();
-}
-
-function removeCalcCountry(id){
-  selectedCalcCountries=selectedCalcCountries.filter(c=>c.id!==id);
-  renderTags();
-}
-
-function renderTags(){
-  const wrap=document.getElementById('selected-tags');
-  wrap.innerHTML=selectedCalcCountries.map(c=>`
-    <span class="sel-tag">${c.name} <button onclick="removeCalcCountry('${c.id}')">×</button></span>
-  `).join('');
-}
-
-// Simple route suggester based on geographic logic
-const ROUTES = {
-  // FROM SLOVAKIA
-  'Slovakia-Croatia':         ['Slovakia','Hungary','Croatia'],
-  'Slovakia-Bosnia & Herz.':  ['Slovakia','Hungary','Croatia','Bosnia & Herz.'],
-  'Slovakia-Montenegro':      ['Slovakia','Hungary','Croatia','Bosnia & Herz.','Montenegro'],
-  'Slovakia-Serbia':          ['Slovakia','Hungary','Serbia'],
-  'Slovakia-Greece':          ['Slovakia','Hungary','Serbia','N. Macedonia','Greece'],
-  'Slovakia-N. Macedonia':    ['Slovakia','Hungary','Serbia','N. Macedonia'],
-  'Slovakia-Albania':         ['Slovakia','Hungary','Serbia','N. Macedonia','Albania'],
-  'Slovakia-Kosovo':          ['Slovakia','Hungary','Serbia','Kosovo'],
-  'Slovakia-Bulgaria':        ['Slovakia','Hungary','Serbia','Bulgaria'],
-  'Slovakia-Romania':         ['Slovakia','Hungary','Romania'],
-  'Slovakia-Turkey':          ['Slovakia','Hungary','Serbia','Bulgaria','Turkey'],
-  'Slovakia-Austria':         ['Slovakia','Austria'],
-  'Slovakia-Switzerland':     ['Slovakia','Austria','Switzerland'],
-  'Slovakia-Italy':           ['Slovakia','Austria','Italy'],
-  'Slovakia-France':          ['Slovakia','Austria','Switzerland','France'],
-  'Slovakia-Germany':         ['Slovakia','Austria','Germany'],
-  'Slovakia-Poland':          ['Slovakia','Poland'],
-  // FROM CZECHIA
-  'Czechia-Croatia':          ['Czechia','Austria','Slovenia','Croatia'],
-  'Czechia-Slovakia':         ['Czechia','Slovakia'],
-  'Czechia-Hungary':          ['Czechia','Slovakia','Hungary'],
-  'Czechia-Greece':           ['Czechia','Slovakia','Hungary','Serbia','N. Macedonia','Greece'],
-  'Czechia-Italy':            ['Czechia','Austria','Italy'],
-  // FROM POLAND
-  'Poland-Croatia':           ['Poland','Slovakia','Hungary','Croatia'],
-  'Poland-Greece':            ['Poland','Slovakia','Hungary','Serbia','N. Macedonia','Greece'],
-  'Poland-Hungary':           ['Poland','Slovakia','Hungary'],
-  'Poland-Italy':             ['Poland','Slovakia','Austria','Italy'],
-  'Poland-Germany':           ['Poland','Germany'],
-  // FROM GERMANY
-  'Germany-Croatia':          ['Germany','Austria','Slovenia','Croatia'],
-  'Germany-Bosnia & Herz.':   ['Germany','Austria','Slovenia','Croatia','Bosnia & Herz.'],
-  'Germany-Montenegro':       ['Germany','Austria','Slovenia','Croatia','Bosnia & Herz.','Montenegro'],
-  'Germany-Greece':           ['Germany','Austria','Hungary','Serbia','N. Macedonia','Greece'],
-  'Germany-Turkey':           ['Germany','Austria','Hungary','Serbia','Bulgaria','Turkey'],
-  'Germany-Italy':            ['Germany','Austria','Italy'],
-  'Germany-France':           ['Germany','France'],
-  'Germany-Switzerland':      ['Germany','Switzerland'],
-  'Germany-Serbia':           ['Germany','Austria','Hungary','Serbia'],
-  'Germany-Bulgaria':         ['Germany','Austria','Hungary','Serbia','Bulgaria'],
-  // FROM AUSTRIA
-  'Austria-Croatia':          ['Austria','Slovenia','Croatia'],
-  'Austria-Bosnia & Herz.':   ['Austria','Slovenia','Croatia','Bosnia & Herz.'],
-  'Austria-Serbia':           ['Austria','Hungary','Serbia'],
-  'Austria-Greece':           ['Austria','Hungary','Serbia','N. Macedonia','Greece'],
-  'Austria-Italy':            ['Austria','Italy'],
-  // FROM NETHERLANDS
-  'Netherlands-Croatia':      ['Netherlands','Germany','Austria','Slovenia','Croatia'],
-  'Netherlands-Greece':       ['Netherlands','Germany','Austria','Hungary','Serbia','N. Macedonia','Greece'],
-  'Netherlands-Italy':        ['Netherlands','Germany','Austria','Italy'],
-  'Netherlands-France':       ['Netherlands','Belgium','France'],
-  // FROM UK / FRANCE / BELGIUM
-  'United Kingdom-Croatia':   ['United Kingdom','Belgium','France','Italy','Slovenia','Croatia'],
-  'United Kingdom-Greece':    ['United Kingdom','Belgium','France','Italy','Slovenia','Croatia','N. Macedonia','Greece'],
-  'France-Croatia':           ['France','Italy','Slovenia','Croatia'],
-  'France-Greece':            ['France','Italy','Slovenia','Croatia','N. Macedonia','Greece'],
-  'France-Italy':             ['France','Italy'],
-  'Belgium-Croatia':          ['Belgium','Germany','Austria','Slovenia','Croatia'],
-  // FROM HUNGARY
-  'Hungary-Croatia':          ['Hungary','Croatia'],
-  'Hungary-Serbia':           ['Hungary','Serbia'],
-  'Hungary-Romania':          ['Hungary','Romania'],
-  'Hungary-Greece':           ['Hungary','Serbia','N. Macedonia','Greece'],
-  'Hungary-Montenegro':       ['Hungary','Serbia','Montenegro'],
-  'Hungary-Bosnia & Herz.':   ['Hungary','Croatia','Bosnia & Herz.'],
-  // FROM SERBIA
-  'Serbia-Greece':            ['Serbia','N. Macedonia','Greece'],
-  'Serbia-Montenegro':        ['Serbia','Montenegro'],
-  'Serbia-Albania':           ['Serbia','N. Macedonia','Albania'],
-  'Serbia-Bulgaria':          ['Serbia','Bulgaria'],
-  'Serbia-Turkey':            ['Serbia','Bulgaria','Turkey'],
-  // FROM ROMANIA
-  'Romania-Greece':           ['Romania','Bulgaria','Greece'],
-  'Romania-Turkey':           ['Romania','Bulgaria','Turkey'],
-  'Romania-Serbia':           ['Romania','Serbia'],
-  // FROM BULGARIA
-  'Bulgaria-Greece':          ['Bulgaria','Greece'],
-  'Bulgaria-Turkey':          ['Bulgaria','Turkey'],
-  // FROM SLOVENIA
-  'Slovenia-Croatia':         ['Slovenia','Croatia'],
-  'Slovenia-Bosnia & Herz.':  ['Slovenia','Croatia','Bosnia & Herz.'],
-  'Slovenia-Montenegro':      ['Slovenia','Croatia','Bosnia & Herz.','Montenegro'],
-  'Slovenia-Greece':          ['Slovenia','Croatia','N. Macedonia','Greece'],
-  // FROM CROATIA
-  'Croatia-Bosnia & Herz.':   ['Croatia','Bosnia & Herz.'],
-  'Croatia-Montenegro':       ['Croatia','Bosnia & Herz.','Montenegro'],
-  'Croatia-Serbia':           ['Croatia','Serbia'],
-  'Croatia-Greece':           ['Croatia','N. Macedonia','Greece'],
-  'Croatia-Albania':          ['Croatia','Bosnia & Herz.','Montenegro','Albania'],
-  // FROM ITALY
-  'Italy-Croatia':            ['Italy','Slovenia','Croatia'],
-  'Italy-Greece':             ['Italy','Slovenia','Croatia','N. Macedonia','Greece'],
-  'Italy-Albania':            ['Italy','Montenegro','Albania'],
-};
-
-function suggestRoute(){
-  const from=document.getElementById('route-from').value.trim();
-  const to=document.getElementById('route-to').value.trim();
-  if(!from||!to){alert('Please enter both origin and destination.');return;}
-
-  // Try exact match both directions
-  let route=ROUTES[`${from}-${to}`]||ROUTES[`${to}-${from}`];
-
-  // Try case-insensitive match
-  if(!route){
-    const key=Object.keys(ROUTES).find(k=>{
-      const [a,b]=k.split('-');
-      return (a.toLowerCase()===from.toLowerCase()&&b.toLowerCase()===to.toLowerCase())||
-             (a.toLowerCase()===to.toLowerCase()&&b.toLowerCase()===from.toLowerCase());
-    });
-    if(key) route=ROUTES[key];
-  }
-
-  // Try partial match (e.g. "Bosnia" matches "Bosnia & Herz.")
-  if(!route){
-    const key=Object.keys(ROUTES).find(k=>{
-      const [a,b]=k.split('-');
-      return (a.toLowerCase().includes(from.toLowerCase())&&b.toLowerCase().includes(to.toLowerCase()))||
-             (a.toLowerCase().includes(to.toLowerCase())&&b.toLowerCase().includes(from.toLowerCase()));
-    });
-    if(key) route=ROUTES[key];
-  }
-
-  if(!route){
-    // Fallback — just add the two countries
-    const cf=C.find(c=>c.name.toLowerCase().includes(from.toLowerCase()));
-    const ct=C.find(c=>c.name.toLowerCase().includes(to.toLowerCase()));
-    if(!cf&&!ct){alert('Could not find those countries. Please use the search below to add manually.');return;}
-    route=[cf?.name,ct?.name].filter(Boolean);
-  }
-
-  selectedCalcCountries=[];
-  route.forEach(name=>{
-    const c=C.find(x=>x.name===name||x.name.toLowerCase()===name.toLowerCase());
-    if(c&&!selectedCalcCountries.find(x=>x.id===c.id)) selectedCalcCountries.push(c);
-  });
-  renderTags();
-  document.getElementById('calc-result').innerHTML=`<h2>What you need</h2><div class="re">Route: <strong>${route.join(' → ')}</strong><br><br>Hit Calculate to see vignettes.</div>`;
-}
-
 function renderCalcChecks(){
   const today=new Date();
   const nextWeek=new Date(today); nextWeek.setDate(today.getDate()+7);
@@ -1163,13 +958,11 @@ function getBestVignette(prices,days){
     '1 day':1,'7 days':7,'1 week':7,'10 days':10,
     '1 month':30,'30 days':30,'2 months':60,'1 year':365
   };
-  // Find all options that cover the trip, pick the cheapest (shortest)
   const covering=prices.filter(p=>{
     const cover=Object.entries(dmap).find(([k])=>p.p===k)?.[1]||999;
     return cover>=days;
   });
   if(covering.length){
-    // Sort by duration — pick shortest (cheapest)
     covering.sort((a,b)=>{
       const da=Object.entries(dmap).find(([k])=>k===a.p)?.[1]||999;
       const db=Object.entries(dmap).find(([k])=>k===b.p)?.[1]||999;
@@ -1177,7 +970,6 @@ function getBestVignette(prices,days){
     });
     return covering[0];
   }
-  // Fallback — return longest (annual)
   return prices[prices.length-1];
 }
 
@@ -1185,13 +977,11 @@ function getBestVignette(prices,days){
 let FX = {};
 async function loadFX(){
   try {
-    // Use open.er-api.com which has CORS enabled for browser requests
     const r=await fetch('https://open.er-api.com/v6/latest/EUR');
     const d=await r.json();
     FX=d.rates||{};
   } catch(e){
     try {
-      // Fallback: exchangerate.host
       const r2=await fetch('https://api.exchangerate.host/latest?base=EUR');
       const d2=await r2.json();
       FX=d2.rates||{};
@@ -1201,7 +991,6 @@ async function loadFX(){
 loadFX();
 
 function parseEuro(str){
-  // Extract numeric value and currency from price string like "€10", "CZK 430", "CHF 40", "HUF 5,340"
   if(!str) return 0;
   const clean=str.replace(/\s/g,'').replace(',','');
   const eurM=clean.match(/€([\d.]+)/);
@@ -1211,91 +1000,12 @@ function parseEuro(str){
     const m=clean.match(new RegExp(cur+'([\\d.]+)'));
     if(m) return parseFloat(m[1])/rate;
   }
-  // try to find number after currency code at start
   const m2=str.match(/([\d,]+(?:\.[\d]+)?)/);
   return m2?parseFloat(m2[1].replace(',','')):0;
 }
 
 function toEurStr(eur){
   return '€'+eur.toFixed(2).replace(/\.00$/,'');
-}
-
-async function doCalc(){
-  const panel=document.getElementById('calc-result');
-  if(!selectedCalcCountries.length){panel.innerHTML='<h2>What you need</h2><div class="re">Please add at least one country.</div>';return;}
-
-  panel.innerHTML='<h2>What you need</h2><div class="re">⏳ Loading exchange rates...</div>';
-
-  if(!Object.keys(FX).length) await loadFX();
-
-  const dateFrom=document.getElementById('calc-date-from')?.value||'';
-  const dateTo=document.getElementById('calc-date-to')?.value||'';
-  let tripDays=7;
-  if(dateFrom&&dateTo){
-    const d1=new Date(dateFrom),d2=new Date(dateTo);
-    tripDays=Math.max(1,Math.ceil((d2-d1)/(1000*60*60*24)));
-  }
-
-  const vignItems=selectedCalcCountries.filter(c=>c.type==='vignette'&&c.prices.length);
-  const tollItems=selectedCalcCountries.filter(c=>c.type==='toll');
-  const freeItems=selectedCalcCountries.filter(c=>c.type==='free');
-
-  let totalEur=0;
-  let html='<h2>What you need</h2>';
-  if(dateFrom&&dateTo) html+=`<div style="font-size:.74rem;color:var(--muted);margin-bottom:1rem;padding:.6rem .8rem;background:var(--bg);border-radius:6px;">Trip: <strong>${dateFrom}</strong> → <strong>${dateTo}</strong> · ${tripDays} day${tripDays>1?'s':''}</div>`;
-
-  if(vignItems.length){
-    html+='<div style="font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);margin-bottom:.5rem;">🏷️ Buy vignettes before driving</div>';
-    vignItems.forEach(c=>{
-      const rec=getBestVignette(c.prices,tripDays);
-      const eurVal=parseEuro(rec.v);
-      totalEur+=eurVal;
-      const eurNote=rec.v.startsWith('€')?'':`<span style="font-size:.68rem;color:var(--muted);"> ≈ ${toEurStr(eurVal)}</span>`;
-      html+=`<div class="ri">
-        <div class="ri-f" style="font-size:.75rem;font-weight:800;color:var(--muted);width:2rem;text-align:center">${c.id.toUpperCase()}</div>
-        <div class="ri-i">
-          <div class="ri-n">${c.name}</div>
-          <div class="ri-a">Recommended: <strong>${rec.p}</strong>${c.buy?` · <a href="${c.buy}" target="_blank" style="color:var(--accent);text-decoration:none;">${c.bl} ↗</a>`:''}</div>
-        </div>
-        <div class="ri-p">${rec.v}${eurNote}</div>
-      </div>`;
-    });
-  }
-
-  if(tollItems.length){
-    html+='<div style="font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);margin:1rem 0 .5rem;">🚧 Pay at toll gate</div>';
-    tollItems.forEach(c=>{
-      const tollEst=c.prices[0]?parseEuro(c.prices[0].v):0;
-      if(tollEst) totalEur+=tollEst;
-      html+=`<div class="ri">
-        <div class="ri-f" style="font-size:.75rem;font-weight:800;color:var(--muted);width:2rem;text-align:center">${c.id.toUpperCase()}</div>
-        <div class="ri-i"><div class="ri-n">${c.name}</div><div class="ri-a">${c.enc?`ENC: ${c.enc}`:'Cash or card'}${c.prices[0]?' · est. '+c.prices[0].v:''}</div></div>
-        <div style="font-size:.7rem;color:var(--muted)">${tollEst?'~'+toEurStr(tollEst):'at gate'}</div>
-      </div>`;
-    });
-  }
-
-  if(freeItems.length){
-    html+='<div style="font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);margin:1rem 0 .5rem;">🆓 Free</div>';
-    freeItems.forEach(c=>{
-      html+=`<div class="ri"><div class="ri-f" style="font-size:.75rem;font-weight:800;color:var(--muted);width:2rem;text-align:center">${c.id.toUpperCase()}</div><div class="ri-i"><div class="ri-n">${c.name}</div><div class="ri-a">No payment needed</div></div><div style="color:var(--v);font-weight:800">FREE</div></div>`;
-    });
-  }
-
-  // TOTAL COST BOX
-  if(totalEur>0){
-    html+=`
-    <div style="margin-top:1.25rem;background:var(--vl);border:2px solid #a8d5c5;border-radius:10px;padding:1rem 1.2rem;">
-      <div style="font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--v);margin-bottom:.4rem;">💰 Estimated total road costs</div>
-      <div style="display:flex;justify-content:space-between;align-items:center;">
-        <div style="font-size:.78rem;color:var(--muted);">Vignettes + estimated tolls · all in EUR${Object.keys(FX).length?' · live rates':'· approx rates'}</div>
-        <div style="font-family:'Geist',sans-serif;font-weight:900;font-size:1.5rem;color:var(--v);">${toEurStr(totalEur)}</div>
-      </div>
-    </div>`;
-  }
-
-  html+=`<div class="rnote" style="margin-top:.75rem;">💡 Buy vignettes online before your trip. Electronic vignettes (AT, CZ, SK, HU, RO, BG) are camera-enforced — no sticker needed. Toll estimates are approximate.</div>`;
-  panel.innerHTML=html;
 }
 
 function renderENC(){
@@ -1318,11 +1028,14 @@ function switchTab(id,btn){
 }
 
 
-// ── MAP ROUTE ──────────────────────────────────────────────
+// ══════════════════════════════════════════════════════════
+// ── MAP ROUTE — KOMPLETNE PREPRACOVANÁ LOGIKA ──
+// ══════════════════════════════════════════════════════════
 const _ta='pk.eyJ1IjoiZGFuaWplbHZyYW5qZXMiLCJhIjoiY21vNWRscjZtMG9ybDJzcXB5';
 const _tb='eWYwY2swcyJ9.YY0cJRru_mlKwT8CCZZJRQ';
-let mrMap=null, mrRenderers=[], mrPolylines=[], mrMarkers=[];
-let mrStops=[]; // array of stop values
+let mrMap=null, mrPolylines=[], mrMarkers=[];
+let mrStops=[]; // array of stop DOM ids
+let stopCounter=0;
 
 const CC_MAP={
   'SK':'sk','CZ':'cz','AT':'at','CH':'ch','HU':'hu','SI':'si','RO':'ro','BG':'bg',
@@ -1334,197 +1047,59 @@ const CC_MAP={
   'AD':'ad','MC':'mc','SM':'sm','LI':'li',
 };
 
-// Countries where local/non-motorway roads are FREE even if route passes through
-// BUT note: HU vignette is needed even for short motorway sections
 const FREE_LOCAL={'ba':true,'rs':true,'me':true,'mk':true,'al':true,'xk':true,'ge':true,'am':true,'az':true,'md':true};
 
-// ── HAC CROATIA LIVE API ──────────────────────────────────
-// API: https://cro3-tmp.hac.hr/tollcalculator/price/{ENTRY}/{EXIT}
-// Accepts Croatian HAC station names only
+// ── OPRAVA: Jasné farby ladené s legendou (nie tmavé ktoré splývajú s dark mapou) ──
+function countryColor(id){
+  const c=C.find(x=>x.id===id);
+  if(!c) return '#c084fc';                    // fialová = neznáme (nie šedá!)
+  if(c.type==='vignette') return '#22c997';   // jasná zelená
+  if(c.type==='toll')     return '#f4a45a';   // oranžová
+  return '#6eb3f7';                            // modrá = free
+}
 
-// All HAC toll station names exactly as used in the API
-// Source: hac.hr toll rates pages + karta.hac.hr API responses
-const HAC_STATIONS = [
-  // A4: Goričan (HU border) → Zagreb
-  'Goričan','Čakovec','Varaždin','Ludbreg','Varaždinske Toplice',
-  'Novi Marof','Breznički Hum','Komin','Sveta Helena',
-  // A1: Zagreb → Split → Ploče
-  'Lučko','Jankomir','Demerje','Donja Zdenčina','Jastrebarsko',
-  'Karlovac','Novigrad','Bosiljevo','Ogulin','Josipdol','Žuta Lokva',
-  'Otočac','Perušić','Gornja Ploča','Maslenica','Zadar sjever',
-  'Zadar istok','Zadar zapad','Benkovac','Pirovac','Šibenik',
-  'Prgomet','Dugopolje','Split','Bisko','Šestanovac','Zagvozd',
-  'Ravča','Karamatići','Čarapine',
-  // A6/A10: Rijeka → Ploče
-  'Bosiljevo','Delnice','Oštrovica','Kikovica','Rijeka',
-  'Ploče','Opuzen','Metković',
-  // A7: Rupa (SLO border) → Rijeka
-  'Rupa','Rijeka zapad',
-  // A3/A5: Bregana (SLO border) → Lipovac (SRB border)
-  'Bregana','Jankomir','Zagreb istok','Rugvica','Ivanić-Grad',
-  'Križ','Kutina','Novska','Okučani','Nova Gradiška',
-  'Slavonski Brod zapad','Slavonski Brod','Stara Gradiška',
-  'Babina Greda','Županja','Lipovac',
-  // A5: Beli Manastir → Osijek → Svilaj (BiH border)
-  'Beli Manastir','Osijek jug','Đakovo','Slavonski Brod jug','Svilaj',
-  // A2: Macelj (SLO border) → Zagreb
-  'Macelj','Krapina','Zabok','Zaprešić',
-  // A11: Zagreb → Sisak
-  'Jakuševec','Velika Gorica jug','Buševec','Lekenik','Sisak',
-  // A10: Ploče → BiH border
-  'Karasovići',
-  // Bridges/tunnels
-  'Krčki most','Sveti Ilija',
-];
+function addMbMarker(coords,label,name){
+  const el=document.createElement('div');
+  el.style.cssText='width:28px;height:28px;border-radius:50%;background:#D4820A;color:#000;font-family:Geist,sans-serif;font-weight:900;font-size:12px;display:flex;align-items:center;justify-content:center;border:2px solid rgba(255,255,255,.8);box-shadow:0 2px 10px rgba(0,0,0,.5);cursor:pointer;z-index:10;';
+  el.textContent=label;
+  const marker=new mapboxgl.Marker({element:el}).setLngLat(coords).setPopup(new mapboxgl.Popup({offset:20,closeButton:false}).setHTML(`<strong style="font-size:12px;">${name}</strong>`)).addTo(mrMap);
+  mrMarkers.push(marker);
+}
 
-// Border CC → default HAC entry station name
+// ── HAC CROATIA LIVE API ──
 const HAC_BORDER_ENTRY = {
   'HU':'Goričan', 'SI':'Bregana', 'BA':'Stara Gradiška',
   'RS':'Lipovac', 'ME':'Karasovići',
 };
 
-// Call HAC live API with station names — tries variants if needed
-async function fetchHACToll(entry, exit, vehicleCat){
-  const cat = vehicleCat || 'I';
-
-  // Try exact name first, then common variants
-  const makeVariants = (name) => {
-    if(!name) return [];
-    const v = [name];
-    // Remove parenthetical suffix: "Zagreb (Lučko)" → "Zagreb"
-    const parenMatch = name.match(/^(.+?)\s*\([^)]+\)$/);
-    if(parenMatch) v.push(parenMatch[1].trim());
-    // Remove directional suffix: "Zadar zapad" → "Zadar"
-    const suffixMatch = name.match(/^(.+?)\s+(zapad|istok|sjever|jug|north|south|east|west|1|2)$/i);
-    if(suffixMatch) v.push(suffixMatch[1].trim());
-    // "Zagreb-istok (Ježevo)" → "Zagreb istok"
-    v.push(name.replace('-', ' ').replace(/\s*\([^)]+\)/, '').trim());
-    return [...new Set(v)];
-  };
-
-  const exitVariants = makeVariants(exit);
-  const entryVariants = makeVariants(entry);
-
-  for(const e of entryVariants){
-    for(const x of exitVariants){
-      if(!e || !x || e===x) continue;
-      const url=`https://cro3-tmp.hac.hr/tollcalculator/price/${encodeURIComponent(e)}/${encodeURIComponent(x)}`;
-      try {
-        const r=await fetch(url);
-        if(!r.ok) continue;
-        const data=await r.json();
-        if(!data.Segments?.length) continue;
-        let total=0; const segments=[];
-        for(const seg of data.Segments){
-          const price=seg.Prices?.find(p=>p.Category===cat)||seg.Prices?.find(p=>p.Category==='I');
-          if(price){ total+=price.Amount; segments.push({entry:seg.EntryName,exit:seg.ExitName,amount:price.Amount}); }
-        }
-        if(total>0){ console.log('[HAC] API success:', e, '→', x); return {total,segments}; }
-      } catch(err){ continue; }
-    }
-  }
-  return null;
-}
-
-// HAC station GPS coordinates — VERIFIED against cro3-tmp.hac.hr API
-// Only stations that return valid Segments[] from the API
 const HAC_STATION_GPS = [
-  // A1: Zagreb → Čarapine (verified OK)
-  ['Jastrebarsko',        45.663, 15.649],
-  ['Karlovac',            45.487, 15.547],
-  ['Novigrad',            45.381, 15.550],
-  ['Bosiljevo',           45.399, 15.294],
-  ['Ogulin',              45.266, 15.224],
-  ['Brinje',              45.084, 15.139],
-  ['Žuta Lokva',          44.934, 15.069],
-  ['Otočac',              44.870, 15.233],
-  ['Perušić',             44.651, 15.374],
-  ['Gospić',              44.547, 15.374],
-  ['Gornja Ploča',        44.468, 15.313],
-  ['Sveti Rok',           44.363, 15.656],
-  ['Rovanjska',           44.281, 15.535],
-  ['Posedarje',           44.214, 15.326],
-  ['Zadar istok',         44.134, 15.277],  // "Zadar zapad" NOT valid in API!
-  ['Benkovac',            44.043, 15.607],
-  ['Skradin',             43.819, 15.924],
-  ['Šibenik',             43.745, 15.900],
-  ['Podi',                43.715, 15.997],
-  ['Prgomet',             43.635, 16.244],
-  ['Vučevica',            43.612, 16.387],
-  ['Bisko',               43.533, 16.716],
-  ['Blato na Cetini',     43.491, 16.812],
-  ['Šestanovac',          43.468, 16.912],
-  ['Zagvozd',             43.439, 17.050],
-  ['Ravča',               43.211, 17.323],
-  ['Vrgorac',             43.198, 17.378],
-  ['Karamatići',          43.330, 17.271],
-  ['Čarapine',            43.139, 17.417],
-  // A2: Trakošćan (SLO border) → Zaprešić (verified OK)
-  ['Trakošćan',           46.255, 15.773],
-  ['Đurmanec',            46.173, 15.871],
-  ['Krapina',             46.160, 15.874],
-  ['Mokrice',             45.921, 15.908],
-  ['Začretje',            46.005, 15.888],
-  ['Zaprešić',            45.855, 15.803],
-  // A3: Bregana (SLO) → Lipovac (SRB) (verified OK)
-  ['Bregana',             45.841, 15.666],
-  ['Zagreb Istok',        45.754, 16.271],  // from HAC API: 45.7544991, 16.271342
-  ['Ivanić Grad',         45.710, 16.398],
-  ['Križ',                45.668, 16.541],
-  ['Popovača',            45.564, 16.621],
-  ['Kutina',              45.480, 16.774],
-  ['Lipovljani',          45.488, 16.792],
-  ['Novska',              45.339, 16.979],
-  ['Okučani',             45.272, 17.179],
-  ['Nova Gradiška',       45.255, 17.383],
-  ['Lužani',              45.220, 17.564],
-  ['Babina Greda',        45.073, 18.530],
-  ['Spačva',              45.060, 18.621],
-  ['Županja',             45.077, 18.690],
-  ['Lipovac',             45.054, 19.010],
-  ['Velika Kopanica',     45.094, 18.213],
-  // A5: Beli Manastir → Osijek → Svilaj (BIH border)
-  ['Sudaraž (Beli Manastir)', 45.782, 18.557],
-  ['Osijek',              45.575, 18.559],
-  ['Čepin',               45.504, 18.513],
-  ['Đakovo',              45.308, 18.411],
-  ['Svilaj',              45.039, 17.644],
-  ['Sveta Helena',        45.921, 16.274],
-  ['Komin',               46.043, 16.240],
-  ['Breznički Hum',       46.098, 16.257],
-  ['Novi Marof',          46.160, 16.327],
-  ['Varaždin',            46.295, 16.337],
-  ['Ludbreg',             46.250, 16.617],
-  ['Čakovec',             46.395, 16.432],
-  ['Goričan',             46.413, 16.641],
-  // A6/A7: Rupa (SLO) → Vrata/Oštrovica (verified OK)
-  ['Rupa',                45.491, 14.256],
-  ['Vrata',               45.373, 14.640],
-  ['Oštrovica',           45.337, 14.457],
-  ['Delnice',             45.401, 14.804],
-  ['Vrbovsko',            45.376, 15.076],
-  ['Ravna Gora',          45.387, 14.951],
-  // A8/A9: Istria (Bina Istra) — verified with HAC API
-  ['Tunel Učka',          45.312, 14.182],
-  ['Vranja',              45.275, 14.095],
-  ['Lupoglav',            45.248, 14.055],
-  ['Cerovlje',            45.217, 13.958],
-  ['Ivoli',               45.209, 13.894],
-  ['Rogovići',            45.193, 13.836],
-  ['Žminj',               45.143, 13.889],
-  ['Kanfanar',            45.121, 13.842],
-  ['Medaki',              45.098, 13.832],
-  ['Baderna',             45.162, 13.744],
-  ['Višnjan',             45.274, 13.712],
-  ['Nova Vas',            45.358, 13.699],
-  ['Buje',                45.406, 13.658],
-  ['Umag',                45.432, 13.521],
-  ['Vodnjan sjever',      44.975, 13.851],
-  ['Vodnjan jug',         44.950, 13.848],
-  ['Pula',                44.867, 13.848],
+  ['Jastrebarsko', 45.663, 15.649],['Karlovac', 45.487, 15.547],['Novigrad', 45.381, 15.550],
+  ['Bosiljevo', 45.399, 15.294],['Ogulin', 45.266, 15.224],['Brinje', 45.084, 15.139],
+  ['Žuta Lokva', 44.934, 15.069],['Otočac', 44.870, 15.233],['Perušić', 44.651, 15.374],
+  ['Gospić', 44.547, 15.374],['Gornja Ploča', 44.468, 15.313],['Sveti Rok', 44.363, 15.656],
+  ['Rovanjska', 44.281, 15.535],['Posedarje', 44.214, 15.326],['Zadar istok', 44.134, 15.277],
+  ['Benkovac', 44.043, 15.607],['Skradin', 43.819, 15.924],['Šibenik', 43.745, 15.900],
+  ['Podi', 43.715, 15.997],['Prgomet', 43.635, 16.244],['Vučevica', 43.612, 16.387],
+  ['Bisko', 43.533, 16.716],['Blato na Cetini', 43.491, 16.812],['Šestanovac', 43.468, 16.912],
+  ['Zagvozd', 43.439, 17.050],['Ravča', 43.211, 17.323],['Vrgorac', 43.198, 17.378],
+  ['Karamatići', 43.330, 17.271],['Čarapine', 43.139, 17.417],
+  ['Trakošćan', 46.255, 15.773],['Đurmanec', 46.173, 15.871],['Krapina', 46.160, 15.874],
+  ['Mokrice', 45.921, 15.908],['Začretje', 46.005, 15.888],['Zaprešić', 45.855, 15.803],
+  ['Bregana', 45.841, 15.666],['Zagreb Istok', 45.754, 16.271],['Ivanić Grad', 45.710, 16.398],
+  ['Križ', 45.668, 16.541],['Popovača', 45.564, 16.621],['Kutina', 45.480, 16.774],
+  ['Lipovljani', 45.488, 16.792],['Novska', 45.339, 16.979],['Okučani', 45.272, 17.179],
+  ['Nova Gradiška', 45.255, 17.383],['Lužani', 45.220, 17.564],['Babina Greda', 45.073, 18.530],
+  ['Spačva', 45.060, 18.621],['Županja', 45.077, 18.690],['Lipovac', 45.054, 19.010],
+  ['Velika Kopanica', 45.094, 18.213],['Stara Gradiška', 45.148, 17.252],
+  ['Sudaraž (Beli Manastir)', 45.782, 18.557],['Osijek', 45.575, 18.559],['Čepin', 45.504, 18.513],
+  ['Đakovo', 45.308, 18.411],['Svilaj', 45.039, 17.644],['Sveta Helena', 45.921, 16.274],
+  ['Komin', 46.043, 16.240],['Breznički Hum', 46.098, 16.257],['Novi Marof', 46.160, 16.327],
+  ['Varaždin', 46.295, 16.337],['Ludbreg', 46.250, 16.617],['Čakovec', 46.395, 16.432],
+  ['Goričan', 46.413, 16.641],['Rupa', 45.491, 14.256],['Vrata', 45.373, 14.640],
+  ['Oštrovica', 45.337, 14.457],['Delnice', 45.401, 14.804],['Vrbovsko', 45.376, 15.076],
+  ['Karasovići', 42.534, 18.441],
 ];
 
-// Find nearest HAC station to a GPS point
 function nearestHACStation(lat, lng){
   let best=null, bestDist=Infinity;
   for(const [name,slat,slng] of HAC_STATION_GPS){
@@ -1534,87 +1109,48 @@ function nearestHACStation(lat, lng){
   return {name:best, dist:bestDist};
 }
 
-// Border entry stations — valid HAC API entry points
-const HAC_BORDER_STATIONS = {
-  'HU': ['Goričan', 'Zagreb Istok'],  // A4 via Goričan; A5 via Beli Manastir enters near Zagreb Istok
-  'SI': ['Trakošćan', 'Bregana', 'Rupa'],
-  'BA': ['Stara Gradiška', 'Novska', 'Slavonski Brod zapad'],  // nearest toll stations to BA border
-  'RS': ['Lipovac'],
-  'ME': ['Karasovići'],
-};
+async function fetchHACToll(entry, exit, vehicleCat){
+  const cat = vehicleCat || 'I';
+  if(!entry || !exit || entry === exit) return null;
+  const url=`https://cro3-tmp.hac.hr/tollcalculator/price/${encodeURIComponent(entry)}/${encodeURIComponent(exit)}`;
+  try {
+    const r=await fetch(url);
+    if(!r.ok) return null;
+    const data=await r.json();
+    if(!data.Segments?.length) return null;
+    let total=0; const segments=[];
+    for(const seg of data.Segments){
+      const price=seg.Prices?.find(p=>p.Category===cat)||seg.Prices?.find(p=>p.Category==='I');
+      if(price){ total+=price.Amount; segments.push({entry:seg.EntryName,exit:seg.ExitName,amount:price.Amount}); }
+    }
+    if(total>0) return {total,segments};
+  } catch(err){}
+  return null;
+}
 
-// Main HR toll calculator
-async function calcHRToll(hrEntryCC, hrExitCC, hrDistKm, steps, vehicleCat, countrySegments){
+async function calcHRToll(hrEntryCC, hrExitCC, hrDistKm, validPts, vehicleCat){
   const cat = vehicleCat||'I';
-  const segs = (countrySegments||[]).filter(Boolean);
-
-  // Find first HR point and pre-border point
-  let firstHR=null, preHR=null, lastHR=null, postHR=null;
-  for(let i=0;i<segs.length;i++){
-    if(segs[i]?.cc==='HR'){
-      if(!firstHR){ firstHR=segs[i]; if(i>0) preHR=segs[i-1]; }
-      lastHR=segs[i];
-      if(i<segs.length-1) postHR=segs[i+1];
-    }
+  const hrPts = validPts.filter(p=>p?.cc==='HR');
+  if(hrPts.length === 0){
+    const mult=({'I':1,'IA':1,'II':1.576,'III':2.516,'IV':3.2})[cat]||1;
+    return {amount:parseFloat((5*mult).toFixed(2)), segments:[], entry:'?', exit:'?', live:false, precise:false};
   }
 
-  // ENTRY: pick correct border station based on which is nearest to firstHR
-  // Only consider valid border stations for this entry country
-  const borderOptions = HAC_BORDER_STATIONS[hrEntryCC] || [HAC_BORDER_ENTRY[hrEntryCC]];
-  let entryStation = borderOptions[0]; // default = first option
-
-  if(firstHR && borderOptions.length > 1){
-    // Multiple border options (e.g. SI: Trakošćan, Bregana, Rupa)
-    // Pick the one nearest to firstHR GPS point
-    let bestDist = Infinity;
-    for(const stName of borderOptions){
-      const st = HAC_STATION_GPS.find(([n])=>n===stName);
-      if(!st) continue;
-      const d = Math.sqrt((firstHR.lat-st[1])**2 + (firstHR.lng-st[2])**2);
-      if(d < bestDist){ bestDist=d; entryStation=stName; }
-    }
-    console.log('[HAC] Border options:', borderOptions, '→ chosen:', entryStation, '(firstHR:', firstHR, ')');
-  }
-
-  // EXIT: find the HR point closest to the route destination
-  // For destinations inside HR, lastHR is best; for exits to another country, postHR
+  let entryStation = HAC_BORDER_ENTRY[hrEntryCC] || null;
   let exitStation = HAC_BORDER_ENTRY[hrExitCC] || null;
 
-  // Use all HR points — find the one with the highest lat/lng variance from entry
-  // i.e. the HR point furthest along the route (closest to destination)
-  const exitSearchPt = postHR || lastHR;
-  if(exitSearchPt){
-    const n = nearestHACStation(exitSearchPt.lat, exitSearchPt.lng);
-    if(n.dist < 0.5 && !Object.values(HAC_BORDER_STATIONS).flat().includes(n.name)){
-      exitStation = n.name;
-    } else if(n.dist < 0.3){
-      exitStation = n.name;
-    }
-    console.log('[HAC] Exit search:', exitSearchPt, '→ nearest:', n, '→ exit:', exitStation);
+  const firstHR = hrPts[0];
+  const lastHR = hrPts[hrPts.length-1];
+
+  if(!entryStation || (firstHR && hrEntryCC)){
+    const n = nearestHACStation(firstHR.lat, firstHR.lng);
+    if(n.dist < 0.5) entryStation = entryStation || n.name;
   }
 
-  // Also check ALL HR points — sometimes lastHR is not the most accurate
-  // Try nearestHACStation for each HR segment and pick the one closest to a valid station
-  if(!exitStation || exitStation === HAC_BORDER_ENTRY[hrExitCC]){
-    let bestDist = 999, bestStation = null;
-    for(const seg of segs.filter(s=>s?.cc==='HR')){
-      const n = nearestHACStation(seg.lat, seg.lng);
-      if(n.dist < bestDist && !Object.values(HAC_BORDER_STATIONS).flat().includes(n.name)){
-        // Prefer stations closer to the END of the route (higher index)
-        bestDist = n.dist; bestStation = n.name;
-      }
-    }
-    if(bestStation && bestDist < 0.4) exitStation = bestStation;
-    console.log('[HAC] Best HR station scan:', bestStation, 'dist:', bestDist);
+  if(!exitStation){
+    const n = nearestHACStation(lastHR.lat, lastHR.lng);
+    if(n.dist < 0.5) exitStation = n.name;
   }
-
-  // Try last toll exit step as fallback
-  if(!exitStation || exitStation === HAC_BORDER_ENTRY[hrExitCC]){
-    const fromStep = findHRExitFromSteps(steps);
-    if(fromStep) exitStation = fromStep;
-  }
-
-  console.log('[HAC] Final:', entryStation, '→', exitStation);
 
   if(entryStation && exitStation && entryStation !== exitStation){
     const result = await fetchHACToll(entryStation, exitStation, cat);
@@ -1624,29 +1160,10 @@ async function calcHRToll(hrEntryCC, hrExitCC, hrDistKm, steps, vehicleCat, coun
     }
   }
 
-  // Fallback estimate
   const mult=({'I':1,'IA':1,'II':1.576,'III':2.516,'IV':3.2})[cat]||1;
   const base=hrDistKm<50?3:hrDistKm<100?6:hrDistKm<180?10:hrDistKm<280?16:hrDistKm<380?22:28;
   return {amount:parseFloat((base*mult).toFixed(2)), segments:[],
           entry:entryStation||'?', exit:exitStation||'?', live:false, precise:false};
-}
-
-// Find last HAC exit station from step instructions
-function findHRExitFromSteps(steps){
-  const exitSteps = steps.filter(s=>{
-    const instr=(s.instructions||'').replace(/<[^>]+>/g,' ');
-    return /výjazdom|exit|Abfahrt/i.test(instr) && /Spoplatnená cesta/i.test(instr);
-  });
-  for(let i=exitSteps.length-1; i>=0; i--){
-    const instr=(exitSteps[i].instructions||'').replace(/<[^>]+>/g,' ');
-    for(const [name] of HAC_STATION_GPS){
-      if(new RegExp(name.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'),'i').test(instr)){
-        console.log('[HAC] Exit from step:', name);
-        return name;
-      }
-    }
-  }
-  return null;
 }
 
 // Multi-stop UI
@@ -1658,7 +1175,6 @@ function initStops(){
   addStop('To — destination city');
 }
 
-let stopCounter=0;
 function addStop(placeholder){
   stopCounter++;
   const id=`mr-stop-${stopCounter}`;
@@ -1669,22 +1185,20 @@ function addStop(placeholder){
   const div=document.createElement('div');
   div.className='stop-row'; div.dataset.stopId=id;
   const label=labels[idx]||String(idx+1);
-  const canRemove=idx>=2; // can only remove extra stops
+  const canRemove=idx>=2;
   div.innerHTML=`
     <span class="stop-label">${label}</span>
     <input type="text" id="${id}" placeholder="${placeholder||`Stop ${label} — city`}" autocomplete="off">
     ${canRemove?`<button class="stop-remove" onclick="removeStop('${id}')" title="Remove stop">×</button>`:'<span style="width:1.6rem"></span>'}
   `;
   wrap.appendChild(div);
-  // Attach Google Places autocomplete if Maps is loaded
-  if(window.google?.maps?.places) attachAutocomplete(id);
-  // re-label all
+  if(window.mapboxgl) attachAutocomplete(id);
   relabelStops();
 }
 
 function removeStop(id){
   mrStops=mrStops.filter(s=>s!==id);
-  document.querySelector(`.stop-row[data-stop-id="${id}"]`).remove();
+  document.querySelector(`.stop-row[data-stop-id="${id}"]`)?.remove();
   relabelStops();
 }
 
@@ -1782,645 +1296,397 @@ function createMrMap(){
   mrStops.forEach(id=>attachAutocomplete(id));
 }
 
-// Color per country type
-function countryColor(id){
-  const c=C.find(x=>x.id===id);
-  if(!c) return '#888';
-  if(c.type==='vignette') return '#1B4D3E';
-  if(c.type==='toll') return '#7A3200';
-  return '#0F3460';
-}
-function addMbMarker(coords,label,name){
-  const el=document.createElement('div');
-  el.style.cssText='width:28px;height:28px;border-radius:50%;background:#D4820A;color:#000;font-family:Geist,sans-serif;font-weight:900;font-size:12px;display:flex;align-items:center;justify-content:center;border:2px solid rgba(255,255,255,.8);box-shadow:0 2px 10px rgba(0,0,0,.5);cursor:pointer;z-index:10;';
-  el.textContent=label;
-  const marker=new mapboxgl.Marker({element:el}).setLngLat(coords).setPopup(new mapboxgl.Popup({offset:20,closeButton:false}).setHTML(`<strong style="font-size:12px;">${name}</strong>`)).addTo(mrMap);
-  mrMarkers.push(marker);
+// ══════════════════════════════════════════════════════════
+// ── OPRAVA: Čakanie na ready stav mapy pred kreslením ──
+// ══════════════════════════════════════════════════════════
+function ensureMapReady(){
+  return new Promise(resolve => {
+    if(mrMap.loaded() && mrMap.isStyleLoaded()) return resolve();
+    mrMap.once('idle', resolve);
+  });
 }
 
+// ══════════════════════════════════════════════════════════
+// ── OPRAVA: Vyčisti staré layers a sources ──
+// ══════════════════════════════════════════════════════════
+function clearMapLayers(){
+  mrPolylines.forEach(id => {
+    try {
+      if(mrMap.getLayer(id)) mrMap.removeLayer(id);
+      if(mrMap.getSource(id)) mrMap.removeSource(id);
+    } catch(e){}
+  });
+  mrPolylines = [];
+  mrMarkers.forEach(m => m.remove());
+  mrMarkers = [];
+}
 
-// Store last directions result for route switching
-let lastDirectionsResult = null;
-let activeRouteIdx = 0;
+// ══════════════════════════════════════════════════════════
+// ── OPRAVA: Detekcia krajín s filtrovaním krátkych tranzitov ──
+// Slovinsko už nebude v zozname keď cez neho cesta reálne neide
+// ══════════════════════════════════════════════════════════
+async function detectCountriesOnRoute(rc){
+  const NUM_SAMPLES = 50;
+  const sampleStep = Math.max(1, Math.floor(rc.length / NUM_SAMPLES));
+  // VŽDY zahrň index 0 (štartovacia krajina - fixne chýbajúcu SK)
+  const samples = [0];
+  for(let i = sampleStep; i < rc.length - 1; i += sampleStep) samples.push(i);
+  if(!samples.includes(rc.length - 1)) samples.push(rc.length - 1);
 
+  const countryResults = await Promise.all(samples.map(i =>
+    fetch(`https://api.mapbox.com/geocoding/v5/mapbox.places/${rc[i][0]},${rc[i][1]}.json?access_token=${_ta+_tb}&types=country&limit=1`)
+      .then(r => r.json())
+      .then(d => ({
+        cc: d.features?.[0]?.properties?.short_code?.toUpperCase() || null,
+        lat: rc[i][1],
+        lng: rc[i][0],
+        idx: i
+      }))
+      .catch(() => null)
+  ));
 
+  const validPts = countryResults.filter(Boolean);
 
+  // Build raw segments
+  let rawSegments = [];
+  let curCC = validPts[0]?.cc, segStart = 0;
+  for(let i = 1; i < validPts.length; i++){
+    if(validPts[i].cc !== curCC){
+      rawSegments.push({ cc: curCC, pts: validPts.slice(segStart, i) });
+      curCC = validPts[i].cc;
+      segStart = i;
+    }
+  }
+  rawSegments.push({ cc: curCC, pts: validPts.slice(segStart) });
 
+  // Filter: odstráň krátke tranzity (1 sample) ktoré sú obklopené rovnakou krajinou
+  // → takto sa Slovinsko pri Mariboru vyfiltruje keď cesta ide HU→HR a len lízne SI
+  const filtered = rawSegments.filter((seg, idx) => {
+    if(idx === 0 || idx === rawSegments.length - 1) return true; // štart/cieľ vždy
+    if(seg.pts.length >= 2) return true; // dostatočne dlhý segment
+    const prev = rawSegments[idx - 1]?.cc;
+    const next = rawSegments[idx + 1]?.cc;
+    if(prev === next) return false; // geocoding glitch na hranici
+    return true;
+  });
 
+  // Merge susedné segmenty rovnakej krajiny (po filtrovaní)
+  const segments = [];
+  for(const seg of filtered){
+    const last = segments[segments.length - 1];
+    if(last && last.cc === seg.cc){
+      last.pts = last.pts.concat(seg.pts);
+    } else {
+      segments.push({ cc: seg.cc, pts: [...seg.pts] });
+    }
+  }
 
+  return { segments, validPts };
+}
+
+// ══════════════════════════════════════════════════════════
+// ── OPRAVA: Draw route — plná čiara ako podklad + farebné segmenty na vrch ──
+// ══════════════════════════════════════════════════════════
+function drawRouteOnMap(rc, segments){
+  // 1. Základná plná trasa (tmavá sivá) — aby bola vždy vidieť celá cesta
+  const fullId = 'rseg-full';
+  mrPolylines.push(fullId);
+  mrMap.addSource(fullId, {
+    type: 'geojson',
+    data: { type: 'Feature', geometry: { type: 'LineString', coordinates: rc } }
+  });
+  mrMap.addLayer({
+    id: fullId,
+    type: 'line',
+    source: fullId,
+    layout: { 'line-join': 'round', 'line-cap': 'round' },
+    paint: { 'line-color': '#334155', 'line-width': 8, 'line-opacity': 0.55 }
+  });
+
+  // 2. Farebné segmenty na vrch — používame indexy z pôvodnej rc (nie len sample pointy)
+  //    Takto dostaneme PLNÚ farebnú čiaru, nie bodkovanú
+  segments.forEach((seg, i) => {
+    if(!seg.pts || seg.pts.length < 2) return;
+    const firstIdx = seg.pts[0].idx;
+    const lastIdx = seg.pts[seg.pts.length - 1].idx;
+    const segCoords = rc.slice(firstIdx, lastIdx + 1);
+    if(segCoords.length < 2) return;
+
+    const id = `rseg-${i}`;
+    mrPolylines.push(id);
+    const clr = countryColor((seg.cc || '').toLowerCase());
+    mrMap.addSource(id, {
+      type: 'geojson',
+      data: { type: 'Feature', geometry: { type: 'LineString', coordinates: segCoords } }
+    });
+    mrMap.addLayer({
+      id,
+      type: 'line',
+      source: id,
+      layout: { 'line-join': 'round', 'line-cap': 'round' },
+      paint: { 'line-color': clr, 'line-width': 6, 'line-opacity': 0.95 }
+    });
+  });
+}
+
+// ══════════════════════════════════════════════════════════
+// ── OPRAVA: Prepnutie medzi Route 1/2/3 ──
+// ══════════════════════════════════════════════════════════
 async function selectRoute(idx){
   if(!window.currentRouteData) return;
-  const routeData=window.currentRouteData;
-  const stopInputs=window.currentStopInputs||[];
-  
-  // Update tab styles
-  routeData.routes.forEach((_,i)=>{
-    const btn=document.getElementById(`rtab-${i}`);
+  const routeData = window.currentRouteData;
+  const stopInputs = window.currentStopInputs || [];
+
+  // Aktualizuj tab styly
+  routeData.routes.forEach((_, i) => {
+    const btn = document.getElementById(`rtab-${i}`);
     if(!btn) return;
-    const isActive=i===idx;
-    btn.style.border=`2px solid ${isActive?'var(--accent)':'rgba(255,255,255,.1)'}`;
-    btn.style.background=isActive?'var(--accent)':'rgba(255,255,255,.05)';
-    btn.style.color=isActive?'#000':'var(--text)';
+    const isActive = i === idx;
+    btn.style.border = `2px solid ${isActive ? 'var(--accent)' : 'rgba(255,255,255,.1)'}`;
+    btn.style.background = isActive ? 'var(--accent)' : 'rgba(255,255,255,.05)';
+    btn.style.color = isActive ? '#000' : 'var(--text)';
   });
 
-  const route=routeData.routes[idx];
-  const rc=route.geometry.coordinates;
-  
-  // Clear old layers & markers
-  mrPolylines.forEach(id=>{try{if(mrMap.getLayer(id))mrMap.removeLayer(id);if(mrMap.getSource(id))mrMap.removeSource(id);}catch(e){}});
-  mrPolylines=[];
-  mrMarkers.forEach(m=>m.remove());
-  mrMarkers=[];
+  const route = routeData.routes[idx];
+  const rc = route.geometry.coordinates;
 
-  // Sample & detect countries
-  const sampleStep=Math.max(1,Math.floor(rc.length/25));
-  const samples=[];
-  for(let i=0;i<rc.length;i+=sampleStep) samples.push(i);
-  if(!samples.includes(rc.length-1)) samples.push(rc.length-1);
-  const countryResults=await Promise.all(samples.map(i=>
-    fetch(`https://api.mapbox.com/geocoding/v5/mapbox.places/${rc[i][0]},${rc[i][1]}.json?access_token=${_ta+_tb}&types=country&limit=1`)
-      .then(r=>r.json()).then(d=>({cc:d.features?.[0]?.properties?.short_code?.toUpperCase()||null,lat:rc[i][1],lng:rc[i][0]})).catch(()=>null)
-  ));
-  
-  // Build & draw segments
-  let segments=[],curCC=countryResults.filter(Boolean)[0]?.cc,segStart=0;
-  const validPts=countryResults.filter(Boolean);
-  for(let i=1;i<validPts.length;i++){
-    if(validPts[i].cc!==curCC){segments.push({cc:curCC,pts:validPts.slice(segStart,i)});curCC=validPts[i].cc;segStart=i;}
-  }
-  segments.push({cc:curCC,pts:validPts.slice(segStart)});
-  segments.forEach((seg,i)=>{
-    if(!seg.pts||seg.pts.length<2) return;
-    const id=`rseg-${i}`; mrPolylines.push(id);
-    mrMap.addSource(id,{type:'geojson',data:{type:'Feature',geometry:{type:'LineString',coordinates:seg.pts.map(p=>[p.lng,p.lat])}}});
-    mrMap.addLayer({id,type:'line',source:id,layout:{'line-join':'round','line-cap':'round'},paint:{'line-color':countryColor(seg.cc),'line-width':5,'line-opacity':.9}});
+  await ensureMapReady();
+  clearMapLayers();
+
+  // Re-detekcia krajín pre novú trasu
+  const { segments, validPts } = await detectCountriesOnRoute(rc);
+
+  // Kreslenie
+  drawRouteOnMap(rc, segments);
+
+  // Fit bounds na celú trasu
+  const bounds = new mapboxgl.LngLatBounds();
+  rc.forEach(p => bounds.extend(p));
+  mrMap.fitBounds(bounds, { padding: 60, duration: 800 });
+
+  // Markers na začiatok a koniec
+  const labels = ['A','B','C','D','E','F','G','H'];
+  stopInputs.forEach((s, i) => {
+    const coord = i === 0 ? rc[0] : rc[rc.length - 1];
+    addMbMarker(coord, labels[i] || String(i+1), s);
   });
-  
-  const bounds=new mapboxgl.LngLatBounds();
-  rc.forEach(p=>bounds.extend(p));
-  mrMap.fitBounds(bounds,{padding:60});
-  
-  const labels=['A','B','C','D','E','F','G','H'];
-  stopInputs.forEach((s,i)=>{
-    const coord=rc[i===0?0:rc.length-1];
-    addMbMarker(coord,labels[i]||String(i+1),s);
-  });
+
+  // Prepočítaj aj sumárny panel pre novú trasu
+  await recomputeResultsPanel(route, validPts, segments, stopInputs);
 }
 
+// ══════════════════════════════════════════════════════════
+// ── Recompute results panel (pre aktívnu trasu) ──
+// ══════════════════════════════════════════════════════════
+async function recomputeResultsPanel(route, validPts, segments, stopInputs){
+  const resultEl = document.getElementById('mr-result');
+
+  // Dates
+  const dateFrom = document.getElementById('mr-date-from').value;
+  const dateTo = document.getElementById('mr-date-to').value;
+  let tripDays = 7;
+  if(dateFrom && dateTo){
+    const d1 = new Date(dateFrom), d2 = new Date(dateTo);
+    tripDays = Math.max(1, Math.ceil((d2-d1)/(1000*60*60*24)));
+  }
+  const vehicleCat = document.getElementById('mr-vehicle-cat')?.value || 'I';
+  const distKm = (route.distance/1000).toFixed(0);
+  const durH = Math.floor(route.duration/3600), durM = Math.floor((route.duration%3600)/60);
+
+  // Country list — už vyfiltrovaný (bez krátkych tranzitov)
+  const ccList = [];
+  const seen = new Set();
+  segments.forEach(s => {
+    if(s.cc && !seen.has(s.cc)){ seen.add(s.cc); ccList.push(s.cc); }
+  });
+
+  // HR entry/exit
+  let hrEntryCC = null, hrExitCC = null, hrDistKm = 0;
+  for(let i = 0; i < segments.length; i++){
+    if(segments[i].cc === 'HR'){
+      if(!hrEntryCC && i > 0) hrEntryCC = segments[i-1].cc;
+      if(i < segments.length-1) hrExitCC = segments[i+1].cc || hrExitCC;
+    }
+  }
+  if(ccList.includes('HR')){
+    const hrPts = validPts.filter(p => p.cc === 'HR').length;
+    hrDistKm = (hrPts / Math.max(validPts.length, 1)) * (route.distance/1000);
+  }
+
+  let html = `<div class="mr-route-info">
+    <div class="mr-route-stat"><strong>${distKm} km</strong>distance</div>
+    <div class="mr-route-stat"><strong>${durH}h ${durM}m</strong>drive time</div>
+    <div class="mr-route-stat"><strong>${ccList.length}</strong>countries</div>
+    <div class="mr-route-stat"><strong>${tripDays}d</strong>trip</div>
+  </div>`;
+  html += '<div style="font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);margin-bottom:.6rem;">Countries on route</div>';
+
+  let totalEur = 0;
+  for(const cc of ccList){
+    const id = CC_MAP[cc];
+    const country = C.find(x => x.id === id);
+    if(!country) continue;
+
+    const clr = countryColor(id);
+    let action = '', priceStr = '', priceEur = 0, needsPay = false, note = '';
+
+    if(country.type === 'vignette' && country.prices.length){
+      const rec = getBestVignette(country.prices, tripDays);
+      priceStr = rec.v;
+      priceEur = parseEuro(rec.v);
+      const eurNote = priceStr.startsWith('€') ? '' : ` ≈ ${toEurStr(priceEur)}`;
+      action = `Buy vignette · ${rec.p}${eurNote}`;
+      needsPay = true;
+      totalEur += priceEur;
+    } else if(country.type === 'toll'){
+      if(id === 'hr'){
+        const hacRes = await calcHRToll(hrEntryCC, hrExitCC, hrDistKm, validPts, vehicleCat);
+        priceEur = hacRes.amount;
+        priceStr = `€${priceEur.toFixed(2)}`;
+        const icon = hacRes.live ? (hacRes.precise ? '🟢 Live HAC' : '🟡 Live HAC est.') : '🟠 Distance est.';
+        action = `Toll gates · ${icon} · <a href="https://karta.hac.hr" target="_blank" style="color:var(--accent)">karta.hac.hr ↗</a>`;
+        if(hacRes.segments?.length){
+          note = hacRes.segments.map(s => `${s.entry}→${s.exit}: €${s.amount.toFixed(2)}`).join(' + ');
+        }
+        needsPay = true;
+        totalEur += priceEur;
+      } else if(FREE_LOCAL[id]){
+        action = 'Local roads — free';
+        priceStr = 'FREE';
+      } else {
+        const est = country.prices[0];
+        priceEur = est ? parseEuro(est.v) : 0;
+        priceStr = est ? `~${est.v}` : 'varies';
+        action = 'Pay at toll gate' + (country.enc ? ` · ENC: ${country.enc}` : '');
+        needsPay = !!priceEur;
+        if(needsPay) totalEur += priceEur;
+      }
+    } else {
+      action = 'Free — no payment needed';
+      priceStr = 'FREE';
+    }
+
+    html += `<div class="mr-country-item" style="border-left:4px solid ${clr};">
+      <div class="mr-ci-code">${cc}</div>
+      <div class="mr-ci-info">
+        <div class="mr-ci-name">${country.name}</div>
+        <div class="mr-ci-sub">${action}${country.buy && needsPay && id !== 'hr' ? ` · <a href="${country.buy}" target="_blank" style="color:var(--accent);text-decoration:none;">${country.bl} ↗</a>` : ''}</div>
+        ${note ? `<div style="font-size:.65rem;color:var(--enc);margin-top:.2rem;">ℹ️ ${note}</div>` : ''}
+      </div>
+      ${needsPay ? `<div class="mr-ci-price">${priceStr}</div>` : `<div style="color:var(--f);font-weight:800;font-size:.8rem;">FREE</div>`}
+    </div>`;
+  }
+
+  // Fuel
+  const fuelPrice = parseFloat(document.getElementById('mr-fuel-price')?.value) || 1.55;
+  const fuelCons = parseFloat(document.getElementById('mr-fuel-consumption')?.value) || 7;
+  const fuelCost = parseFloat(((route.distance/1000) * fuelCons/100 * fuelPrice).toFixed(2));
+  const grandTotal = parseFloat((totalEur + fuelCost).toFixed(2));
+
+  if(totalEur > 0 || fuelCost > 0){
+    html += `<div class="mr-total-box">
+      <div class="mr-total-label">💰 Estimated total trip costs</div>
+      ${totalEur > 0 ? `<div class="mr-total-row"><div style="font-size:.75rem;color:var(--muted);">🛣️ Vignettes + tolls</div><div style="font-weight:800;">${toEurStr(totalEur)}</div></div>` : ''}
+      <div class="mr-total-row"><div style="font-size:.75rem;color:var(--muted);">⛽ Fuel · ${distKm}km × ${fuelCons}L/100km × €${fuelPrice}/L</div><div style="font-weight:800;">${toEurStr(fuelCost)}</div></div>
+      <div class="mr-total-row" style="border-top:1px solid var(--border);margin-top:.4rem;padding-top:.4rem;">
+        <div style="font-size:.8rem;font-weight:700;">Total estimated trip cost</div>
+        <div class="mr-total-amt">${toEurStr(grandTotal)}</div>
+      </div>
+    </div>`;
+  }
+  html += '<div class="rnote" style="margin-top:.75rem;">⚠️ Estimates are approximate. Buy vignettes before your trip.</div>';
+  resultEl.innerHTML = html;
+}
+
+// ══════════════════════════════════════════════════════════
+// ── HLAVNÁ FUNKCIA: calcMapRoute ──
+// ══════════════════════════════════════════════════════════
 async function calcMapRoute(){
-  const stopInputs=mrStops.map(id=>document.getElementById(id)?.value?.trim()).filter(Boolean);
-  if(stopInputs.length<2){
-    document.getElementById('mr-result').innerHTML='<div style="font-size:.8rem;color:#c00;padding:.75rem;background:#fde8e6;border-radius:8px;">Please enter at least an origin and destination.</div>';
+  const stopInputs = mrStops.map(id => document.getElementById(id)?.value?.trim()).filter(Boolean);
+  if(stopInputs.length < 2){
+    document.getElementById('mr-result').innerHTML = '<div style="font-size:.8rem;color:#c00;padding:.75rem;background:#fde8e6;border-radius:8px;">Please enter at least an origin and destination.</div>';
     return;
   }
-  const resultEl=document.getElementById('mr-result');
-  resultEl.innerHTML='<div style="font-size:.8rem;color:var(--muted);padding:.5rem 0;">⏳ Geocoding stops...</div>';
-  if(!mrMap){initMrMap();await new Promise(r=>setTimeout(r,3000));}
+
+  const resultEl = document.getElementById('mr-result');
+  resultEl.innerHTML = '<div style="font-size:.8rem;color:var(--muted);padding:.5rem 0;">⏳ Geocoding stops...</div>';
+
+  if(!mrMap){ initMrMap(); await new Promise(r => setTimeout(r, 3000)); }
   if(!Object.keys(FX).length) await loadFX();
-  try{
-    // Geocode all stops via Mapbox
-    const coords=await Promise.all(stopInputs.map(async s=>{
-      const r=await fetch(`https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(s)}.json?access_token=${_ta+_tb}&types=place,address&limit=1`);
-      const d=await r.json();
-      if(!d.features?.length) throw new Error('Not found: '+s);
-      return d.features[0].center; // [lng, lat]
+
+  try {
+    // 1. Geokódovanie stopov cez Mapbox
+    const coords = await Promise.all(stopInputs.map(async s => {
+      const r = await fetch(`https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(s)}.json?access_token=${_ta+_tb}&types=place,address&limit=1`);
+      const d = await r.json();
+      if(!d.features?.length) throw new Error('Not found: ' + s);
+      return d.features[0].center;
     }));
 
-    resultEl.innerHTML='<div style="font-size:.8rem;color:var(--muted);padding:.5rem 0;">⏳ Getting route...</div>';
+    resultEl.innerHTML = '<div style="font-size:.8rem;color:var(--muted);padding:.5rem 0;">⏳ Getting route...</div>';
 
-    // Get route via Mapbox Directions
-    const coordStr=coords.map(c=>c.join(',')).join(';');
-    const routeResp=await fetch(`https://api.mapbox.com/directions/v5/mapbox/driving/${coordStr}?access_token=${_ta+_tb}&geometries=geojson&overview=full&steps=false&alternatives=true`);
-    const routeData=await routeResp.json();
+    // 2. Mapbox Directions s alternatívami
+    const coordStr = coords.map(c => c.join(',')).join(';');
+    const routeResp = await fetch(`https://api.mapbox.com/directions/v5/mapbox/driving/${coordStr}?access_token=${_ta+_tb}&geometries=geojson&overview=full&steps=false&alternatives=true`);
+    const routeData = await routeResp.json();
     if(!routeData.routes?.length) throw new Error('No route found');
-    
-    // Zobraz route tabs ak je viac trás
-    const routeTabs=document.getElementById('mr-route-tabs');
-    if(routeData.routes.length>1){
-      routeTabs.style.display='flex';
-      routeTabs.style.gap='.4rem';
-      routeTabs.style.flexWrap='wrap';
-      routeTabs.style.marginBottom='.75rem';
-      routeTabs.innerHTML=routeData.routes.map((r,i)=>{
-        const km=(r.distance/1000).toFixed(0);
-        const h=Math.floor(r.duration/3600),m=Math.floor((r.duration%3600)/60);
-        const isActive=i===0;
+
+    // 3. Route tabs (ak máme viac alternatív)
+    const routeTabs = document.getElementById('mr-route-tabs');
+    if(routeData.routes.length > 1){
+      routeTabs.style.display = 'flex';
+      routeTabs.style.gap = '.4rem';
+      routeTabs.style.flexWrap = 'wrap';
+      routeTabs.style.marginBottom = '.75rem';
+      routeTabs.innerHTML = routeData.routes.map((r, i) => {
+        const km = (r.distance/1000).toFixed(0);
+        const h = Math.floor(r.duration/3600), m = Math.floor((r.duration%3600)/60);
+        const isActive = i === 0;
         return `<button onclick="selectRoute(${i})" id="rtab-${i}" style="padding:.4rem .8rem;border-radius:8px;border:2px solid ${isActive?'var(--accent)':'rgba(255,255,255,.1)'};background:${isActive?'var(--accent)':'rgba(255,255,255,.05)'};color:${isActive?'#000':'var(--text)'};font-size:.75rem;font-weight:700;cursor:pointer;font-family:'Geist',sans-serif;transition:all .15s;">Route ${i+1} · ${km}km · ${h}h${m}m</button>`;
       }).join('');
-      // Ulož routeData globálne pre switchovanie
-      window.currentRouteData=routeData;
-      window.currentStopInputs=stopInputs;
     } else {
-      routeTabs.style.display='none';
-      window.currentRouteData=routeData;
-      window.currentStopInputs=stopInputs;
-    }
-    
-    const route=routeData.routes[0];
-    const rc=route.geometry.coordinates; // [[lng,lat], ...]
-
-    resultEl.innerHTML='<div style="font-size:.8rem;color:var(--muted);padding:.5rem 0;">⏳ Detecting countries...</div>';
-
-    // Clear old layers
-    mrPolylines.forEach(id=>{try{if(mrMap.getLayer(id))mrMap.removeLayer(id);if(mrMap.getSource(id))mrMap.removeSource(id);}catch(e){}});
-    mrPolylines=[];
-    mrMarkers.forEach(m=>m.remove());
-    mrMarkers=[];
-
-    // Sample points for country detection
-    const sampleStep=Math.max(1,Math.floor(rc.length/25));
-    const samples=[];
-    for(let i=0;i<rc.length;i+=sampleStep) samples.push(i);
-    if(!samples.includes(rc.length-1)) samples.push(rc.length-1);
-
-    const countryResults=await Promise.all(samples.map(i=>
-      fetch(`https://api.mapbox.com/geocoding/v5/mapbox.places/${rc[i][0]},${rc[i][1]}.json?access_token=${_ta+_tb}&types=country&limit=1`)
-        .then(r=>r.json())
-        .then(d=>({cc:d.features?.[0]?.properties?.short_code?.toUpperCase()||null,lat:rc[i][1],lng:rc[i][0]}))
-        .catch(()=>null)
-    ));
-
-    // Build segments
-    let segments=[],curCC=countryResults.filter(Boolean)[0]?.cc,segStart=0;
-    const validPts=countryResults.filter(Boolean);
-    for(let i=1;i<validPts.length;i++){
-      if(validPts[i].cc!==curCC){
-        segments.push({cc:curCC,pts:validPts.slice(segStart,i)});
-        curCC=validPts[i].cc; segStart=i;
-      }
-    }
-    segments.push({cc:curCC,pts:validPts.slice(segStart)});
-
-    // Country list & HR detection
-    const seen=new Set(); const ccList=[];
-    segments.forEach(s=>{if(s.cc&&!seen.has(s.cc)){seen.add(s.cc);ccList.push(s.cc);}});
-    let hrEntryCC=null,hrExitCC=null,hrDistKm=0;
-    for(let i=0;i<segments.length;i++){
-      if(segments[i].cc==='HR'){
-        if(!hrEntryCC&&i>0) hrEntryCC=segments[i-1].cc;
-        if(i<segments.length-1) hrExitCC=segments[i+1].cc||hrExitCC;
-      }
-    }
-    if(ccList.includes('HR')){
-      const hrPts=validPts.filter(p=>p.cc==='HR').length;
-      hrDistKm=(hrPts/Math.max(validPts.length,1))*(route.distance/1000);
+      routeTabs.style.display = 'none';
     }
 
-    // Draw colored polylines
-    segments.forEach((seg,idx)=>{
-      if(!seg.pts||seg.pts.length<2) return;
-      const segCoords=seg.pts.map(p=>[p.lng,p.lat]);
-      const id=`rseg-${idx}`; mrPolylines.push(id);
-      const clr=countryColor(seg.cc);
-      mrMap.addSource(id,{type:'geojson',data:{type:'Feature',geometry:{type:'LineString',coordinates:segCoords}}});
-      mrMap.addLayer({id,type:'line',source:id,layout:{'line-join':'round','line-cap':'round'},paint:{'line-color':clr,'line-width':5,'line-opacity':.9}});
-    });
+    // Ulož pre switchovanie
+    window.currentRouteData = routeData;
+    window.currentStopInputs = stopInputs;
 
-    // Fit map
-    const bounds=new mapboxgl.LngLatBounds();
-    rc.forEach(p=>bounds.extend(p));
-    mrMap.fitBounds(bounds,{padding:60});
+    const route = routeData.routes[0];
+    const rc = route.geometry.coordinates;
 
-    // Markers
-    const labels=['A','B','C','D','E','F','G','H'];
-    coords.forEach((coord,i)=>addMbMarker(coord,labels[i]||String(i+1),stopInputs[i]));
+    resultEl.innerHTML = '<div style="font-size:.8rem;color:var(--muted);padding:.5rem 0;">⏳ Detecting countries...</div>';
 
-    // Dates
-    const dateFrom=document.getElementById('mr-date-from').value;
-    const dateTo=document.getElementById('mr-date-to').value;
-    let tripDays=7;
-    if(dateFrom&&dateTo){const d1=new Date(dateFrom),d2=new Date(dateTo);tripDays=Math.max(1,Math.ceil((d2-d1)/(1000*60*60*24)));}
-    const vehicleCat=document.getElementById('mr-vehicle-cat')?.value||'I';
-    const distKm=(route.distance/1000).toFixed(0);
-    const durH=Math.floor(route.duration/3600),durM=Math.floor((route.duration%3600)/60);
+    // 4. Počkaj na mapu, vyčisti staré layers
+    await ensureMapReady();
+    clearMapLayers();
 
-    // Build results HTML
-    let html=`<div class="mr-route-info">
-      <div class="mr-route-stat"><strong>${distKm} km</strong>distance</div>
-      <div class="mr-route-stat"><strong>${durH}h ${durM}m</strong>drive time</div>
-      <div class="mr-route-stat"><strong>${ccList.length}</strong>countries</div>
-      <div class="mr-route-stat"><strong>${tripDays}d</strong>trip</div>
-    </div>`;
-    html+='<div style="font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);margin-bottom:.6rem;">Countries on route</div>';
+    // 5. Detekcia krajín s filtrovaním krátkych tranzitov
+    const { segments, validPts } = await detectCountriesOnRoute(rc);
 
-    let totalEur=0;
-    for(const cc of ccList){
-      const id=CC_MAP[cc]; const country=C.find(x=>x.id===id); if(!country) continue;
-      const clr=countryColor(cc); let action='',priceStr='',priceEur=0,needsPay=false,note='';
-      if(country.type==='vignette'&&country.prices.length){
-        const rec=getBestVignette(country.prices,tripDays);
-        priceStr=rec.v; priceEur=parseEuro(rec.v);
-        const eurNote=priceStr.startsWith('€')?'':` ≈ ${toEurStr(priceEur)}`;
-        action=`Buy vignette · ${rec.p}${eurNote}`; needsPay=true; totalEur+=priceEur;
-      } else if(country.type==='toll'){
-        if(id==='hr'){
-          // Use HAC segments as pseudo-steps for calcHRToll
-          const pseudoSteps=segments.filter(s=>s.cc==='HR').flatMap(s=>s.pts).map(p=>({instructions:'',polyline:{points:''}}));
-          const hacRes=await calcHRToll(hrEntryCC,hrExitCC,hrDistKm,pseudoSteps,vehicleCat,validPts);
-          priceEur=hacRes.amount; priceStr=`€${priceEur.toFixed(2)}`;
-          const icon=hacRes.live?(hacRes.precise?'🟢 Live HAC':'🟡 Live HAC est.'):'🟠 Distance est.';
-          action=`Toll gates · ${icon} · <a href="https://karta.hac.hr" target="_blank" style="color:var(--accent)">karta.hac.hr ↗</a>`;
-          if(hacRes.segments?.length) note=hacRes.segments.map(s=>`${s.entry}→${s.exit}: €${s.amount.toFixed(2)}`).join(' + ');
-          needsPay=true; totalEur+=priceEur;
-        } else if(FREE_LOCAL[id]){
-          action='Local roads — free'; priceStr='FREE';
-        } else {
-          const est=country.prices[0]; priceEur=est?parseEuro(est.v):0;
-          priceStr=est?`~${est.v}`:'varies';
-          action='Pay at toll gate'+(country.enc?` · ENC: ${country.enc}`:'');
-          needsPay=!!priceEur; if(needsPay) totalEur+=priceEur;
-        }
-      } else { action='Free — no payment needed'; priceStr='FREE'; }
+    // 6. Kresli trasu (podklad + farebné segmenty)
+    drawRouteOnMap(rc, segments);
 
-      html+=`<div class="mr-country-item" style="border-left:4px solid ${clr};">
-        <div class="mr-ci-code">${cc}</div>
-        <div class="mr-ci-info">
-          <div class="mr-ci-name">${country.name}</div>
-          <div class="mr-ci-sub">${action}${country.buy&&needsPay&&id!=='hr'?` · <a href="${country.buy}" target="_blank" style="color:var(--accent);text-decoration:none;">${country.bl} ↗</a>`:''}</div>
-          ${note?`<div style="font-size:.65rem;color:var(--enc);margin-top:.2rem;">ℹ️ ${note}</div>`:''}
-        </div>
-        ${needsPay?`<div class="mr-ci-price">${priceStr}</div>`:`<div style="color:var(--f);font-weight:800;font-size:.8rem;">FREE</div>`}
-      </div>`;
-    }
+    // 7. Fit bounds
+    const bounds = new mapboxgl.LngLatBounds();
+    rc.forEach(p => bounds.extend(p));
+    mrMap.fitBounds(bounds, { padding: { top: 60, bottom: 60, left: 60, right: 60 }, duration: 1000 });
 
-    // Fuel
-    const fuelPrice=parseFloat(document.getElementById('mr-fuel-price')?.value)||1.55;
-    const fuelCons=parseFloat(document.getElementById('mr-fuel-consumption')?.value)||7;
-    const fuelCost=parseFloat(((route.distance/1000)*fuelCons/100*fuelPrice).toFixed(2));
-    const grandTotal=parseFloat((totalEur+fuelCost).toFixed(2));
-    if(totalEur>0||fuelCost>0){
-      html+=`<div class="mr-total-box">
-        <div class="mr-total-label">💰 Estimated total trip costs</div>
-        ${totalEur>0?`<div class="mr-total-row"><div style="font-size:.75rem;color:var(--muted);">🛣️ Vignettes + tolls</div><div style="font-weight:800;">${toEurStr(totalEur)}</div></div>`:''}
-        <div class="mr-total-row"><div style="font-size:.75rem;color:var(--muted);">⛽ Fuel · ${distKm}km × ${fuelCons}L/100km × €${fuelPrice}/L</div><div style="font-weight:800;">${toEurStr(fuelCost)}</div></div>
-        <div class="mr-total-row" style="border-top:1px solid var(--border);margin-top:.4rem;padding-top:.4rem;">
-          <div style="font-size:.8rem;font-weight:700;">Total estimated trip cost</div>
-          <div class="mr-total-amt">${toEurStr(grandTotal)}</div>
-        </div>
-      </div>`;
-    }
-    html+='<div class="rnote" style="margin-top:.75rem;">⚠️ Estimates are approximate. Buy vignettes before your trip.</div>';
-    resultEl.innerHTML=html;
-    document.getElementById('mr-legend').style.display='block';
-    // tabs zostanú viditeľné
+    // 8. Markers pre stopy
+    const labels = ['A','B','C','D','E','F','G','H'];
+    coords.forEach((coord, i) => addMbMarker(coord, labels[i] || String(i+1), stopInputs[i]));
 
-  }catch(err){
-    document.getElementById('mr-result').innerHTML=`<div style="font-size:.8rem;color:#c00;padding:.75rem;background:#fde8e6;border-radius:8px;">Error: ${err.message}</div>`;
+    // 9. Výpočet cien a výsledný panel
+    await recomputeResultsPanel(route, validPts, segments, stopInputs);
+
+    document.getElementById('mr-legend').style.display = 'block';
+
+  } catch(err){
+    document.getElementById('mr-result').innerHTML = `<div style="font-size:.8rem;color:#c00;padding:.75rem;background:#fde8e6;border-radius:8px;">Error: ${err.message}</div>`;
     console.error(err);
   }
 }
 
-
-
-
-
-
-async function renderRoute(result){
-  const dateFrom=document.getElementById('mr-date-from').value;
-  const dateTo=document.getElementById('mr-date-to').value;
-  let tripDays=7;
-  if(dateFrom&&dateTo){
-    const d1=new Date(dateFrom),d2=new Date(dateTo);
-    tripDays=Math.max(1,Math.ceil((d2-d1)/(1000*60*60*24)));
-  }
-
-  const resultEl=document.getElementById('mr-result');
-  const geocoder=new google.maps.Geocoder();
-
-  // Clear old renderers & polylines & markers
-  mrRenderers.forEach(r=>r.setMap(null)); mrRenderers=[];
-  mrPolylines.forEach(p=>p.setMap(null)); mrPolylines=[];
-  mrMarkers.forEach(m=>m.setMap(null)); mrMarkers=[];
-
-  try {
-
-    // Gather all legs data
-    const allLegs=result.routes[activeRouteIdx].legs;
-    const totalDist=allLegs.reduce((s,l)=>s+l.distance.value,0);
-    const totalDur=allLegs.reduce((s,l)=>s+l.duration.value,0);
-    const path=result.routes[activeRouteIdx].overview_path;
-
-    // Sample more points for better country detection (~25 points along route)
-    const samplePoints=[];
-    const step=Math.max(1,Math.floor(path.length/25));
-    for(let i=0;i<path.length;i+=step) samplePoints.push(path[i]);
-    // Always include first and last point
-    if(samplePoints[samplePoints.length-1]!==path[path.length-1])
-      samplePoints.push(path[path.length-1]);
-
-    // Reverse geocode — detect countries in order
-    const countryOrder=[];
-    const countryCodes=new Set();
-    // Also track entry/exit countries for HR toll calc
-    const countrySegments=[]; // [{cc, lat, lng, distShare}]
-
-    // Geocode sample points — maintain order by index
-    const geocodeResults = new Array(samplePoints.length).fill(null);
-    await Promise.all(samplePoints.map((pt,i)=>new Promise(res=>{
-      geocoder.geocode({location:pt},(results,status)=>{
-        if(status==='OK'&&results[0]){
-          const cc=results[0].address_components.find(c=>c.types.includes('country'))?.short_name;
-          if(cc){
-            geocodeResults[i]={cc, lat:pt.lat(), lng:pt.lng()};
-          }
-        }
-        res();
-      });
-    })));
-
-    // Build ordered country list from geocode results (preserving route order)
-    for(let i=0;i<geocodeResults.length;i++){
-      const r=geocodeResults[i];
-      if(!r) continue;
-      if(!countryCodes.has(r.cc)){ countryCodes.add(r.cc); countryOrder.push(r.cc); }
-      countrySegments[i]=r;
-    }
-
-    // Detect HR entry/exit countries for precise toll
-    let hrEntryCC=null, hrExitCC=null, hrDistKm=0;
-    const segs=countrySegments.filter(Boolean);
-    for(let i=0;i<segs.length;i++){
-      if(segs[i]?.cc==='HR'){
-        if(!hrEntryCC&&i>0) hrEntryCC=segs[i-1]?.cc;
-        hrExitCC=segs[i+1]?.cc||hrExitCC;
-      }
-    }
-    if(countryCodes.has('HR')){
-      const hrCount=segs.filter(s=>s?.cc==='HR').length;
-      hrDistKm=(hrCount/segs.length)*(totalDist/1000);
-    }
-
-    // Get vehicle category
-    const vehicleCat=document.getElementById('mr-vehicle-cat')?.value||'I';
-    const catLabel={'I':'Cat. I (car)','IA':'Cat. IA (moto)','II':'Cat. II (van/trailer)','III':'Cat. III (3-axle)'}[vehicleCat];
-
-    // Build country results
-    const countryResults=[];
-    let totalEur=0;
-    const seen=new Set();
-
-    for(const cc of countryOrder){
-      if(seen.has(cc)) continue; seen.add(cc);
-      const id=CC_MAP[cc];
-      const country=C.find(c=>c.id===id);
-      if(!country) continue;
-
-      let action='',priceStr='',priceEur=0,color=countryColor(id),needsPay=false;
-      let note='', hacInfo=null;
-
-      if(country.type==='vignette'&&country.prices.length){
-        const rec=getBestVignette(country.prices,tripDays);
-        priceStr=rec.v; priceEur=parseEuro(rec.v);
-        const eurNote=priceStr.startsWith('€')?'':` ≈ ${toEurStr(priceEur)}`;
-        // Check if route goes through local roads (no motorway segments detected)
-        const countryKm=(countrySegments.filter(s=>s?.cc===cc).length/countrySegments.filter(Boolean).length)*(totalDist/1000);
-        action=`Buy vignette · ${rec.p}${eurNote}`;
-        if(id==='hu'&&countryKm<30){
-          // Short HU section — might be local roads
-          note='⚠️ Route may use local roads. If you enter any HU motorway, vignette is required.';
-          needsPay=true; totalEur+=priceEur;
-        } else {
-          needsPay=true; totalEur+=priceEur;
-        }
-
-      } else if(country.type==='toll'){
-        if(id==='hr'){
-          const allSteps=result.routes[activeRouteIdx].legs.flatMap(l=>l.steps);
-          const hacResult=await calcHRToll(hrEntryCC,hrExitCC,hrDistKm,allSteps,vehicleCat,countrySegments);
-          priceEur=hacResult.amount;
-          priceStr=toEurStr(priceEur);
-          const srcIcon=hacResult.live
-            ? (hacResult.precise ? '🟢 Live HAC · route detected' : '🟡 Live HAC · border estimate')
-            : '🟠 Distance estimate';
-          action=`Distance-based toll · ${catLabel} · ${srcIcon}`;
-          const debugInfo=hacResult.debugDetected?.length
-            ? `<br><span style="font-size:.6rem;color:#aaa;">Detected: [${hacResult.debugDetected.join(', ')}]</span>`
-            : '';
-          if(hacResult.segments?.length){
-            const segText=hacResult.segments.map(s=>{
-              const label = s.entry===s.exit
-                ? `<strong>${s.entry}</strong> (border toll)`
-                : `<strong>${s.entry}</strong>→<strong>${s.exit}</strong>`;
-              return `${label}: €${s.amount.toFixed(2)}`;
-            }).join(' + ');
-            note=`${segText}<br>ENC 21% → ${toEurStr(priceEur*0.7826)} · <a href="https://karta.hac.hr/map/map" target="_blank" style="color:var(--accent)">karta.hac.hr ↗</a>${debugInfo}`;
-          } else {
-            note=`${hacResult.entry}→${hacResult.exit} · ENC 21% → ${toEurStr(priceEur*0.7826)} · <a href="https://karta.hac.hr/map/map" target="_blank" style="color:var(--accent)">karta.hac.hr ↗</a>${debugInfo}`;
-          }
-          needsPay=true; totalEur+=priceEur;
-        } else if(FREE_LOCAL[id]){
-          action='Local roads — free (no motorway tolls on this section)';
-          color='#0F3460'; needsPay=false;
-          note='Only motorways are tolled in this country';
-        } else {
-          const est=country.prices[0];
-          priceEur=est?parseEuro(est.v):0;
-          priceStr=est?`~${est.v}`:'varies';
-          action='Pay at toll gate'+(country.enc?` · ENC: ${country.enc}`:'');
-          needsPay=!!priceEur; if(needsPay) totalEur+=priceEur;
-        }
-      } else {
-        action='Free — no payment needed';
-      }
-
-      countryResults.push({cc,country,action,priceStr,priceEur,color,needsPay,note,hacInfo});
-    }
-
-    // ── Draw colored polylines per STEP based on road type ──
-    mrRenderers.forEach(r=>r.setMap(null)); mrRenderers=[];
-    mrPolylines.forEach(p=>p.setMap(null)); mrPolylines=[];
-
-    // Road classification based on ACTUAL Google Maps step data
-    // Key insight from debug: Google Maps uses "Spoplatnená cesta" for ALL paid roads
-    const TOLL_COUNTRIES = new Set(['HR','FR','IT','PL','GR','NO','RS','ME','BA','MK','IE','PT','TR']);
-    const FREE_COUNTRIES  = new Set(['DE','NL','BE','LU','DK','SE','FI','LT','LV','EE','GB','IS','CY','MT']);
-    const VIGNETTE_COUNTRIES = new Set(['SK','CZ','AT','CH','HU','SI','RO','BG','MD','LI']);
-    const PAID_ROAD = /Spoplatnená cesta|toll road|mautpflichtig|péage|pedaggio|útdíjas/i;
-    const FREE_MOTORWAY_NUM = /\b(A\d+|E\d+|M\d+|Rv?\d+|Vt?\d+)\b/;
-
-    function classifyStep(step, cc){
-      const instr = (step.instructions||'').replace(/<[^>]+>/g,' ');
-      const isPaid = PAID_ROAD.test(instr);
-
-      // Exit ramps to local roads — even if marked "Spoplatnená" they lead OFF motorway
-      // Detect: "Zíďte výjazdom ... na D|M|R|Č|B|local road"
-      // If maneuver is ramp/exit AND destination road is local (D=HR local, M=BA, not M1/M7)
-      const isExitRamp = /ramp|exit/.test(step.maneuver||'') ||
-                         /Zíďte výjazdom|výjazdom|výjazd|exit|sortie|Abfahrt/i.test(instr);
-
-      // Local road indicators after exit (D47, M14 in BA, county roads)
-      // HR: D\d+ = local; A\d+ = motorway
-      // HU: after exit ramp onto numbered county roads (86, 75, etc) = local
-      // BA: M14, M15 = local main roads
-      const exitToLocal = isExitRamp && (
-        /D\d+/.test(instr) ||    // HR local road Dxx
-        /M1[3-9]|M[2-9]\d/.test(instr) ||  // BA/RS local Mxx (not M1-M12 motorways)
-        /smerom na\s+\w+\s*\/\s*\w+.*(?!Spoplatn)/.test(instr)
-      );
-
-      if(isPaid && !exitToLocal){
-        if(TOLL_COUNTRIES.has(cc))     return 'toll';
-        if(VIGNETTE_COUNTRIES.has(cc)) return 'vignette';
-        if(FREE_COUNTRIES.has(cc))     return 'free';
-        return 'toll';
-      }
-      if(FREE_COUNTRIES.has(cc) && FREE_MOTORWAY_NUM.test(instr) && !isExitRamp) return 'free';
-      return 'local';
-    }
-
-    const allStepsOrdered = result.routes[activeRouteIdx].legs.flatMap(l=>l.steps);
-
-    // Build a country lookup from step start points using countrySegments
-    // Also detect country changes from step instructions ("Vchádzate do krajiny X")
-    let currentStepCC = countryOrder[0] || null;
-    const CC_NAME_MAP = {
-      'Slovensko':'SK','Maďarsko':'HU','Rakúsko':'AT','Slovinsko':'SI',
-      'Chorvátsko':'HR','Bosna a Hercegovina':'BA','Srbsko':'RS','Taliansko':'IT',
-      'Nemecko':'DE','Česko':'CZ','Poľsko':'PL','Rumunsko':'RO','Bulharsko':'BG',
-      'Grécko':'GR','Čierna Hora':'ME','Severné Macedónsko':'MK','Francúzsko':'FR',
-      'Hungary':'HU','Austria':'AT','Slovenia':'SI','Croatia':'HR',
-      'Bosnia':'BA','Serbia':'RS','Germany':'DE','Italy':'IT',
-    };
-
-    for(const step of allStepsOrdered){
-      if(!step.polyline?.points) continue;
-      let stepPath;
-      try { stepPath=google.maps.geometry.encoding.decodePath(step.polyline.points); }
-      catch(e){ continue; }
-      if(!stepPath||stepPath.length<2) continue;
-
-      // Check if this step changes country
-      const instr=(step.instructions||'').replace(/<[^>]+>/g,' ');
-      const countryChange = instr.match(/Vchádzate do krajiny\s+(.+?)(?:\s|$)/i) ||
-                            instr.match(/Entering\s+(.+?)(?:\s|$)/i);
-      if(countryChange){
-        const cname = countryChange[1].trim();
-        for(const [name,cc] of Object.entries(CC_NAME_MAP)){
-          if(cname.startsWith(name)){ currentStepCC=cc; break; }
-        }
-      }
-
-      // Find country from nearest sample point
-      const startPt=stepPath[0];
-      let bestCC=currentStepCC, bestDist=999;
-      for(const seg of countrySegments.filter(Boolean)){
-        const d=Math.abs(seg.lat-startPt.lat())+Math.abs(seg.lng-startPt.lng());
-        if(d<bestDist){ bestDist=d; bestCC=seg.cc; }
-      }
-      // Only use sample point CC if it's close enough (within ~0.8°)
-      const stepCC = bestDist < 0.8 ? bestCC : currentStepCC;
-
-      const roadType = classifyStep(step, stepCC);
-
-      let color, weight, opacity;
-      switch(roadType){
-        case 'vignette': color='#1B4D3E'; weight=6; opacity=0.88; break;
-        case 'toll':     color='#7A3200'; weight=6; opacity=0.88; break;
-        case 'free':     color='#0F3460'; weight=6; opacity=0.88; break;
-        default:         color='#7C3AED'; weight=3; opacity=0.5;  break;
-      }
-
-      mrPolylines.push(new google.maps.Polyline({
-        path:stepPath, strokeColor:color,
-        strokeWeight:weight, strokeOpacity:opacity, map:mrMap,
-      }));
-    }
-
-    // Add markers for stops — derive stopInputs from current mrStops
-    const stopInputs=mrStops.map(id=>document.getElementById(id)?.value?.trim()).filter(Boolean);
-    stopInputs.forEach((addr,i)=>{
-      const labels=['A','B','C','D','E','F','G','H'];
-      const marker = new google.maps.Marker({
-        map:mrMap,
-        position:result.routes[activeRouteIdx].legs[Math.min(i,result.routes[activeRouteIdx].legs.length-1)][i===0?'start_location':'end_location'],
-        label:{text:labels[i]||String(i+1),color:'white',fontWeight:'bold'},
-        title:addr,
-      });
-      mrMarkers.push(marker);
-    });
-
-    // Fit map to route
-    const bounds=new google.maps.LatLngBounds();
-    path.forEach(p=>bounds.extend(p));
-    mrMap.fitBounds(bounds);
-
-    // Build result HTML
-    const distKm=(totalDist/1000).toFixed(0);
-    const durH=Math.floor(totalDur/3600);
-    const durM=Math.floor((totalDur%3600)/60);
-
-    let html=`<div class="mr-route-info">
-      <div class="mr-route-stat"><strong>${distKm} km</strong>distance</div>
-      <div class="mr-route-stat"><strong>${durH}h ${durM}m</strong>drive time</div>
-      <div class="mr-route-stat"><strong>${countryResults.length}</strong>countries</div>
-      <div class="mr-route-stat"><strong>${tripDays}d</strong>trip</div>
-    </div>`;
-
-    html+='<div style="font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);margin-bottom:.6rem;">Countries on route</div>';
-
-    countryResults.forEach(r=>{
-      html+=`<div class="mr-country-item" style="border-left:4px solid ${r.color};">
-        <div class="mr-ci-code">${r.cc}</div>
-        <div class="mr-ci-info">
-          <div class="mr-ci-name">${r.country.name}</div>
-          <div class="mr-ci-sub">${r.action}${r.country.buy&&r.needsPay&&r.country.id!=='hr'?` · <a href="${r.country.buy}" target="_blank" style="color:var(--accent);text-decoration:none;">${r.country.bl} ↗</a>`:''}</div>
-          ${r.note?`<div style="font-size:.65rem;color:var(--enc);margin-top:.25rem;">ℹ️ ${r.note}</div>`:''}
-        </div>
-        ${r.needsPay?`<div class="mr-ci-price">${r.priceStr}</div>`:'<div style="color:var(--f);font-weight:700;font-size:.8rem;">FREE</div>'}
-      </div>`;
-    });
-
-    // Fuel cost calculation
-    const fuelPrice=parseFloat(document.getElementById('mr-fuel-price')?.value)||1.55;
-    const fuelConsumption=parseFloat(document.getElementById('mr-fuel-consumption')?.value)||7;
-    const fuelCost=parseFloat(((totalDist/1000)*fuelConsumption/100*fuelPrice).toFixed(2));
-    const grandTotal=parseFloat((totalEur+fuelCost).toFixed(2));
-
-    if(totalEur>0||fuelCost>0){
-      html+=`<div class="mr-total-box">
-        <div class="mr-total-label">💰 Estimated total trip costs</div>
-        ${totalEur>0?`<div class="mr-total-row"><div style="font-size:.75rem;color:var(--muted);">🛣️ Vignettes + tolls${Object.keys(FX).length?' · live rates':''}</div><div style="font-weight:800;">${toEurStr(totalEur)}</div></div>`:''}
-        <div class="mr-total-row"><div style="font-size:.75rem;color:var(--muted);">⛽ Fuel · ${distKm}km × ${fuelConsumption}L/100km × €${fuelPrice}/L</div><div style="font-weight:800;">${toEurStr(fuelCost)}</div></div>
-        <div class="mr-total-row" style="border-top:1px solid var(--border);margin-top:.4rem;padding-top:.4rem;">
-          <div style="font-size:.8rem;font-weight:700;color:var(--text);">Total estimated trip cost</div>
-          <div class="mr-total-amt">${toEurStr(grandTotal)}</div>
-        </div>
-      </div>`;
-    }
-
-    html+='<div class="rnote" style="margin-top:.75rem;">⚠️ Estimates are approximate. Croatian tolls are distance-based — exact price depends on your entry/exit point. BiH/RS/ME local roads are free even if route passes through.</div>';
-    resultEl.innerHTML=html;
-    document.getElementById('mr-legend').style.display='block';
-
-    // Render route tabs after result
-    const routeTabs=document.getElementById('mr-route-tabs');
-    if(result.routes.length>1){
-      routeTabs.style.display='flex';
-      routeTabs.style.gap='.4rem';
-      routeTabs.style.flexWrap='wrap';
-      routeTabs.innerHTML=result.routes.map((r,i)=>{
-        const km=(r.legs.reduce((s,l)=>s+l.distance.value,0)/1000).toFixed(0);
-        const dur=r.legs.reduce((s,l)=>s+l.duration.value,0);
-        const h=Math.floor(dur/3600), m=Math.floor((dur%3600)/60);
-        const isActive=i===activeRouteIdx;
-        return `<button onclick="switchRoute(${i})" id="rtab-${i}"
-          style="padding:.4rem .8rem;border-radius:8px;
-          border:2px solid ${isActive?'var(--accent)':'var(--border)'};
-          background:${isActive?'var(--accent)':'var(--surface)'};
-          color:${isActive?'#000':'var(--text)'};
-          font-size:.75rem;font-weight:700;cursor:pointer;font-family:'Geist',sans-serif;">
-          Route ${i+1} · ${km}km · ${h}h${m}m
-        </button>`;
-      }).join('');
-    } else {
-      routeTabs.style.display='none';
-    }
-
-  } catch(err){
-    document.getElementById('mr-result').innerHTML=`<div style="font-size:.8rem;color:#c00;padding:.75rem;background:#fde8e6;border-radius:8px;">Could not render route: <strong>${err}</strong>.</div>`;
-    console.error('renderRoute error:', err);
-  }
-}
 
 document.getElementById('stat-countries').textContent=C.length;
 const _lcnt=document.getElementById('lcnt');if(_lcnt)_lcnt.textContent=C.length;
@@ -2511,7 +1777,6 @@ renderCC(); renderSpeed(); renderCalcChecks(); renderENC();
 (function() {
   const starsEl = document.getElementById('landStars');
 
-  // Stars
   for (let i = 0; i < 80; i++) {
     const s = document.createElement('div');
     s.className = 'land-star';
@@ -2520,7 +1785,6 @@ renderCC(); renderSpeed(); renderCalcChecks(); renderENC();
     starsEl.appendChild(s);
   }
 
-  // ── PERSPECTIVE ROAD ──
   const canvas = document.getElementById('roadCanvas');
   const ctx = canvas.getContext('2d');
   let dashOffset = 0, animId;
@@ -2536,11 +1800,10 @@ renderCC(); renderSpeed(); renderCalcChecks(); renderENC();
     const W = canvas.width, H = canvas.height;
     ctx.clearRect(0, 0, W, H);
 
-    const vx = W * 0.5;   // vanishing point X — center
-    const vy = H * 0.42;  // vanishing point Y — slightly above center
-    const ease = t => t * t * t; // cubic — strong perspective rush
+    const vx = W * 0.5;
+    const vy = H * 0.42;
+    const ease = t => t * t * t;
 
-    // Road surface
     const grad = ctx.createLinearGradient(vx, vy, vx, H);
     grad.addColorStop(0,   'rgba(12,16,26,0)');
     grad.addColorStop(0.25,'rgba(12,16,26,0.55)');
@@ -2553,7 +1816,6 @@ renderCC(); renderSpeed(); renderCalcChecks(); renderENC();
     ctx.fillStyle = grad;
     ctx.fill();
 
-    // Road edges
     const drawEdge = (ex) => {
       ctx.beginPath();
       ctx.moveTo(vx, vy);
@@ -2565,7 +1827,6 @@ renderCC(); renderSpeed(); renderCalcChecks(); renderENC();
     drawEdge(W * 0.02);
     drawEdge(W * 0.98);
 
-    // Lane dividers (perspective-correct dashes)
     const numDashes = 14;
     const drawLane = (xFraction, color, alpha) => {
       for (let i = 0; i < numDashes; i++) {
@@ -2589,11 +1850,8 @@ renderCC(); renderSpeed(); renderCalcChecks(); renderENC();
       }
     };
 
-    // Center line — amber
     drawLane(0.5,  'rgba(212,130,10,A)', 0.9);
-    // Left lane marker
     drawLane(0.28, 'rgba(255,255,255,A)', 0.28);
-    // Right lane marker
     drawLane(0.72, 'rgba(255,255,255,A)', 0.28);
 
     dashOffset = (dashOffset + 0.0045) % 1;
