@@ -2908,10 +2908,20 @@ function toggleCustomRouteMode(){
 function enterCustomRouteMode(){
   if(!window.currentRouteData){
     console.warn('[CustomRoute] No route to edit');
+    alert('No route available. Please Calculate first.');
     return;
   }
   const route = window.currentRouteData.routes[window.currentActiveRouteIdx ?? 0];
-  if(!route) return;
+  if(!route){
+    console.warn('[CustomRoute] No active route');
+    return;
+  }
+  if(!mrMap){
+    console.warn('[CustomRoute] Map not ready');
+    return;
+  }
+
+  console.log('[CustomRoute] Entering edit mode for route:', window.currentActiveRouteIdx);
 
   customRouteState.active = true;
   customRouteState.originalCoords = [...route.geometry.coordinates];
@@ -2922,51 +2932,74 @@ function enterCustomRouteMode(){
   document.getElementById('mr-edit-actions').style.display = 'flex';
   document.getElementById('mr-edit-hint').style.display = 'block';
 
-  // Pridaj draggable markers na trase (každých cca 80km, ale min. 3, max. 8)
+  // Pridaj draggable markers na trase
   const coords = route.geometry.coordinates;
   const totalLen = route.distance / 1000; // km
-  const stepKm = Math.max(80, Math.ceil(totalLen / 8));
-  const markerCount = Math.min(8, Math.max(3, Math.floor(totalLen / stepKm)));
+  // Adaptívny počet bodov - pre krátke trasy menej, pre dlhé viac
+  const markerCount = totalLen < 100 ? 2 : totalLen < 300 ? 3 : totalLen < 600 ? 5 : 8;
   const step = Math.floor(coords.length / (markerCount + 1));
+
+  console.log('[CustomRoute] Creating', markerCount, 'draggable markers on', coords.length, 'point route');
 
   for(let i = 1; i <= markerCount; i++){
     const coord = coords[i * step];
     if(!coord) continue;
-    const el = document.createElement('div');
-    el.style.cssText = 'width:16px;height:16px;border-radius:50%;background:#D4820A;border:3px solid #fff;cursor:grab;box-shadow:0 2px 8px rgba(0,0,0,.5);';
-    el.title = 'Drag to reshape route';
 
-    const marker = new mapboxgl.Marker({ element: el, draggable: true })
+    // Používame built-in Mapbox Marker s custom color — má natívny draggable support
+    const marker = new mapboxgl.Marker({
+      color: '#D4820A',
+      draggable: true,
+    })
       .setLngLat(coord)
       .addTo(mrMap);
 
-    const originalLngLat = [...coord];
+    // Pridaj hover tooltip
+    const markerEl = marker.getElement();
+    markerEl.style.cursor = 'grab';
+    markerEl.title = 'Drag to reshape route';
+    // Dôležité: zväčší z-index aby bol vždy nad route
+    markerEl.style.zIndex = '100';
+
+    const originalLngLat = [coord[0], coord[1]];
+    let isDragging = false;
 
     marker.on('dragstart', () => {
-      el.style.cursor = 'grabbing';
-      el.style.background = '#f4a45a';
+      isDragging = true;
+      markerEl.style.cursor = 'grabbing';
+      console.log('[CustomRoute] Drag start marker', i);
     });
 
     marker.on('drag', () => {
-      // Realtime preview cez dashed line
+      // Realtime preview cez čiary medzi markermi
       updateCustomRoutePreview();
     });
 
     marker.on('dragend', async () => {
-      el.style.cursor = 'grab';
-      el.style.background = '#D4820A';
+      isDragging = false;
+      markerEl.style.cursor = 'grab';
       const newLngLat = marker.getLngLat();
-      // Zaznamenaj posunutý bod
-      customRouteState.draggedPoints.push({
-        original: originalLngLat,
-        newCoord: [newLngLat.lng, newLngLat.lat],
-      });
-      // Zavolaj Google aby nám dal novú trasu cez ten bod
-      await updateCustomRouteWithNewWaypoint();
+      const distMoved = Math.sqrt(
+        Math.pow(newLngLat.lng - originalLngLat[0], 2) +
+        Math.pow(newLngLat.lat - originalLngLat[1], 2)
+      );
+      console.log('[CustomRoute] Drag end marker', i, '→ moved', distMoved.toFixed(4), '°');
+
+      // Len ak sa skutočne posunul (aspoň 0.01° ≈ 1km)
+      if(distMoved > 0.01){
+        customRouteState.draggedPoints.push({
+          original: originalLngLat,
+          newCoord: [newLngLat.lng, newLngLat.lat],
+          markerIndex: i,
+        });
+        // Zavolaj Google aby nám dal novú trasu cez ten bod
+        await updateCustomRouteWithNewWaypoint();
+      }
     });
 
     customRouteState.draggableMarkers.push(marker);
   }
+
+  console.log('[CustomRoute] Created', customRouteState.draggableMarkers.length, 'markers');
 }
 
 function updateCustomRoutePreview(){
