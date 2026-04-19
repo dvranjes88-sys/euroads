@@ -540,10 +540,10 @@ main { padding:2rem; max-width:1300px; margin:0 auto; }
     <div class="mr-map-wrap">
       <div id="mr-map"></div>
       <div id="mr-legend" class="mr-legend" style="display:none;">
-        <div class="mrl-item"><span class="mrl-dot" style="background:#22c997;"></span> Vignette</div>
-        <div class="mrl-item"><span class="mrl-dot" style="background:#f4a45a;"></span> Toll</div>
-        <div class="mrl-item"><span class="mrl-dot" style="background:#6eb3f7;"></span> Free</div>
-        <div class="mrl-item"><span class="mrl-dot" style="background:#c084fc;"></span> Other</div>
+        <div class="mrl-item"><span class="mrl-dot" style="background:#22c997;"></span> Vignette motorway</div>
+        <div class="mrl-item"><span class="mrl-dot" style="background:#f4a45a;"></span> Toll motorway</div>
+        <div class="mrl-item"><span class="mrl-dot" style="background:#6eb3f7;"></span> Free motorway</div>
+        <div class="mrl-item"><span class="mrl-dot" style="background:#c084fc;"></span> Local road (free)</div>
       </div>
     </div>
   </div>
@@ -1134,7 +1134,8 @@ async function fetchGoogleDirections(coords){
     origin,
     destination,
     waypoints,
-    provideRouteAlternatives: true,
+    // Google API limitation: provideRouteAlternatives funguje len bez waypoints
+    provideRouteAlternatives: waypoints.length === 0,
     travelMode: google.maps.TravelMode.DRIVING,
   };
 
@@ -1144,6 +1145,7 @@ async function fetchGoogleDirections(coords){
   if(!response.routes?.length) throw new Error('No routes found');
 
   // Transform Google response → Mapbox-compatible structure
+  // DÔLEŽITÉ: zachovávame aj legs so steps pre classifyStep()
   return {
     routes: response.routes.map(route => {
       // overview_path je už pole google.maps.LatLng objektov
@@ -1161,6 +1163,9 @@ async function fetchGoogleDirections(coords){
         distance: totalDist,
         duration: totalDur,
         summary: route.summary || '',
+        // Zachovaj originálne Google legs so steps – potrebné pre classifyStep & HAC detection
+        _googleLegs: route.legs,
+        _googleRoute: route,
       };
     }),
   };
@@ -1573,6 +1578,70 @@ async function detectCountriesOnRoute(rc){
 }
 
 // ══════════════════════════════════════════════════════════
+// ── ROAD CLASSIFICATION (z pôvodného pracovného kódu) ──
+// Detekuje typ cesty každého step z Google Directions instructions
+// "Spoplatnená cesta" = PAID road v slovenských instructions (iné jazyky tiež)
+// ══════════════════════════════════════════════════════════
+const TOLL_COUNTRIES_SET    = new Set(['HR','FR','IT','PL','GR','NO','RS','ME','BA','MK','IE','PT','TR']);
+const FREE_COUNTRIES_SET    = new Set(['DE','NL','BE','LU','DK','SE','FI','LT','LV','EE','GB','IS','CY','MT']);
+const VIGNETTE_COUNTRIES_SET = new Set(['SK','CZ','AT','CH','HU','SI','RO','BG','MD','LI']);
+
+// Multilingual regex — Google vracia instructions v jazyku browsera
+const PAID_ROAD_REGEX = /Spoplatnená cesta|toll road|mautpflichtig|péage|pedaggio|útdíjas|plačljiva cesta|cestarina/i;
+const FREE_MOTORWAY_NUM_REGEX = /\b(A\d+|E\d+|M\d+|Rv?\d+|Vt?\d+)\b/;
+
+function classifyStep(step, cc){
+  const instr = (step.instructions || '').replace(/<[^>]+>/g, ' ');
+  const isPaid = PAID_ROAD_REGEX.test(instr);
+
+  // Exit ramps = odchod z diaľnice na local roads
+  const isExitRamp = /ramp|exit/.test(step.maneuver || '') ||
+                     /Zíďte výjazdom|výjazdom|výjazd|exit|sortie|Abfahrt|uscita|výezd/i.test(instr);
+
+  // Po exit rampe → lokálna cesta (D47 v HR, M14 v BA county roads, atd.)
+  const exitToLocal = isExitRamp && (
+    /\bD\d+\b/.test(instr) ||                // HR local road Dxx
+    /\bM1[3-9]|\bM[2-9]\d/.test(instr) ||    // BA/RS local Mxx (not M1-M12 motorways)
+    /smerom na\s+\w+\s*\/\s*\w+.*(?!Spoplatn)/.test(instr)
+  );
+
+  if(isPaid && !exitToLocal){
+    if(TOLL_COUNTRIES_SET.has(cc))     return 'toll';
+    if(VIGNETTE_COUNTRIES_SET.has(cc)) return 'vignette';
+    if(FREE_COUNTRIES_SET.has(cc))     return 'free';
+    return 'toll';
+  }
+  // Voľné diaľnice v FREE krajinách (DE Autobahn, NL, BE, atď.)
+  if(FREE_COUNTRIES_SET.has(cc) && FREE_MOTORWAY_NUM_REGEX.test(instr) && !isExitRamp) return 'free';
+  return 'local';
+}
+
+// Farba pre road class (nie pre krajinu – to je iné)
+function roadClassColor(roadType){
+  switch(roadType){
+    case 'vignette': return '#22c997'; // zelená = platíš vignette (diaľnica)
+    case 'toll':     return '#f4a45a'; // oranžová = platíš toll (diaľnica)
+    case 'free':     return '#6eb3f7'; // modrá = voľná diaľnica
+    case 'local':    return '#c084fc'; // fialová = lokálna cesta (zadarmo)
+    default:         return '#6eb3f7';
+  }
+}
+
+// Country name → CC mapovanie pre detekciu z instructions "Vchádzate do krajiny X"
+const CC_NAME_MAP = {
+  'Slovensko':'SK','Maďarsko':'HU','Rakúsko':'AT','Slovinsko':'SI',
+  'Chorvátsko':'HR','Bosna a Hercegovina':'BA','Srbsko':'RS','Taliansko':'IT',
+  'Nemecko':'DE','Česko':'CZ','Poľsko':'PL','Rumunsko':'RO','Bulharsko':'BG',
+  'Grécko':'GR','Čierna Hora':'ME','Severné Macedónsko':'MK','Francúzsko':'FR',
+  // English variants
+  'Hungary':'HU','Austria':'AT','Slovenia':'SI','Croatia':'HR',
+  'Bosnia':'BA','Serbia':'RS','Germany':'DE','Italy':'IT',
+  'Czech Republic':'CZ','Czechia':'CZ','Poland':'PL','Romania':'RO',
+  'Bulgaria':'BG','Greece':'GR','Montenegro':'ME','North Macedonia':'MK',
+  'France':'FR','Slovakia':'SK',
+};
+
+// ══════════════════════════════════════════════════════════
 // ── OPRAVA: Draw route — plná čiara ako podklad + farebné segmenty na vrch ──
 // ══════════════════════════════════════════════════════════
 function drawRouteOnMap(rc, segments){
@@ -1618,6 +1687,121 @@ function drawRouteOnMap(rc, segments){
 }
 
 // ══════════════════════════════════════════════════════════
+// ── drawRouteByRoadClass ── HLAVNÁ kresliaca funkcia
+// Kreslí farebné segmenty per-step podľa road class (motorway vs local)
+// Používa Google steps + classifyStep() — z pôvodného pracovného kódu
+// Zoskupuje susedné steps rovnakej triedy pre výkonnosť (menej layers)
+// ══════════════════════════════════════════════════════════
+function drawRouteByRoadClass(googleLegs, validPts, rc){
+  // 1. Podklad — plná trasa tmavou sivou (aby bolo vidno celú cestu keby niečo zlyhalo)
+  const fullId = 'rseg-full';
+  mrPolylines.push(fullId);
+  mrMap.addSource(fullId, {
+    type: 'geojson',
+    data: { type: 'Feature', geometry: { type: 'LineString', coordinates: rc } }
+  });
+  mrMap.addLayer({
+    id: fullId,
+    type: 'line',
+    source: fullId,
+    layout: { 'line-join': 'round', 'line-cap': 'round' },
+    paint: { 'line-color': '#334155', 'line-width': 8, 'line-opacity': 0.55 }
+  });
+
+  // 2. Extract all steps and classify them
+  const allSteps = googleLegs.flatMap(l => l.steps);
+  console.log('[Draw] Total steps:', allSteps.length);
+
+  // Detect starting country from first valid sample
+  let currentCC = validPts[0]?.cc || null;
+
+  // Classify each step + decode its polyline
+  const classifiedSteps = [];
+  for(const step of allSteps){
+    if(!step.polyline?.points) continue;
+
+    // Dekóduj step polyline cez Google geometry (ak dostupné) alebo náš decoder
+    let stepCoords;
+    if(window.google?.maps?.geometry?.encoding){
+      try {
+        const latLngs = google.maps.geometry.encoding.decodePath(step.polyline.points);
+        stepCoords = latLngs.map(ll => [ll.lng(), ll.lat()]);
+      } catch(e){ continue; }
+    } else {
+      stepCoords = decodePolyline(step.polyline.points);
+    }
+    if(!stepCoords || stepCoords.length < 2) continue;
+
+    // Check if instruction obsahuje country change
+    const instr = (step.instructions || '').replace(/<[^>]+>/g, ' ');
+    const countryChange = instr.match(/Vchádzate do krajiny\s+([^\s,]+)/i) ||
+                          instr.match(/Entering\s+([^\s,]+)/i) ||
+                          instr.match(/Entrez en\s+([^\s,]+)/i);
+    if(countryChange){
+      const cname = countryChange[1].trim();
+      for(const [name, cc] of Object.entries(CC_NAME_MAP)){
+        if(cname.startsWith(name)){ currentCC = cc; break; }
+      }
+    }
+
+    // Presnejšie: použi sample pointy na určenie CC z GPS
+    // (keď Google neposkytne "Entering X" v instructions)
+    const startPt = stepCoords[0];
+    let bestCC = currentCC, bestDist = 999;
+    for(const seg of validPts){
+      if(!seg) continue;
+      const d = Math.abs(seg.lat - startPt[1]) + Math.abs(seg.lng - startPt[0]);
+      if(d < bestDist){ bestDist = d; bestCC = seg.cc; }
+    }
+    if(bestDist < 0.8) currentCC = bestCC;
+
+    const roadType = classifyStep(step, currentCC);
+    classifiedSteps.push({ coords: stepCoords, roadType, cc: currentCC });
+  }
+
+  console.log('[Draw] Classified steps by type:',
+    classifiedSteps.reduce((acc, s) => ({ ...acc, [s.roadType]: (acc[s.roadType] || 0) + 1 }), {}));
+
+  // 3. Merge susedné steps rovnakého typu — efektívnejšie kreslenie
+  const mergedSegments = [];
+  for(const cs of classifiedSteps){
+    const last = mergedSegments[mergedSegments.length - 1];
+    if(last && last.roadType === cs.roadType){
+      // Pridaj coords bez prvého (ten bol posledný predošlého)
+      last.coords = last.coords.concat(cs.coords.slice(1));
+    } else {
+      mergedSegments.push({ coords: [...cs.coords], roadType: cs.roadType, cc: cs.cc });
+    }
+  }
+
+  console.log('[Draw] Merged segments:', mergedSegments.length);
+
+  // 4. Kresli každý merged segment
+  mergedSegments.forEach((seg, i) => {
+    if(seg.coords.length < 2) return;
+
+    const id = `rseg-${i}`;
+    mrPolylines.push(id);
+    const clr = roadClassColor(seg.roadType);
+    // Local roads = tenšia čiara, motorway = hrubšia
+    const weight = seg.roadType === 'local' ? 4 : 6;
+    const opacity = seg.roadType === 'local' ? 0.75 : 0.95;
+
+    mrMap.addSource(id, {
+      type: 'geojson',
+      data: { type: 'Feature', geometry: { type: 'LineString', coordinates: seg.coords } }
+    });
+    mrMap.addLayer({
+      id,
+      type: 'line',
+      source: id,
+      layout: { 'line-join': 'round', 'line-cap': 'round' },
+      paint: { 'line-color': clr, 'line-width': weight, 'line-opacity': opacity }
+    });
+  });
+}
+
+// ══════════════════════════════════════════════════════════
 // ── OPRAVA: Prepnutie medzi Route 1/2/3 ──
 // ══════════════════════════════════════════════════════════
 async function selectRoute(idx){
@@ -1644,8 +1828,13 @@ async function selectRoute(idx){
   // Re-detekcia krajín pre novú trasu
   const { segments, validPts } = await detectCountriesOnRoute(rc);
 
-  // Kreslenie
-  drawRouteOnMap(rc, segments);
+  // Kreslenie — ak máme Google steps, použijeme road-class coloring
+  if(route._googleLegs){
+    drawRouteByRoadClass(route._googleLegs, validPts, rc);
+  } else {
+    // Fallback: Mapbox trasa bez steps → farby podľa krajiny
+    drawRouteOnMap(rc, segments);
+  }
 
   // Fit bounds na celú trasu
   const bounds = new mapboxgl.LngLatBounds();
@@ -1868,8 +2057,14 @@ async function calcMapRoute(){
     // 5. Detekcia krajín s filtrovaním krátkych tranzitov
     const { segments, validPts } = await detectCountriesOnRoute(rc);
 
-    // 6. Kresli trasu (podklad + farebné segmenty)
-    drawRouteOnMap(rc, segments);
+    // 6. Kresli trasu — ak máme Google steps, použijeme road-class coloring
+    //    (zelená=vignette motorway, oranžová=toll motorway, modrá=free motorway, fialová=local)
+    if(route._googleLegs){
+      drawRouteByRoadClass(route._googleLegs, validPts, rc);
+    } else {
+      // Fallback na country-based farby (keď Google zlyhá a bežíme Mapbox)
+      drawRouteOnMap(rc, segments);
+    }
 
     // 7. Fit bounds
     const bounds = new mapboxgl.LngLatBounds();
