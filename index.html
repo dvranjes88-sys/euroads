@@ -1802,23 +1802,9 @@ function addMbMarker(coords,label,name){
 let lastDirectionsResult = null;
 let activeRouteIdx = 0;
 
-function switchRoute(idx){
-  if(!lastDirectionsResult) return;
-  activeRouteIdx = idx;
-  updateRouteTabs();
-  renderRoute(lastDirectionsResult);
-}
 
-function updateRouteTabs(){
-  if(!lastDirectionsResult) return;
-  lastDirectionsResult.routes.forEach((_,i)=>{
-    const btn=document.getElementById(`rtab-${i}`);
-    if(!btn) return;
-    btn.style.border=`2px solid ${i===activeRouteIdx?'var(--accent)':'var(--border)'}`;
-    btn.style.background=i===activeRouteIdx?'var(--accent)':'var(--surface)';
-    btn.style.color=i===activeRouteIdx?'#000':'var(--text)';
-  });
-}
+
+
 
 
 async function selectRoute(idx, _unused){
@@ -2075,7 +2061,7 @@ async function calcMapRoute(){
     html+='<div class="rnote" style="margin-top:.75rem;">⚠️ Estimates are approximate. Buy vignettes before your trip.</div>';
     resultEl.innerHTML=html;
     document.getElementById('mr-legend').style.display='block';
-    document.getElementById('mr-route-tabs').style.display='none';
+    // tabs zostanú viditeľné
 
   }catch(err){
     document.getElementById('mr-result').innerHTML=`<div style="font-size:.8rem;color:#c00;padding:.75rem;background:#fde8e6;border-radius:8px;">Error: ${err.message}</div>`;
@@ -2084,206 +2070,7 @@ async function calcMapRoute(){
 }
 
 
-async function renderRoute(result){
-  const dateFrom=document.getElementById('mr-date-from').value;
-  const dateTo=document.getElementById('mr-date-to').value;
-  let tripDays=7;
-  if(dateFrom&&dateTo){
-    const d1=new Date(dateFrom),d2=new Date(dateTo);
-    tripDays=Math.max(1,Math.ceil((d2-d1)/(1000*60*60*24)));
-  }
-  const resultEl=document.getElementById('mr-result');
 
-  // Clear old layers/markers
-  mrPolylines.forEach(id=>{try{if(mrMap.getLayer(id))mrMap.removeLayer(id);if(mrMap.getSource(id))mrMap.removeSource(id);}catch(e){}});
-  mrPolylines=[];
-  mrMarkers.forEach(m=>m.remove());
-  mrMarkers=[];
-
-  try {
-    const allLegs=result.routes[activeRouteIdx].legs;
-    const totalDist=allLegs.reduce((s,l)=>s+l.distance.value,0);
-    const totalDur=allLegs.reduce((s,l)=>s+l.duration.value,0);
-
-    // Mapbox geocoding na detekciu krajín cez sample pointy
-    // Použijeme encoded polyline z Google - dekódujeme a sample-ujeme
-    const path=result.routes[activeRouteIdx].overview_path;
-    const sampleStep=Math.max(1,Math.floor(path.length/25));
-    const samplePoints=[];
-    for(let i=0;i<path.length;i+=sampleStep) samplePoints.push(path[i]);
-    if(samplePoints[samplePoints.length-1]!==path[path.length-1])
-      samplePoints.push(path[path.length-1]);
-
-    // Reverse geocode cez Mapbox
-    const countryResults_raw=await Promise.all(samplePoints.map(pt=>
-      fetch(`https://api.mapbox.com/geocoding/v5/mapbox.places/${pt.lng()},${pt.lat()}.json?access_token=${_ta+_tb}&types=country&limit=1`)
-        .then(r=>r.json())
-        .then(d=>({cc:d.features?.[0]?.properties?.short_code?.toUpperCase()||null, lat:pt.lat(), lng:pt.lng()}))
-        .catch(()=>null)
-    ));
-
-    const countryOrder=[]; const countryCodes=new Set(); const countrySegments=[];
-    for(let i=0;i<countryResults_raw.length;i++){
-      const r=countryResults_raw[i]; if(!r) continue;
-      if(!countryCodes.has(r.cc)){countryCodes.add(r.cc);countryOrder.push(r.cc);}
-      countrySegments[i]=r;
-    }
-
-    // HR entry/exit
-    let hrEntryCC=null,hrExitCC=null,hrDistKm=0;
-    const segs=countrySegments.filter(Boolean);
-    for(let i=0;i<segs.length;i++){
-      if(segs[i]?.cc==='HR'){
-        if(!hrEntryCC&&i>0) hrEntryCC=segs[i-1]?.cc;
-        if(i<segs.length-1) hrExitCC=segs[i+1]?.cc||hrExitCC;
-      }
-    }
-    if(countryCodes.has('HR')){
-      const hrCount=segs.filter(s=>s?.cc==='HR').length;
-      hrDistKm=(hrCount/Math.max(segs.length,1))*(totalDist/1000);
-    }
-
-    const vehicleCat=document.getElementById('mr-vehicle-cat')?.value||'I';
-
-    // Draw colored polylines on Mapbox map
-    // Build segments from sample points
-    let mbSegs=[],curCC=countryResults_raw.filter(Boolean)[0]?.cc,segStart=0;
-    const validSamples=countryResults_raw.filter(Boolean);
-    for(let i=1;i<validSamples.length;i++){
-      if(validSamples[i].cc!==curCC){
-        mbSegs.push({cc:curCC,pts:validSamples.slice(segStart,i)});
-        curCC=validSamples[i].cc; segStart=i;
-      }
-    }
-    mbSegs.push({cc:curCC,pts:validSamples.slice(segStart)});
-
-    mbSegs.forEach((seg,idx)=>{
-      if(!seg.pts||seg.pts.length<2) return;
-      const coords=seg.pts.map(p=>[p.lng,p.lat]);
-      const id=`rseg-${idx}`; mrPolylines.push(id);
-      const color=countryColor(seg.cc);
-      mrMap.addSource(id,{type:'geojson',data:{type:'Feature',geometry:{type:'LineString',coordinates:coords}}});
-      mrMap.addLayer({id,type:'line',source:id,layout:{'line-join':'round','line-cap':'round'},paint:{'line-color':color,'line-width':5,'line-opacity':.9}});
-    });
-
-    // Fit bounds
-    const bounds=new mapboxgl.LngLatBounds();
-    path.forEach(p=>bounds.extend([p.lng(),p.lat()]));
-    mrMap.fitBounds(bounds,{padding:60});
-
-    // Add markers for stops
-    const stopInputs=mrStops.map(id=>document.getElementById(id)?.value?.trim()).filter(Boolean);
-    const labels=['A','B','C','D','E','F','G','H'];
-    allLegs.forEach((leg,i)=>{
-      if(i===0) addMbMarker([leg.start_location.lng(),leg.start_location.lat()],labels[i]||String(i+1),stopInputs[i]||'');
-      addMbMarker([leg.end_location.lng(),leg.end_location.lat()],labels[i+1]||String(i+2),stopInputs[i+1]||'');
-    });
-
-    // Build country cost results
-    const seen=new Set(); const cResults=[];
-    let totalEur=0;
-
-    for(const cc of countryOrder){
-      if(seen.has(cc)) continue; seen.add(cc);
-      const id=CC_MAP[cc]; const country=C.find(x=>x.id===id);
-      if(!country) continue;
-      const color=countryColor(cc);
-      let action='',priceStr='',priceEur=0,needsPay=false,note='';
-
-      if(country.type==='vignette'&&country.prices.length){
-        const rec=getBestVignette(country.prices,tripDays);
-        priceStr=rec.v; priceEur=parseEuro(rec.v);
-        const eurNote=priceStr.startsWith('€')?'':` ≈ ${toEurStr(priceEur)}`;
-        action=`Buy vignette · ${rec.p}${eurNote}`;
-        needsPay=true; totalEur+=priceEur;
-      } else if(country.type==='toll'){
-        if(id==='hr'){
-          const allSteps=allLegs.flatMap(l=>l.steps);
-          const hacRes=await calcHRToll(hrEntryCC,hrExitCC,hrDistKm,allSteps,vehicleCat,countrySegments);
-          priceEur=hacRes.amount; priceStr=`€${priceEur.toFixed(2)}`;
-          const icon=hacRes.live?(hacRes.precise?'🟢 Live HAC':'🟡 Live HAC est.'):'🟠 Distance est.';
-          action=`Toll gates · ${icon} · <a href="https://karta.hac.hr" target="_blank" style="color:var(--accent)">karta.hac.hr ↗</a>`;
-          if(hacRes.segments?.length){
-            note=hacRes.segments.map(s=>`${s.entry}→${s.exit}: €${s.amount.toFixed(2)}`).join(' + ');
-          }
-          needsPay=true; totalEur+=priceEur;
-        } else if(FREE_LOCAL[id]){
-          action='Local roads — free'; priceStr='FREE'; needsPay=false;
-        } else {
-          const est=country.prices[0]; priceEur=est?parseEuro(est.v):0;
-          priceStr=est?`~${est.v}`:'varies';
-          action='Pay at toll gate'+(country.enc?` · ENC: ${country.enc}`:'');
-          needsPay=!!priceEur; if(needsPay) totalEur+=priceEur;
-        }
-      } else {
-        action='Free — no payment needed'; priceStr='FREE';
-      }
-      cResults.push({cc,country,action,priceStr,priceEur,color,needsPay,note});
-    }
-
-    // HTML output
-    const distKm=(totalDist/1000).toFixed(0);
-    const durH=Math.floor(totalDur/3600), durM=Math.floor((totalDur%3600)/60);
-    let html=`<div class="mr-route-info">
-      <div class="mr-route-stat"><strong>${distKm} km</strong>distance</div>
-      <div class="mr-route-stat"><strong>${durH}h ${durM}m</strong>drive time</div>
-      <div class="mr-route-stat"><strong>${cResults.length}</strong>countries</div>
-      <div class="mr-route-stat"><strong>${tripDays}d</strong>trip</div>
-    </div>`;
-    html+='<div style="font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);margin-bottom:.6rem;">Countries on route</div>';
-
-    cResults.forEach(r=>{
-      html+=`<div class="mr-country-item" style="border-left:4px solid ${r.color};">
-        <div class="mr-ci-code">${r.cc}</div>
-        <div class="mr-ci-info">
-          <div class="mr-ci-name">${r.country.name}</div>
-          <div class="mr-ci-sub">${r.action}${r.country.buy&&r.needsPay&&r.country.id!=='hr'?` · <a href="${r.country.buy}" target="_blank" style="color:var(--accent);text-decoration:none;">${r.country.bl} ↗</a>`:''}</div>
-          ${r.note?`<div style="font-size:.65rem;color:var(--enc);margin-top:.2rem;">ℹ️ ${r.note}</div>`:''}
-        </div>
-        ${r.needsPay?`<div class="mr-ci-price">${r.priceStr}</div>`:`<div style="color:var(--f);font-weight:800;font-size:.8rem;">FREE</div>`}
-      </div>`;
-    });
-
-    // Fuel
-    const fuelPrice=parseFloat(document.getElementById('mr-fuel-price')?.value)||1.55;
-    const fuelCons=parseFloat(document.getElementById('mr-fuel-consumption')?.value)||7;
-    const fuelCost=parseFloat(((totalDist/1000)*fuelCons/100*fuelPrice).toFixed(2));
-    const grandTotal=parseFloat((totalEur+fuelCost).toFixed(2));
-
-    if(totalEur>0||fuelCost>0){
-      html+=`<div class="mr-total-box">
-        <div class="mr-total-label">💰 Estimated total trip costs</div>
-        ${totalEur>0?`<div class="mr-total-row"><div style="font-size:.75rem;color:var(--muted);">🛣️ Vignettes + tolls</div><div style="font-weight:800;">${toEurStr(totalEur)}</div></div>`:''}
-        <div class="mr-total-row"><div style="font-size:.75rem;color:var(--muted);">⛽ Fuel · ${distKm}km × ${fuelCons}L/100km × €${fuelPrice}/L</div><div style="font-weight:800;">${toEurStr(fuelCost)}</div></div>
-        <div class="mr-total-row" style="border-top:1px solid var(--border);margin-top:.4rem;padding-top:.4rem;">
-          <div style="font-size:.8rem;font-weight:700;">Total estimated trip cost</div>
-          <div class="mr-total-amt">${toEurStr(grandTotal)}</div>
-        </div>
-      </div>`;
-    }
-
-    html+='<div class="rnote" style="margin-top:.75rem;">⚠️ Toll estimates are approximate. Buy vignettes before your trip.</div>';
-    resultEl.innerHTML=html;
-    document.getElementById('mr-legend').style.display='block';
-
-    // Route tabs
-    const routeTabs=document.getElementById('mr-route-tabs');
-    if(result.routes.length>1){
-      routeTabs.style.display='flex'; routeTabs.style.gap='.4rem'; routeTabs.style.flexWrap='wrap';
-      routeTabs.innerHTML=result.routes.map((r,i)=>{
-        const km=(r.legs.reduce((s,l)=>s+l.distance.value,0)/1000).toFixed(0);
-        const dur=r.legs.reduce((s,l)=>s+l.duration.value,0);
-        const h=Math.floor(dur/3600),m=Math.floor((dur%3600)/60);
-        const isActive=i===activeRouteIdx;
-        return `<button onclick="switchRoute(${i})" id="rtab-${i}" style="padding:.4rem .8rem;border-radius:8px;border:2px solid ${isActive?'var(--accent)':'var(--border)'};background:${isActive?'var(--accent)':'var(--surface)'};color:${isActive?'#000':'var(--text)'};font-size:.75rem;font-weight:700;cursor:pointer;font-family:'Geist',sans-serif;">Route ${i+1} · ${km}km · ${h}h${m}m</button>`;
-      }).join('');
-    } else { routeTabs.style.display='none'; }
-
-  } catch(err){
-    resultEl.innerHTML=`<div style="font-size:.8rem;color:#c00;padding:.75rem;background:#fde8e6;border-radius:8px;">Error: ${err.message}</div>`;
-    console.error('renderRoute error:', err);
-  }
-}
 
 
 
