@@ -2079,6 +2079,33 @@ function drawRouteByRoadClass(googleLegs, validPts, rc){
   console.log('[Draw] Classified steps by type:',
     classifiedSteps.reduce((acc, s) => ({ ...acc, [s.roadType]: (acc[s.roadType] || 0) + 1 }), {}));
 
+  // ── Spočítaj km per country × road class ──
+  // Výstup: { BA: { toll: 120, local: 45, vignette: 0, free: 0 }, HR: {...} }
+  // Potrebujeme pre presný toll odhad v FREE_LOCAL krajinách ako BA, RS, ME
+  function haversineKm(p1, p2){
+    const R = 6371; // km
+    const dLat = (p2[1]-p1[1]) * Math.PI/180;
+    const dLng = (p2[0]-p1[0]) * Math.PI/180;
+    const a = Math.sin(dLat/2)**2 +
+              Math.cos(p1[1]*Math.PI/180) * Math.cos(p2[1]*Math.PI/180) *
+              Math.sin(dLng/2)**2;
+    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  }
+
+  const kmByCountryRoadType = {};
+  for(const cs of classifiedSteps){
+    if(!cs.cc || cs.coords.length < 2) continue;
+    let stepKm = 0;
+    for(let i = 1; i < cs.coords.length; i++){
+      stepKm += haversineKm(cs.coords[i-1], cs.coords[i]);
+    }
+    if(!kmByCountryRoadType[cs.cc]) kmByCountryRoadType[cs.cc] = { toll:0, vignette:0, free:0, local:0 };
+    kmByCountryRoadType[cs.cc][cs.roadType] += stepKm;
+  }
+  console.log('[Draw] KM per country × road class:', kmByCountryRoadType);
+  // Ulož globálne aby recomputeResultsPanel mohol použiť
+  window._lastRouteKmByCountry = kmByCountryRoadType;
+
   // 3. Merge susedné steps rovnakého typu — efektívnejšie kreslenie
   const mergedSegments = [];
   for(const cs of classifiedSteps){
@@ -2221,8 +2248,17 @@ async function recomputeResultsPanel(route, validPts, segments, stopInputs){
     const country = C.find(x => x.id === id);
     if(!country) continue;
 
-    const clr = countryColor(id);
+    let clr = countryColor(id);
     let action = '', priceStr = '', priceEur = 0, needsPay = false, note = '';
+
+    // Override farby pre FREE_LOCAL krajiny ak route skutočne používa toll motorway
+    // (napr. BA A1 Sarajevo-Mostar → border má byť oranžový nie modrý)
+    if(FREE_LOCAL[id]){
+      const kmData = window._lastRouteKmByCountry?.[cc.toUpperCase()] || {};
+      if((kmData.toll || 0) > 5){
+        clr = '#f4a45a'; // oranžová = toll
+      }
+    }
 
     if(country.type === 'vignette' && country.prices.length){
       const rec = getBestVignette(country.prices, tripDays);
@@ -2245,8 +2281,27 @@ async function recomputeResultsPanel(route, validPts, segments, stopInputs){
         needsPay = true;
         totalEur += priceEur;
       } else if(FREE_LOCAL[id]){
-        action = 'Local roads — free';
-        priceStr = 'FREE';
+        // Ak route používa TOLL motorway v tejto krajine (napr. BA A1 Sarajevo–Mostar),
+        // pripočítame odhad toll. Inak ostáva free (len local roads).
+        const kmData = window._lastRouteKmByCountry?.[cc.toUpperCase()] || {};
+        const tollKm = kmData.toll || 0;
+
+        if(tollKm > 5){
+          // Distance-based toll estimate — závisí od krajiny
+          // BA: A1 je cca €0.035/km (€4 za ~115km Sarajevo-Mostar sekciu)
+          // Iné: podobne nízke sadzby pre Balkán
+          const rates = { 'ba':0.035, 'rs':0.05, 'me':0.06, 'mk':0.04, 'al':0.04, 'xk':0.03 };
+          const rate = rates[id] || 0.04;
+          priceEur = parseFloat((tollKm * rate).toFixed(2));
+          priceStr = `~${toEurStr(priceEur)}`;
+          action = `Motorway toll · ~${tollKm.toFixed(0)}km × €${rate}/km · cash at gate`;
+          note = country.prices?.[0] ? `Reference: ${country.prices[0].p} ${country.prices[0].v}` : '';
+          needsPay = true;
+          totalEur += priceEur;
+        } else {
+          action = 'Local roads — free';
+          priceStr = 'FREE';
+        }
       } else {
         const est = country.prices[0];
         priceEur = est ? parseEuro(est.v) : 0;
