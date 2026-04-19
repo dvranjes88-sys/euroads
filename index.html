@@ -186,33 +186,119 @@ main { padding:2rem; max-width:1300px; margin:0 auto; }
 .bmc-btn { display:flex; align-items:center; gap:.6rem; background:#FFDD00; color:#000; border:none; border-radius:100px; padding:.65rem 1.2rem; font-size:.8rem; font-weight:700; cursor:pointer; text-decoration:none; box-shadow:0 4px 20px rgba(0,0,0,.15); transition:all .2s; white-space:nowrap; }
 .bmc-btn:hover { transform:translateY(-2px); box-shadow:0 8px 25px rgba(0,0,0,.2); }
 
-/* MAP ROUTE */
-.mr-layout { display:grid; grid-template-columns:380px 1fr; gap:1.5rem; align-items:start; }
+/* ═══════════════════════════════════════════════════════════
+   ROUTE CALCULATOR — 3-COLUMN DASHBOARD LAYOUT
+   Layout:
+   ┌────────────────────────────────────────────┐
+   │  INPUT PANEL (hore, full width, compact)   │
+   ├──────────┬──────────────────┬──────────────┤
+   │  LEFT    │      MAP         │   RIGHT      │
+   │  1fr     │      2fr         │   1fr        │
+   │ (detail) │   (dominant)     │ (options)    │
+   └──────────┴──────────────────┴──────────────┘
+   Pod 900px → vertikálny stack
+   ═══════════════════════════════════════════════════════════ */
+
+/* Wrapper pre celý Route Calculator */
+.mr-wrap { display: flex; flex-direction: column; gap: 1rem; }
+
+/* INPUT PANEL (hore) — kompaktný toolbar */
+.mr-input-panel { background: var(--surface); border: 1.5px solid var(--border); border-radius: var(--r); padding: 1.1rem 1.3rem; }
+.mr-input-head { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: .9rem; gap: 1rem; flex-wrap: wrap; }
+.mr-input-head h2 { font-weight: 800; font-size: 1.15rem; margin: 0 0 .2rem; }
+.mr-input-head .mr-sub { font-size: .72rem; color: var(--muted); margin: 0; }
+.mr-input-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem; }
+.mr-input-col { display: flex; flex-direction: column; gap: .45rem; }
+.mr-input-col-label { font-size: .62rem; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; margin-bottom: .15rem; }
+@media(max-width: 900px){ .mr-input-grid { grid-template-columns: 1fr; } }
+
+/* DASHBOARD — 3-column grid */
+.mr-layout { display: grid; grid-template-columns: 1fr 2fr 1fr; gap: 1rem; align-items: stretch; min-height: 580px; }
+@media(max-width: 900px){ .mr-layout { grid-template-columns: 1fr; min-height: 0; } }
+
+/* Všetky 3 panely majú rovnakú vizuálnu bázu */
+.mr-col { background: var(--surface); border: 1.5px solid var(--border); border-radius: var(--r); overflow: hidden; display: flex; flex-direction: column; }
+.mr-col-head { padding: .85rem 1rem; border-bottom: 1px solid rgba(255,255,255,.06); display: flex; justify-content: space-between; align-items: flex-start; gap: .5rem; }
+.mr-col-head-title { font-weight: 700; font-size: .85rem; color: var(--text); margin: 0; }
+.mr-col-head-sub { font-size: .65rem; color: var(--muted); margin-top: .15rem; }
+.mr-col-body { padding: .9rem 1rem; overflow-y: auto; flex: 1; }
+
+/* Collapse button pre bočné panely (mobile) */
+.mr-col-collapse { width: 22px; height: 22px; border-radius: 5px; background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.08); color: rgba(255,255,255,.45); font-size: .7rem; cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: all .15s; }
+.mr-col-collapse:hover { background: rgba(255,255,255,.08); color: #fff; }
+@media(max-width: 900px){
+  .mr-col-body { display: none; }
+  .mr-col.open .mr-col-body { display: block; }
+  .mr-col-collapse::after { content: '▾'; transition: transform .2s; display: inline-block; }
+  .mr-col.open .mr-col-collapse::after { transform: rotate(180deg); }
+}
+
+/* MAP panel — bez paddingu + relative pre legendu */
+.mr-col-map { padding: 0; min-height: 580px; position: relative; }
+.mr-col-map .mr-col-body { padding: 0; }
+#mr-map { width: 100%; height: 100%; min-height: 580px; }
+@media(max-width: 900px){ .mr-col-map, #mr-map { min-height: 340px; } }
+
+/* Legenda na mape */
+.mr-legend { position: absolute; bottom: 1rem; left: 1rem; background: rgba(13,17,23,.92); border: 1px solid rgba(255,255,255,.12); border-radius: 8px; padding: .7rem 1rem; z-index: 10; backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); box-shadow: 0 4px 20px rgba(0,0,0,.5); }
+.mrl-item { display: flex; align-items: center; gap: .55rem; font-size: .68rem; font-weight: 600; color: #E2E8F0; margin-bottom: .28rem; }
+.mrl-item:last-child { margin-bottom: 0; }
+.mrl-dot { width: 12px; height: 12px; border-radius: 3px; flex-shrink: 0; box-shadow: 0 0 6px rgba(0,0,0,.4); }
+
+/* LEFT panel — Cost breakdown */
+.mr-total-hero { background: rgba(34,201,151,.08); border: 1px solid rgba(34,201,151,.3); border-radius: 8px; padding: .7rem .85rem; margin-bottom: .65rem; }
+.mr-total-hero-l { font-size: .58rem; color: #22c997; text-transform: uppercase; letter-spacing: .08em; font-weight: 700; margin-bottom: .1rem; }
+.mr-total-hero-v { font-family: 'Geist', sans-serif; font-size: 1.45rem; font-weight: 800; color: #22c997; line-height: 1; }
+.mr-country-item { background: rgba(255,255,255,.03); border-left: 3px solid rgba(255,255,255,.2); border-radius: 4px 6px 6px 4px; padding: .5rem .75rem; margin-bottom: .35rem; }
+.mr-country-row1 { display: flex; justify-content: space-between; align-items: center; }
+.mr-country-row1 > div:first-child { display: flex; align-items: center; gap: .4rem; }
+.mr-cc-tag { font-size: .55rem; width: 1.4rem; height: 1rem; background: var(--bg); border: 1px solid rgba(255,255,255,.1); border-radius: 3px; display: inline-flex; align-items: center; justify-content: center; color: rgba(255,255,255,.7); font-weight: 700; flex-shrink: 0; }
+.mr-cname { font-size: .75rem; font-weight: 600; color: #fff; }
+.mr-cprice { font-family: 'Geist', sans-serif; font-size: .82rem; font-weight: 800; }
+.mr-country-row2 { font-size: .62rem; color: rgba(255,255,255,.4); margin-top: .15rem; line-height: 1.4; }
+.mr-country-row2 a { color: var(--accent); text-decoration: none; }
+
+/* RIGHT panel — Route options */
+.mr-route-card { border-radius: 8px; padding: .65rem .8rem; margin-bottom: .5rem; cursor: pointer; position: relative; border: 1.5px solid rgba(255,255,255,.08); background: rgba(255,255,255,.02); transition: all .15s; }
+.mr-route-card:hover { background: rgba(255,255,255,.04); border-color: rgba(255,255,255,.15); }
+.mr-route-card.selected { box-shadow: 0 0 0 1px currentColor inset; }
+.mr-route-card.fastest { border-color: rgba(244,164,90,.3); }
+.mr-route-card.fastest.selected { border-color: #f4a45a; color: #f4a45a; background: rgba(244,164,90,.06); }
+.mr-route-card.cheapest { border-color: rgba(34,201,151,.35); }
+.mr-route-card.cheapest.selected { border-color: #22c997; color: #22c997; background: rgba(34,201,151,.08); }
+.mr-route-card.shortest { border-color: rgba(110,179,247,.25); }
+.mr-route-card.shortest.selected { border-color: #6eb3f7; color: #6eb3f7; background: rgba(110,179,247,.06); }
+.mr-route-card.alternative { border-color: rgba(192,132,252,.25); }
+.mr-route-card.alternative.selected { border-color: #c084fc; color: #c084fc; background: rgba(192,132,252,.06); }
+
+.mr-route-card-head { display: flex; align-items: center; gap: .45rem; margin-bottom: .35rem; }
+.mr-route-ico { width: 22px; height: 22px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: .75rem; flex-shrink: 0; }
+.mr-route-ico.fastest { background: rgba(244,164,90,.15); color: #f4a45a; }
+.mr-route-ico.cheapest { background: rgba(34,201,151,.15); color: #22c997; }
+.mr-route-ico.shortest { background: rgba(110,179,247,.15); color: #6eb3f7; }
+.mr-route-ico.alternative { background: rgba(192,132,252,.15); color: #c084fc; }
+.mr-route-label { font-family: 'Geist', sans-serif; font-weight: 700; font-size: .72rem; color: #fff; }
+.mr-route-save { margin-left: auto; background: #22c997; color: #0A0E1A; font-size: .55rem; font-weight: 800; padding: .12rem .45rem; border-radius: 3px; letter-spacing: .04em; white-space: nowrap; }
+.mr-route-selected-pill { margin-left: auto; font-size: .58rem; color: inherit; font-weight: 700; display: flex; align-items: center; gap: .25rem; }
+.mr-route-metrics { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: .35rem; padding-top: .35rem; border-top: 1px solid rgba(255,255,255,.05); }
+.mr-metric { text-align: left; }
+.mr-metric-l { font-size: .52rem; color: rgba(255,255,255,.35); text-transform: uppercase; letter-spacing: .04em; margin-bottom: .05rem; font-weight: 600; }
+.mr-metric-v { font-family: 'Geist', sans-serif; font-size: .78rem; font-weight: 700; color: rgba(255,255,255,.9); line-height: 1; }
+.mr-metric-v.accent { color: inherit; font-weight: 800; }
+
+/* Legacy — ponechávam pre fallback */
 .mr-panel { background:var(--surface); border:1.5px solid var(--border); border-radius:var(--r); padding:1.6rem; }
 .mr-field { margin-bottom:.85rem; }
 .mr-field label { display:block; font-size:.68rem; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:.08em; margin-bottom:.3rem; }
 .mr-field input { width:100%; padding:.6rem .85rem; border:1.5px solid var(--border); border-radius:8px; font-family:'Geist',sans-serif; font-size:.85rem; background:var(--surface); color:var(--text); outline:none; transition:border-color .15s; }
 .mr-field input:focus { border-color:var(--accent); }
-.mr-map-wrap { position:sticky; top:120px; border-radius:var(--r); overflow:hidden; border:1.5px solid var(--border); height:580px; background:#0D1117; }
-#mr-map { width:100%; height:100%; }
-/* ── OPRAVA: tmavá legenda s blur efektom pre čitateľnosť na dark mape ── */
-.mr-legend { position:absolute; bottom:1rem; left:1rem; background:rgba(13,17,23,.92); border:1px solid rgba(255,255,255,.12); border-radius:8px; padding:.7rem 1rem; z-index:10; backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px); box-shadow:0 4px 20px rgba(0,0,0,.5); }
-.mrl-item { display:flex; align-items:center; gap:.55rem; font-size:.72rem; font-weight:600; color:#E2E8F0; margin-bottom:.3rem; }
-.mrl-item:last-child { margin-bottom:0; }
-.mrl-dot { width:14px; height:14px; border-radius:3px; flex-shrink:0; box-shadow:0 0 6px rgba(0,0,0,.4); }
-.mr-country-item { display:flex; align-items:center; gap:.85rem; border:1.5px solid var(--border); border-radius:8px; padding:.85rem 1rem; margin-bottom:.6rem; }
 .mr-ci-code { font-size:.72rem; font-weight:800; color:var(--muted); width:2.2rem; text-align:center; flex-shrink:0; }
 .mr-ci-info { flex:1; }
 .mr-ci-name { font-weight:700; font-size:.88rem; }
 .mr-ci-sub { font-size:.72rem; color:var(--muted); margin-top:.1rem; }
 .mr-ci-price { font-family:'Geist',sans-serif; font-weight:800; font-size:.95rem; color:var(--v); }
-.mr-total-box { background:var(--vl); border:2px solid #a8d5c5; border-radius:10px; padding:1rem 1.2rem; margin-top:1rem; }
-.mr-total-label { font-size:.68rem; font-weight:700; text-transform:uppercase; letter-spacing:.1em; color:var(--v); margin-bottom:.4rem; }
-.mr-total-row { display:flex; justify-content:space-between; align-items:center; }
-.mr-total-amt { font-family:'Geist',sans-serif; font-weight:900; font-size:1.6rem; color:var(--v); }
 .mr-route-info { font-size:.75rem; color:var(--muted); background:var(--bg); border-radius:6px; padding:.6rem .85rem; margin-bottom:1rem; display:flex; gap:1.5rem; flex-wrap:wrap; }
 .mr-route-stat strong { display:block; font-size:.95rem; font-weight:800; color:var(--text); }
-@media(max-width:900px){ .mr-layout{grid-template-columns:1fr;} .mr-map-wrap{height:320px;position:relative;top:0;} }
 
 /* MULTI-STOP */
 .stop-row { display:flex; align-items:center; gap:.5rem; margin-bottom:.5rem; }
@@ -561,55 +647,111 @@ main { padding:2rem; max-width:1300px; margin:0 auto; }
 </div>
 
 <div class="view" id="view-maproute">
-  <div class="mr-layout">
-    <div class="mr-panel">
-      <h2 style="font-weight:800;font-size:1.15rem;margin-bottom:.3rem;">🧮 Route Calculator</h2>
-      <p style="font-size:.78rem;color:var(--muted);margin-bottom:1.1rem;">Enter cities, addresses or places along your route — we'll calculate exact roads, detect which countries and motorways you cross, and estimate total costs.</p>
+  <div class="mr-wrap">
 
-      <div id="mr-stops-wrap"></div>
-      <button class="broute" onclick="addStop()" style="margin-bottom:.85rem;">+ Add stop</button>
-
-      <div class="date-row">
-        <div class="date-field"><label>Departure</label><input type="date" id="mr-date-from"></div>
-        <div class="date-field"><label>Return</label><input type="date" id="mr-date-to"></div>
-      </div>
-
-      <div class="mr-field" style="margin-top:.75rem;">
-        <label>Vehicle category</label>
-        <select id="mr-vehicle-cat" style="width:100%;padding:.55rem .75rem;border:1.5px solid var(--border);border-radius:8px;font-family:'Geist',sans-serif;font-size:.82rem;background:var(--surface);color:var(--text);outline:none;">
-          <option value="I">Category I — Passenger car (up to 1.9m height)</option>
-          <option value="IA">Category IA — Motorcycle</option>
-          <option value="II">Category II — SUV/Van over 1.9m or car with trailer</option>
-          <option value="III">Category III — 3-axle vehicle</option>
-        </select>
-      </div>
-
-      <div style="display:flex;gap:.5rem;margin-top:.6rem;">
-        <div class="mr-field" style="flex:1;">
-          <label>⛽ Fuel price (€/L)</label>
-          <input type="number" id="mr-fuel-price" value="1.55" step="0.01" min="0.5" max="5"
-            style="width:100%;padding:.55rem .75rem;border:1.5px solid var(--border);border-radius:8px;font-family:'Geist',sans-serif;font-size:.82rem;background:var(--surface);color:var(--text);outline:none;">
-        </div>
-        <div class="mr-field" style="flex:1;">
-          <label>Consumption (L/100km)</label>
-          <input type="number" id="mr-fuel-consumption" value="7" step="0.5" min="1" max="30"
-            style="width:100%;padding:.55rem .75rem;border:1.5px solid var(--border);border-radius:8px;font-family:'Geist',sans-serif;font-size:.82rem;background:var(--surface);color:var(--text);outline:none;">
+    <!-- ── INPUT PANEL (hore) ────────────────────────────────── -->
+    <div class="mr-input-panel">
+      <div class="mr-input-head">
+        <div>
+          <h2>🧮 Route Calculator</h2>
+          <p class="mr-sub">Enter cities, addresses or places — we'll detect roads, countries, motorways and estimate total costs.</p>
         </div>
       </div>
 
-      <button class="bcalc pulse" onclick="calcMapRoute()" style="margin-top:.6rem;width:100%;">Calculate route →</button>
-      <div id="mr-route-tabs" style="display:none;margin-top:1rem;"></div>
-      <div id="mr-result" style="margin-top:.75rem;"></div>
+      <div class="mr-input-grid">
+
+        <!-- Stops column -->
+        <div class="mr-input-col">
+          <div class="mr-input-col-label">Stops</div>
+          <div id="mr-stops-wrap"></div>
+          <button class="broute" onclick="addStop()" style="margin-top:.1rem;">+ Add stop</button>
+        </div>
+
+        <!-- Trip column -->
+        <div class="mr-input-col">
+          <div class="mr-input-col-label">Trip dates</div>
+          <div class="date-row" style="margin-bottom:.35rem;">
+            <div class="date-field"><label>Departure</label><input type="date" id="mr-date-from"></div>
+            <div class="date-field"><label>Return</label><input type="date" id="mr-date-to"></div>
+          </div>
+          <div class="mr-field" style="margin-bottom:0;">
+            <label>Vehicle category</label>
+            <select id="mr-vehicle-cat" style="width:100%;padding:.5rem .7rem;border:1.5px solid rgba(255,255,255,.1);border-radius:8px;font-family:'Geist',sans-serif;font-size:.78rem;background:rgba(255,255,255,.05);color:#E2E8F0;outline:none;">
+              <option value="I">Category I — Passenger car (up to 1.9m height)</option>
+              <option value="IA">Category IA — Motorcycle</option>
+              <option value="II">Category II — SUV/Van over 1.9m or car with trailer</option>
+              <option value="III">Category III — 3-axle vehicle</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Fuel + Calculate column -->
+        <div class="mr-input-col">
+          <div class="mr-input-col-label">Fuel</div>
+          <div style="display:flex;gap:.4rem;">
+            <div class="mr-field" style="flex:1;margin-bottom:0;">
+              <label>Price (€/L)</label>
+              <input type="number" id="mr-fuel-price" value="1.55" step="0.01" min="0.5" max="5">
+            </div>
+            <div class="mr-field" style="flex:1;margin-bottom:0;">
+              <label>L/100km</label>
+              <input type="number" id="mr-fuel-consumption" value="7" step="0.5" min="1" max="30">
+            </div>
+          </div>
+          <button class="bcalc pulse" onclick="calcMapRoute()" style="margin-top:.55rem;width:100%;">Calculate route →</button>
+        </div>
+
+      </div>
     </div>
 
-    <div class="mr-map-wrap">
-      <div id="mr-map"></div>
-      <div id="mr-legend" class="mr-legend" style="display:none;">
-        <div class="mrl-item"><span class="mrl-dot" style="background:#22c997;"></span> Vignette motorway</div>
-        <div class="mrl-item"><span class="mrl-dot" style="background:#f4a45a;"></span> Toll motorway</div>
-        <div class="mrl-item"><span class="mrl-dot" style="background:#6eb3f7;"></span> Free motorway</div>
-        <div class="mrl-item"><span class="mrl-dot" style="background:#c084fc;"></span> Local road (free)</div>
+    <!-- ── 3-COLUMN DASHBOARD (1fr | 2fr | 1fr) ─────────────── -->
+    <div class="mr-layout">
+
+      <!-- LEFT: Cost breakdown -->
+      <div class="mr-col open" id="mr-col-left">
+        <div class="mr-col-head">
+          <div>
+            <div class="mr-col-head-title">Cost breakdown</div>
+            <div class="mr-col-head-sub" id="mr-left-sub">Select a route to see breakdown</div>
+          </div>
+          <button class="mr-col-collapse" onclick="document.getElementById('mr-col-left').classList.toggle('open')"></button>
+        </div>
+        <div class="mr-col-body" id="mr-left-body">
+          <div style="font-size:.72rem;color:var(--muted);text-align:center;padding:2rem 0;line-height:1.6;">
+            📊<br><br>Enter your stops and press <strong>Calculate</strong>.<br><br>Results will appear here.
+          </div>
+        </div>
       </div>
+
+      <!-- CENTER: Map -->
+      <div class="mr-col mr-col-map open">
+        <div class="mr-col-body" style="padding:0;">
+          <div id="mr-map"></div>
+          <div id="mr-legend" class="mr-legend" style="display:none;">
+            <div class="mrl-item"><span class="mrl-dot" style="background:#22c997;"></span> Vignette motorway</div>
+            <div class="mrl-item"><span class="mrl-dot" style="background:#f4a45a;"></span> Toll motorway</div>
+            <div class="mrl-item"><span class="mrl-dot" style="background:#6eb3f7;"></span> Free motorway</div>
+            <div class="mrl-item"><span class="mrl-dot" style="background:#c084fc;"></span> Local road (free)</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- RIGHT: Route options -->
+      <div class="mr-col open" id="mr-col-right">
+        <div class="mr-col-head">
+          <div>
+            <div class="mr-col-head-title">Route options</div>
+            <div class="mr-col-head-sub" id="mr-right-sub">Waiting for calculation…</div>
+          </div>
+          <button class="mr-col-collapse" onclick="document.getElementById('mr-col-right').classList.toggle('open')"></button>
+        </div>
+        <div class="mr-col-body" id="mr-right-body">
+          <div style="font-size:.72rem;color:var(--muted);text-align:center;padding:2rem 0;line-height:1.6;">
+            🛣️<br><br>After calculation we'll show you <strong>Fastest</strong>, <strong>Cheapest</strong>, and <strong>Shortest</strong> routes here.
+          </div>
+        </div>
+      </div>
+
     </div>
   </div>
 </div>
@@ -1474,7 +1616,52 @@ function combineLegRoutes(legResults){
   }
   console.log('[Routes] Cheapest combination:', cheapestIdx, '→', `€${cheapestCost.toFixed(2)}`);
 
-  // Pre alternatívu: nájdi leg ktorý má najviac alternatív a vezmi 2. najlepšiu
+  // Zostav kombinácie — SMART LABEL ASSIGNMENT
+  // Pravidlo: každá unikátna trasa musí dostať aspoň 1 label; duplicitné labely sa mergujú.
+  // Pre single-leg scenár: ak Cheapest je tá istá cesta ako Fastest, ale existuje iná cesta,
+  //   označíme druhú cestu ako Cheapest aby user mal vždy alternatívu zobrazenú.
+  const keyOf = (arr) => arr ? arr.join(',') : null;
+  const fastKey = keyOf(fastestIdx);
+  const cheapKey = keyOf(cheapestIdx);
+  const shortKey = keyOf(shortestIdx);
+
+  // Najprv sprav mapu: unique_key -> array of labels
+  const routeMap = new Map();
+  const addLabel = (key, label, indices) => {
+    if(!key) return;
+    if(!routeMap.has(key)){
+      routeMap.set(key, { labels: [], indices, order: routeMap.size });
+    }
+    if(!routeMap.get(key).labels.includes(label)){
+      routeMap.get(key).labels.push(label);
+    }
+  };
+
+  addLabel(fastKey, 'Fastest', fastestIdx);
+  addLabel(cheapKey, 'Cheapest', cheapestIdx);
+  addLabel(shortKey, 'Shortest', shortestIdx);
+
+  // Ak máme menej než 2 unikátne trasy + existujú alternatívy, pridaj ich
+  // Najprv si zisti všetky možnosti a ich duration/distance/cost
+  if(routeMap.size < 2){
+    const allCombos2 = allLegCombinations(legResults);
+    // Zoraď ich podľa cost (vzostupne) a ber z konca aby sme mali niečo iné než čo už máme
+    const scored = allCombos2.map(combo => {
+      const cost = estimateCombinedRouteCost(legResults, combo, tripDays, fuelPrice, fuelConsumption);
+      return { combo, cost: cost.total };
+    }).sort((a, b) => a.cost - b.cost);
+    // Nájdi prvú kombináciu ktorú ešte nemáme
+    for(const s of scored){
+      const k = keyOf(s.combo);
+      if(!routeMap.has(k)){
+        // Táto trasa nemá label – pridaj ju ako "Alternative"
+        addLabel(k, 'Alternative', s.combo);
+        break;
+      }
+    }
+  }
+
+  // Alternatíva — prvá non-fastest route pre leg s najviac alternatívami
   let altLegIdx = -1, altRouteIdx = -1;
   let maxAlts = 1;
   legResults.forEach((lr, i) => {
@@ -1484,28 +1671,24 @@ function combineLegRoutes(legResults){
       altRouteIdx = fastestIdx[i] === 0 ? 1 : 0;
     }
   });
-
-  // Zostav kombinácie — každá musí byť UNIKÁTNA (no duplicates)
-  const keySet = new Set();
-  const combinations = [];
-  const tryAdd = (label, legIndices) => {
-    if(!legIndices) return;
-    const key = legIndices.join(',');
-    if(keySet.has(key)) return;
-    keySet.add(key);
-    combinations.push({ label, legIndices });
-  };
-
-  tryAdd('Fastest', fastestIdx);
-  tryAdd('Cheapest', cheapestIdx);
-  tryAdd('Shortest', shortestIdx);
-
-  // Alternatíva — prvá non-fastest route pre leg s najviac alternatívami
   if(altLegIdx >= 0){
     const altIndices = [...fastestIdx];
     altIndices[altLegIdx] = altRouteIdx;
-    tryAdd('Alternative', altIndices);
+    const altKey = keyOf(altIndices);
+    if(!routeMap.has(altKey)){
+      addLabel(altKey, 'Alternative', altIndices);
+    }
   }
+
+  // Zoraď výsledky podľa insertion order a tvor kombinácie
+  const combinations = Array.from(routeMap.values())
+    .sort((a, b) => a.order - b.order)
+    .map(({labels, indices}) => ({
+      // Ak má viac labelov (napr. "Fastest" + "Shortest"), prvý je primárny
+      label: labels[0],
+      labels, // všetky labely (pre display)
+      legIndices: indices,
+    }));
 
   // Vytvor skombinované routes
   return combinations.map(combo => {
@@ -1534,6 +1717,7 @@ function combineLegRoutes(legResults){
       summary: combo.label,
       _googleLegs: allGoogleLegs,
       _decomposed: true,
+      _labels: combo.labels, // viac labelov ak trasa spĺňa viacero kritérií
     };
   });
 }
@@ -2455,15 +2639,8 @@ async function selectRoute(idx){
   const routeData = window.currentRouteData;
   const stopInputs = window.currentStopInputs || [];
 
-  // Aktualizuj tab styly
-  routeData.routes.forEach((_, i) => {
-    const btn = document.getElementById(`rtab-${i}`);
-    if(!btn) return;
-    const isActive = i === idx;
-    btn.style.border = `2px solid ${isActive ? 'var(--accent)' : 'rgba(255,255,255,.1)'}`;
-    btn.style.background = isActive ? 'var(--accent)' : 'rgba(255,255,255,.05)';
-    btn.style.color = isActive ? '#000' : 'var(--text)';
-  });
+  // Update RIGHT panel — re-render so že Selected bude na novej karte
+  renderRouteOptionsPanel(routeData.routes, idx);
 
   const route = routeData.routes[idx];
   const rc = route.geometry.coordinates;
@@ -2478,7 +2655,6 @@ async function selectRoute(idx){
   if(route._googleLegs){
     drawRouteByRoadClass(route._googleLegs, validPts, rc);
   } else {
-    // Fallback: Mapbox trasa bez steps → farby podľa krajiny
     drawRouteOnMap(rc, segments);
   }
 
@@ -2494,7 +2670,7 @@ async function selectRoute(idx){
     addMbMarker(coord, labels[i] || String(i+1), s);
   });
 
-  // Prepočítaj aj sumárny panel pre novú trasu
+  // Update LEFT panel (Cost breakdown) pre novú trasu
   await recomputeResultsPanel(route, validPts, segments, stopInputs);
 }
 
@@ -2502,7 +2678,8 @@ async function selectRoute(idx){
 // ── Recompute results panel (pre aktívnu trasu) ──
 // ══════════════════════════════════════════════════════════
 async function recomputeResultsPanel(route, validPts, segments, stopInputs){
-  const resultEl = document.getElementById('mr-result');
+  const leftBody = document.getElementById('mr-left-body');
+  const leftSub = document.getElementById('mr-left-sub');
 
   // Dates
   const dateFrom = document.getElementById('mr-date-from').value;
@@ -2536,15 +2713,10 @@ async function recomputeResultsPanel(route, validPts, segments, stopInputs){
     hrDistKm = (hrPts / Math.max(validPts.length, 1)) * (route.distance/1000);
   }
 
-  let html = `<div class="mr-route-info">
-    <div class="mr-route-stat"><strong>${distKm} km</strong>distance</div>
-    <div class="mr-route-stat"><strong>${durH}h ${durM}m</strong>drive time</div>
-    <div class="mr-route-stat"><strong>${ccList.length}</strong>countries</div>
-    <div class="mr-route-stat"><strong>${tripDays}d</strong>trip</div>
-  </div>`;
-  html += '<div style="font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);margin-bottom:.6rem;">Countries on route</div>';
-
+  // ─── Pozbieraj všetky country items (pre LEFT panel) ───
+  const countryRows = [];
   let totalEur = 0;
+
   for(const cc of ccList){
     const id = CC_MAP[cc];
     const country = C.find(x => x.id === id);
@@ -2554,11 +2726,10 @@ async function recomputeResultsPanel(route, validPts, segments, stopInputs){
     let action = '', priceStr = '', priceEur = 0, needsPay = false, note = '';
 
     // Override farby pre FREE_LOCAL krajiny ak route skutočne používa toll motorway
-    // (napr. BA A1 Sarajevo-Mostar → border má byť oranžový nie modrý)
     if(FREE_LOCAL[id]){
       const kmData = window._lastRouteKmByCountry?.[cc.toUpperCase()] || {};
       if((kmData.toll || 0) > 5){
-        clr = '#f4a45a'; // oranžová = toll
+        clr = '#f4a45a';
       }
     }
 
@@ -2567,7 +2738,7 @@ async function recomputeResultsPanel(route, validPts, segments, stopInputs){
       priceStr = rec.v;
       priceEur = parseEuro(rec.v);
       const eurNote = priceStr.startsWith('€') ? '' : ` ≈ ${toEurStr(priceEur)}`;
-      action = `Buy vignette · ${rec.p}${eurNote}`;
+      action = `Vignette · ${rec.p}${eurNote}`;
       needsPay = true;
       totalEur += priceEur;
     } else if(country.type === 'toll'){
@@ -2576,44 +2747,24 @@ async function recomputeResultsPanel(route, validPts, segments, stopInputs){
         priceEur = hacRes.amount;
         priceStr = `€${priceEur.toFixed(2)}`;
         const icon = hacRes.live ? (hacRes.precise ? '🟢 Live HAC' : '🟡 Live HAC est.') : '🟠 Distance est.';
-        action = `Toll gates · ${icon} · <a href="https://karta.hac.hr" target="_blank" style="color:var(--accent)">karta.hac.hr ↗</a>`;
+        action = `${icon}`;
         if(hacRes.segments?.length){
           note = hacRes.segments.map(s => `${s.entry}→${s.exit}: €${s.amount.toFixed(2)}`).join(' + ');
+        } else if(hacRes.entry && hacRes.exit){
+          note = `${hacRes.entry} → ${hacRes.exit}`;
         }
         needsPay = true;
         totalEur += priceEur;
       } else if(FREE_LOCAL[id]){
-        // Ak route používa TOLL motorway v tejto krajine (napr. BA A1 Sarajevo–Mostar),
-        // pripočítame odhad toll. Inak ostáva free (len local roads).
         const kmData = window._lastRouteKmByCountry?.[cc.toUpperCase()] || {};
         const tollKm = kmData.toll || 0;
-
         if(tollKm > 5){
-          // Distance-based toll estimate — realistické sadzby podľa oficiálnych operátorov
-          // Sadzby pre Category I (osobné auto do 1.3m výška prednej osi)
-          //
-          // 🇧🇦 BA: jpautoceste.ba + autoputevirs.com — A1 ~€0.045/km
-          //   (Gradiška-Banja Luka 35km = ~€1.60, Tarčin-Sarajevo 25km = ~€1.10)
-          // 🇷🇸 RS: koridor10.rs — ~€0.05/km
-          //   (Belgrade-Niš 210km = ~€10, Belgrade-Horgoš 180km = ~€8)
-          // 🇲🇪 ME: monteput.me — Smokovac tunel ~€4 za ~20km = €0.20/km
-          //   ale po A2 len 20km, takže pre rate radšej €0.08/km
-          // 🇲🇰 MK: koridori.mk — E-75 Gevgelija-Skopje ~€5 za ~170km = €0.03/km
-          // 🇦🇱 AL: A1 toll Kalimash tunel €5 za ~10km úsek = €0.04/km priemerne
-          // 🇽🇰 XK: R7/R6 — ~€3 za 78km = €0.04/km
-          const rates = {
-            'ba': 0.045,  // BA A1 FBiH + Republika Srpska
-            'rs': 0.05,   // RS A1 Koridor X
-            'me': 0.08,   // ME A2 (krátky ale drahý Smokovac tunel)
-            'mk': 0.03,   // MK A1 (najlacnejšia Balkánska diaľnica)
-            'al': 0.04,   // AL A1
-            'xk': 0.04,   // XK R7
-          };
+          const rates = { 'ba':0.045, 'rs':0.05, 'me':0.08, 'mk':0.03, 'al':0.04, 'xk':0.04 };
           const rate = rates[id] || 0.045;
           priceEur = parseFloat((tollKm * rate).toFixed(2));
           priceStr = `~${toEurStr(priceEur)}`;
-          action = `Motorway toll · ~${tollKm.toFixed(0)}km × €${rate}/km · cash at gate`;
-          note = country.prices?.[0] ? `Reference: ${country.prices[0].p} ${country.prices[0].v}` : '';
+          action = `Motorway toll · ~${tollKm.toFixed(0)}km`;
+          note = country.prices?.[0] ? `Ref: ${country.prices[0].p} ${country.prices[0].v}` : '';
           needsPay = true;
           totalEur += priceEur;
         } else {
@@ -2624,24 +2775,16 @@ async function recomputeResultsPanel(route, validPts, segments, stopInputs){
         const est = country.prices[0];
         priceEur = est ? parseEuro(est.v) : 0;
         priceStr = est ? `~${est.v}` : 'varies';
-        action = 'Pay at toll gate' + (country.enc ? ` · ENC: ${country.enc}` : '');
+        action = 'Toll gate' + (country.enc ? ` · ${country.enc}` : '');
         needsPay = !!priceEur;
         if(needsPay) totalEur += priceEur;
       }
     } else {
-      action = 'Free — no payment needed';
+      action = 'Free';
       priceStr = 'FREE';
     }
 
-    html += `<div class="mr-country-item" style="border-left:4px solid ${clr};">
-      <div class="mr-ci-code">${cc}</div>
-      <div class="mr-ci-info">
-        <div class="mr-ci-name">${country.name}</div>
-        <div class="mr-ci-sub">${action}${country.buy && needsPay && id !== 'hr' ? ` · <a href="${country.buy}" target="_blank" style="color:var(--accent);text-decoration:none;">${country.bl} ↗</a>` : ''}</div>
-        ${note ? `<div style="font-size:.65rem;color:var(--enc);margin-top:.2rem;">ℹ️ ${note}</div>` : ''}
-      </div>
-      ${needsPay ? `<div class="mr-ci-price">${priceStr}</div>` : `<div style="color:var(--f);font-weight:800;font-size:.8rem;">FREE</div>`}
-    </div>`;
+    countryRows.push({ cc, name: country.name, clr, action, priceStr, priceEur, needsPay, note, buy: country.buy, bl: country.bl, id });
   }
 
   // Fuel
@@ -2650,19 +2793,50 @@ async function recomputeResultsPanel(route, validPts, segments, stopInputs){
   const fuelCost = parseFloat(((route.distance/1000) * fuelCons/100 * fuelPrice).toFixed(2));
   const grandTotal = parseFloat((totalEur + fuelCost).toFixed(2));
 
-  if(totalEur > 0 || fuelCost > 0){
-    html += `<div class="mr-total-box">
-      <div class="mr-total-label">💰 Estimated total trip costs</div>
-      ${totalEur > 0 ? `<div class="mr-total-row"><div style="font-size:.75rem;color:var(--muted);">🛣️ Vignettes + tolls</div><div style="font-weight:800;">${toEurStr(totalEur)}</div></div>` : ''}
-      <div class="mr-total-row"><div style="font-size:.75rem;color:var(--muted);">⛽ Fuel · ${distKm}km × ${fuelCons}L/100km × €${fuelPrice}/L</div><div style="font-weight:800;">${toEurStr(fuelCost)}</div></div>
-      <div class="mr-total-row" style="border-top:1px solid var(--border);margin-top:.4rem;padding-top:.4rem;">
-        <div style="font-size:.8rem;font-weight:700;">Total estimated trip cost</div>
-        <div class="mr-total-amt">${toEurStr(grandTotal)}</div>
+  // ─── Render LEFT panel ───
+  let html = '';
+
+  // Total hero
+  html += `<div class="mr-total-hero">
+    <div class="mr-total-hero-l">Total trip cost · ${distKm}km · ${durH}h ${durM}m</div>
+    <div class="mr-total-hero-v">${toEurStr(grandTotal)}</div>
+  </div>`;
+
+  // Country rows
+  for(const r of countryRows){
+    const priceColor = !r.needsPay ? '#6eb3f7' : (r.clr === '#f4a45a' ? '#f4a45a' : (r.clr === '#22c997' ? '#22c997' : '#6eb3f7'));
+    const buyLink = r.buy && r.needsPay && r.id !== 'hr' ? ` · <a href="${r.buy}" target="_blank">${r.bl} ↗</a>` : '';
+    html += `<div class="mr-country-item" style="border-left-color:${r.clr};">
+      <div class="mr-country-row1">
+        <div>
+          <span class="mr-cc-tag">${r.cc}</span>
+          <span class="mr-cname">${r.name}</span>
+        </div>
+        <span class="mr-cprice" style="color:${priceColor};">${r.priceStr}</span>
       </div>
+      <div class="mr-country-row2">${r.action}${buyLink}${r.note ? ` · ${r.note}` : ''}</div>
     </div>`;
   }
-  html += '<div class="rnote" style="margin-top:.75rem;">⚠️ Estimates are approximate. Buy vignettes before your trip.</div>';
-  resultEl.innerHTML = html;
+
+  // Fuel row
+  html += `<div class="mr-country-item" style="border-left-color:rgba(255,255,255,.2);">
+    <div class="mr-country-row1">
+      <div>
+        <span class="mr-cc-tag" style="background:transparent;border:none;">⛽</span>
+        <span class="mr-cname" style="color:rgba(255,255,255,.7);">Fuel</span>
+      </div>
+      <span class="mr-cprice" style="color:rgba(255,255,255,.85);">${toEurStr(fuelCost)}</span>
+    </div>
+    <div class="mr-country-row2">${distKm}km × ${fuelCons}L/100 × €${fuelPrice}</div>
+  </div>`;
+
+  html += `<div style="font-size:.6rem;color:rgba(255,255,255,.35);margin-top:.8rem;text-align:center;line-height:1.5;">⚠️ Estimates are approximate.<br>Buy vignettes before your trip.</div>`;
+
+  leftBody.innerHTML = html;
+  if(leftSub){
+    const routeLabel = route._decomposed && route.summary ? route.summary : 'Current route';
+    leftSub.textContent = `${routeLabel} · ${ccList.length} countr${ccList.length===1?'y':'ies'}`;
+  }
 }
 
 // ══════════════════════════════════════════════════════════
@@ -2676,12 +2850,16 @@ async function calcMapRoute(){
   const stopInputs = stopIds.map(id => document.getElementById(id).value.trim());
 
   if(stopInputs.length < 2){
-    document.getElementById('mr-result').innerHTML = '<div style="font-size:.8rem;color:#c00;padding:.75rem;background:#fde8e6;border-radius:8px;">Please enter at least an origin and destination.</div>';
+    document.getElementById('mr-right-body').innerHTML = '<div style="font-size:.75rem;color:#f87171;padding:.75rem;background:rgba(248,113,113,.08);border:1px solid rgba(248,113,113,.25);border-radius:8px;">Please enter at least an origin and destination.</div>';
     return;
   }
 
-  const resultEl = document.getElementById('mr-result');
-  resultEl.innerHTML = '<div style="font-size:.8rem;color:var(--muted);padding:.5rem 0;">⏳ Geocoding stops...</div>';
+  const rightBody = document.getElementById('mr-right-body');
+  const rightSub = document.getElementById('mr-right-sub');
+  const setLoading = (msg) => {
+    rightBody.innerHTML = `<div style="font-size:.75rem;color:var(--muted);padding:.75rem 0;text-align:center;">${msg}</div>`;
+  };
+  setLoading('⏳ Geocoding stops…');
 
   if(!mrMap){ initMrMap(); await new Promise(r => setTimeout(r, 3000)); }
   if(!Object.keys(FX).length) await loadFX();
@@ -2690,12 +2868,10 @@ async function calcMapRoute(){
     // 1. Získaj GPS súradnice — primárne z _inputCoords (Google Places výber)
     //    Fallback na Mapbox geocoding ak user nevybral zo suggestions
     const coords = await Promise.all(stopIds.map(async (id, i) => {
-      // Prednosť: GPS uložené z Google Places výberu (presnejšie)
       if(_inputCoords[id]){
         console.log('[Geocode] Using stored GPS for', id, _inputCoords[id]);
         return _inputCoords[id];
       }
-      // Fallback: Mapbox forward geocoding
       const s = stopInputs[i];
       console.log('[Geocode] Mapbox fallback for', id, '→', s);
       const r = await fetch(`https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(s)}.json?access_token=${_ta+_tb}&types=place,address,locality&limit=1`);
@@ -2704,53 +2880,24 @@ async function calcMapRoute(){
       return d.features[0].center;
     }));
 
-    resultEl.innerHTML = '<div style="font-size:.8rem;color:var(--muted);padding:.5rem 0;">⏳ Getting routes from Google...</div>';
+    setLoading('⏳ Calculating routes from Google…');
 
-    // 2. Google Directions cez JS SDK (obchádza CORS) — lepšie alternatívne trasy
-    //    Mapbox stále používame na vykreslenie mapy (dark style) a geocoding.
-    //    Google SDK sa lazy-loaduje pri prvom volaní (šetrí Map loads kvótu).
+    // 2. Google Directions cez JS SDK
     let routeData;
     try {
-      // Pri prvom volaní informuj user-a že sa Google SDK načítava
       if(!window.google?.maps?.DirectionsService){
-        resultEl.innerHTML = '<div style="font-size:.8rem;color:var(--muted);padding:.5rem 0;">⏳ Loading Google Directions (first time only)...</div>';
+        setLoading('⏳ Loading Google Directions (first time only)…');
       }
       routeData = await fetchGoogleDirections(coords);
       console.log('[Routes] Google returned', routeData.routes.length, 'route(s)');
-      resultEl.innerHTML = '<div style="font-size:.8rem;color:var(--muted);padding:.5rem 0;">⏳ Processing routes...</div>';
+      setLoading('⏳ Processing routes…');
     } catch(googleErr){
-      // Fallback na Mapbox ak Google zlyhá
       console.warn('[Routes] Google failed, falling back to Mapbox:', googleErr.message);
-      resultEl.innerHTML = '<div style="font-size:.8rem;color:var(--muted);padding:.5rem 0;">⏳ Getting route from Mapbox (fallback)...</div>';
+      setLoading('⏳ Getting route from Mapbox (fallback)…');
       const coordStr = coords.map(c => c.join(',')).join(';');
-      const routeResp = await fetch(`https://api.mapbox.com/directions/v5/mapbox/driving/${coordStr}?access_token=${MAPBOX_TOKEN}&geometries=geojson&overview=full&steps=false&alternatives=true`);
+      const routeResp = await fetch(`https://api.mapbox.com/directions/v5/mapbox/driving/${coordStr}?access_token=${_ta+_tb}&geometries=geojson&overview=full&steps=false&alternatives=true`);
       routeData = await routeResp.json();
       if(!routeData.routes?.length) throw new Error('No route found (Google & Mapbox both failed)');
-    }
-
-    // 3. Route tabs (ak máme viac alternatív)
-    const routeTabs = document.getElementById('mr-route-tabs');
-    if(routeData.routes.length > 1){
-      routeTabs.style.display = 'flex';
-      routeTabs.style.gap = '.4rem';
-      routeTabs.style.flexWrap = 'wrap';
-      routeTabs.style.marginBottom = '.75rem';
-      routeTabs.innerHTML = routeData.routes.map((r, i) => {
-        const km = (r.distance/1000).toFixed(0);
-        const h = Math.floor(r.duration/3600), m = Math.floor((r.duration%3600)/60);
-        const isActive = i === 0;
-        // Smart label z decomposition (Fastest/Cheapest/Shortest/Alternative)
-        const label = r._decomposed && r.summary ? r.summary : `Route ${i+1}`;
-        // Farebná ikonka pred labelom — pomáha orientácii
-        let icon = '';
-        if(label === 'Fastest')     icon = '<span style="color:#f4a45a;">⚡</span> ';
-        else if(label === 'Cheapest')  icon = '<span style="color:#22c997;">💰</span> ';
-        else if(label === 'Shortest')  icon = '<span style="color:#6eb3f7;">📏</span> ';
-        else if(label === 'Alternative') icon = '<span style="color:#c084fc;">🔀</span> ';
-        return `<button onclick="selectRoute(${i})" id="rtab-${i}" style="padding:.4rem .8rem;border-radius:8px;border:2px solid ${isActive?'var(--accent)':'rgba(255,255,255,.1)'};background:${isActive?'var(--accent)':'rgba(255,255,255,.05)'};color:${isActive?'#000':'var(--text)'};font-size:.75rem;font-weight:700;cursor:pointer;font-family:'Geist',sans-serif;transition:all .15s;">${icon}${label} · ${km}km · ${h}h${m}m</button>`;
-      }).join('');
-    } else {
-      routeTabs.style.display = 'none';
     }
 
     // Ulož pre switchovanie
@@ -2760,7 +2907,7 @@ async function calcMapRoute(){
     const route = routeData.routes[0];
     const rc = route.geometry.coordinates;
 
-    resultEl.innerHTML = '<div style="font-size:.8rem;color:var(--muted);padding:.5rem 0;">⏳ Detecting countries...</div>';
+    setLoading('⏳ Detecting countries…');
 
     // 4. Počkaj na mapu, vyčisti staré layers
     await ensureMapReady();
@@ -2769,12 +2916,10 @@ async function calcMapRoute(){
     // 5. Detekcia krajín s filtrovaním krátkych tranzitov
     const { segments, validPts } = await detectCountriesOnRoute(rc);
 
-    // 6. Kresli trasu — ak máme Google steps, použijeme road-class coloring
-    //    (zelená=vignette motorway, oranžová=toll motorway, modrá=free motorway, fialová=local)
+    // 6. Kresli trasu — road-class coloring ak máme Google steps
     if(route._googleLegs){
       drawRouteByRoadClass(route._googleLegs, validPts, rc);
     } else {
-      // Fallback na country-based farby (keď Google zlyhá a bežíme Mapbox)
       drawRouteOnMap(rc, segments);
     }
 
@@ -2787,15 +2932,102 @@ async function calcMapRoute(){
     const labels = ['A','B','C','D','E','F','G','H'];
     coords.forEach((coord, i) => addMbMarker(coord, labels[i] || String(i+1), stopInputs[i]));
 
-    // 9. Výpočet cien a výsledný panel
+    // 9. Render RIGHT panel — Route options karty
+    renderRouteOptionsPanel(routeData.routes, 0);
+
+    // 10. Výpočet cien pre vybranú trasu a render LEFT panel
     await recomputeResultsPanel(route, validPts, segments, stopInputs);
 
     document.getElementById('mr-legend').style.display = 'block';
 
   } catch(err){
-    document.getElementById('mr-result').innerHTML = `<div style="font-size:.8rem;color:#c00;padding:.75rem;background:#fde8e6;border-radius:8px;">Error: ${err.message}</div>`;
+    document.getElementById('mr-right-body').innerHTML = `<div style="font-size:.75rem;color:#f87171;padding:.75rem;background:rgba(248,113,113,.08);border:1px solid rgba(248,113,113,.25);border-radius:8px;">Error: ${err.message}</div>`;
     console.error(err);
   }
+}
+
+// ══════════════════════════════════════════════════════════
+// ── RENDER RIGHT PANEL — Route options karty ──
+// Pre každú trasu vypočíta metriky (distance, time, cost)
+// a zobrazí ako kartu. Selected trasa má farebný border + "SELECTED" badge.
+// Cheapest má "SAVE €X" badge ukazujúci úsporu oproti najdrahšej.
+// ══════════════════════════════════════════════════════════
+function renderRouteOptionsPanel(routes, activeIdx){
+  const rightBody = document.getElementById('mr-right-body');
+  const rightSub = document.getElementById('mr-right-sub');
+  if(!rightBody) return;
+
+  // Ak máme len 1 trasu, nezobrazujeme options (netreba)
+  if(routes.length < 2){
+    const r = routes[0];
+    const km = (r.distance/1000).toFixed(0);
+    const h = Math.floor(r.duration/3600), m = Math.floor((r.duration%3600)/60);
+    rightBody.innerHTML = `<div style="font-size:.72rem;color:var(--muted);text-align:center;padding:1.5rem 0;line-height:1.6;">Only one route available.<br><br><strong style="color:#fff;">${km} km · ${h}h ${m}m</strong></div>`;
+    rightSub.textContent = 'Only one route';
+    return;
+  }
+
+  rightSub.textContent = `${routes.length} alternative${routes.length>1?'s':''} found`;
+
+  // Vypočítaj savings pre Cheapest badge
+  let maxPrice = 0, minPrice = Infinity;
+  const routePrices = routes.map(r => {
+    // Použij estimated total cost ak bol vypočítaný (z decomposition),
+    // inak rough estimate: distance * 0.04 eur/km + fuel
+    const fuelCons = parseFloat(document.getElementById('mr-fuel-consumption')?.value) || 7;
+    const fuelPrice = parseFloat(document.getElementById('mr-fuel-price')?.value) || 1.55;
+    const km = r.distance/1000;
+    const fuelCost = km * fuelCons / 100 * fuelPrice;
+    const tollEst = km * 0.035; // rough proxy, len pre relative sort
+    return fuelCost + tollEst;
+  });
+  routePrices.forEach(p => { if(p > maxPrice) maxPrice = p; if(p < minPrice) minPrice = p; });
+
+  // Karty
+  let html = '';
+  routes.forEach((r, i) => {
+    const km = (r.distance/1000).toFixed(0);
+    const h = Math.floor(r.duration/3600), m = Math.floor((r.duration%3600)/60);
+    const labelsArr = r._labels && r._labels.length ? r._labels : [(r._decomposed && r.summary) || (i === 0 ? 'Fastest' : `Route ${i+1}`)];
+    const primaryLabel = labelsArr[0];
+    const labelLower = primaryLabel.toLowerCase();
+
+    const icons = { fastest: '⚡', cheapest: '€', shortest: '↔', alternative: '🔀' };
+    const ico = icons[labelLower] || '•';
+
+    const isSelected = i === activeIdx;
+    const saveBadge = labelsArr.includes('Cheapest') && maxPrice > minPrice
+      ? `<div class="mr-route-save">SAVE ${toEurStr(maxPrice-minPrice)}</div>`
+      : '';
+    const selectedPill = isSelected
+      ? `<span class="mr-route-selected-pill">● SELECTED</span>`
+      : '';
+
+    // Ak má trasa viac labelov (napr. "Fastest + Shortest"), zobraz všetky
+    const allLabels = labelsArr.length > 1
+      ? labelsArr.map((l, li) => {
+          const iconList = { Fastest: '⚡', Cheapest: '€', Shortest: '↔', Alternative: '🔀' };
+          const colorList = { Fastest: '#f4a45a', Cheapest: '#22c997', Shortest: '#6eb3f7', Alternative: '#c084fc' };
+          return `<span style="color:${colorList[l] || '#fff'};font-size:.7rem;">${iconList[l] || '•'} ${l}</span>`;
+        }).join('<span style="color:rgba(255,255,255,.25);margin:0 .3rem;">+</span>')
+      : `<span class="mr-route-label">${primaryLabel}</span>`;
+
+    html += `<div class="mr-route-card ${labelLower} ${isSelected?'selected':''}" onclick="selectRoute(${i})">
+      ${saveBadge}
+      <div class="mr-route-card-head">
+        <div class="mr-route-ico ${labelLower}">${ico}</div>
+        <div style="display:flex;gap:.25rem;align-items:center;flex-wrap:wrap;font-family:'Geist',sans-serif;font-weight:700;">${allLabels}</div>
+        ${selectedPill}
+      </div>
+      <div class="mr-route-metrics">
+        <div class="mr-metric"><div class="mr-metric-l">Distance</div><div class="mr-metric-v">${km} km</div></div>
+        <div class="mr-metric"><div class="mr-metric-l">Time</div><div class="mr-metric-v">${h}h ${m}m</div></div>
+        <div class="mr-metric"><div class="mr-metric-l">Est. cost</div><div class="mr-metric-v ${isSelected?'accent':''}">${toEurStr(routePrices[i])}</div></div>
+      </div>
+    </div>`;
+  });
+
+  rightBody.innerHTML = html;
 }
 
 
