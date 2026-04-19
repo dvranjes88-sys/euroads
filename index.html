@@ -332,6 +332,13 @@ main { padding:2rem; max-width:1300px; margin:0 auto; }
   min-width: 140px; text-align: center;
   transform: translateY(20px); opacity: 0;
   animation: featIn .5s forwards;
+  cursor: pointer;
+  transition: background .2s, border-color .2s, transform .2s;
+}
+.land-feat:hover {
+  background: rgba(212,130,10,.15);
+  border-color: rgba(212,130,10,.5);
+  transform: translateY(-3px) !important;
 }
 .land-feat:nth-child(1) { animation-delay: .3s; }
 .land-feat:nth-child(2) { animation-delay: .5s; }
@@ -345,6 +352,11 @@ main { padding:2rem; max-width:1300px; margin:0 auto; }
   font-size: .78rem; color: #fff; margin-bottom: .2rem;
 }
 .land-feat-desc { font-size: .68rem; color: rgba(255,255,255,.4); line-height: 1.4; }
+.land-feat-arrow {
+  font-size: .58rem; color: rgba(212,130,10,.6);
+  margin-top: .35rem; letter-spacing: .05em;
+  text-transform: uppercase; font-weight: 700;
+}
 .land-cta {
   display: inline-flex; align-items: center; gap: .6rem;
   background: #D4820A; color: #000;
@@ -449,11 +461,11 @@ main { padding:2rem; max-width:1300px; margin:0 auto; }
 </div>
 
 <div class="tab-bar">
-  <button class="tab active" onclick="switchTab('countries',this)">🗺️ Countries</button>
-  <button class="tab" onclick="switchTab('speed',this)">⚡ Speed Limits</button>
-  <button class="tab tab-highlight" onclick="switchTab('maproute',this)">🧮 Route Calculator</button>
-  <button class="tab" onclick="switchTab('enc',this)">📦 ENC Devices</button>
-  <button class="tab" onclick="switchTab('game',this)">🎮 EuroTour Game</button>
+  <button class="tab active" data-tab="countries" onclick="switchTab('countries',this)">🗺️ Countries</button>
+  <button class="tab" data-tab="speed" onclick="switchTab('speed',this)">⚡ Speed Limits</button>
+  <button class="tab tab-highlight" data-tab="maproute" onclick="switchTab('maproute',this)">🧮 Route Calculator</button>
+  <button class="tab" data-tab="enc" onclick="switchTab('enc',this)">📦 ENC Devices</button>
+  <button class="tab" data-tab="game" onclick="switchTab('game',this)">🎮 EuroTour Game</button>
 </div>
 
 <main>
@@ -2307,13 +2319,23 @@ renderCC(); renderSpeed(); renderCalcChecks(); renderENC();
   window._stopRoadAnim = () => cancelAnimationFrame(animId);
 })();
 
-function dismissLanding() {
+function dismissLanding(targetTab) {
   const landing = document.getElementById('landing');
   landing.classList.add('hide');
   if (window._stopRoadAnim) window._stopRoadAnim();
-  setTimeout(() => { landing.style.display = 'none'; }, 650);
+  setTimeout(() => {
+    landing.style.display = 'none';
+    // Scroll na vrch stránky — aby user videl hero section + tab bar
+    window.scrollTo({ top: 0, behavior: 'instant' });
+    // Ak bol zadaný target tab, prepni naň
+    if (targetTab && targetTab !== 'countries') {
+      const tabBtn = document.querySelector(`.tab[data-tab="${targetTab}"]`);
+      if (tabBtn) switchTab(targetTab, tabBtn);
+      if (targetTab === 'maproute') initMrMap();
+    }
+  }, 650);
   if (typeof gtag !== 'undefined') {
-    gtag('event', 'landing_cta_click', { event_category: 'engagement', event_label: 'Plan my trip' });
+    gtag('event', 'landing_cta_click', { event_category: 'engagement', event_label: targetTab || 'plan_trip' });
   }
 }
 </script>
