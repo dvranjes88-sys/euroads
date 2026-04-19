@@ -1372,14 +1372,13 @@ function addStop(placeholder){
   div.className='stop-row'; div.dataset.stopId=id;
   const label=labels[idx]||String(idx+1);
   const canRemove=idx>=2;
-  div.innerHTML='<span class="stop-label">'+label+'</span><input type="text" id="'+id+'" placeholder="'+(placeholder||'Stop '+label+' — city')+'" autocomplete="off">'+(canRemove?'<button class="stop-remove" onclick="removeStop(''+id+'')" title="Remove stop">&times;</button>':'<span style="width:1.6rem"></span>');
-  wrap.appendChild(div);
+  div.innerHTML=`<span class="stop-label">${label}</span><input type="text" id="${id}" placeholder="${placeholder||'Stop '+label+' — city'}" autocomplete="off">${canRemove?`<button class="stop-remove" onclick="removeStop('${id}')" title="Remove stop">&times;</button>`:'<span style="width:1.6rem"></span>'}`; wrap.appendChild(div);
   relabelStops();
 }
 
 function removeStop(id){
   mrStops=mrStops.filter(s=>s!==id);
-  document.querySelector('.stop-row[data-stop-id="'+id+'"]').remove();
+  document.querySelector(`.stop-row[data-stop-id="${id}"]`).remove();
   relabelStops();
 }
 
@@ -1415,7 +1414,7 @@ function addMapMarker(coords,label,name){
   const el=document.createElement('div');
   el.style.cssText='width:28px;height:28px;border-radius:50%;background:#D4820A;color:#000;font-family:Geist,sans-serif;font-weight:900;font-size:12px;display:flex;align-items:center;justify-content:center;border:2px solid rgba(255,255,255,.8);box-shadow:0 2px 10px rgba(0,0,0,.5);cursor:pointer;z-index:10;';
   el.textContent=label;
-  const marker=new mapboxgl.Marker({element:el}).setLngLat(coords).setPopup(new mapboxgl.Popup({offset:20,closeButton:false}).setHTML('<strong style="font-size:12px;">'+name+'</strong>')).addTo(mrMap);
+  const marker=new mapboxgl.Marker({element:el}).setLngLat(coords).setPopup(new mapboxgl.Popup({offset:20,closeButton:false}).setHTML(`<strong style="font-size:12px;">${name}</strong>`)).addTo(mrMap);
   mrMarkers.push(marker);
 }
 
