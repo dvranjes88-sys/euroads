@@ -397,6 +397,9 @@ main { padding:2rem; max-width:1300px; margin:0 auto; }
 }
 
 /* ── Google Places Autocomplete dark theme ── */
+/* DÔLEŽITÉ: .pac-container je vložený Googlom priamo na <body>,
+   ale niektoré sticky/overflow pravidlá môžu ho zakryť alebo blokovať kliknutia.
+   Preto dávame vysoký z-index a explicitné pointer-events. */
 .pac-container {
   background: #141922 !important;
   border: 1px solid rgba(255,255,255,.15) !important;
@@ -404,7 +407,8 @@ main { padding:2rem; max-width:1300px; margin:0 auto; }
   box-shadow: 0 8px 24px rgba(0,0,0,.5) !important;
   margin-top: 4px !important;
   font-family: 'Geist', sans-serif !important;
-  z-index: 9999 !important;
+  z-index: 2147483647 !important;  /* max possible z-index, bulletproof */
+  pointer-events: auto !important;
 }
 .pac-item {
   padding: .55rem .85rem !important;
@@ -413,7 +417,9 @@ main { padding:2rem; max-width:1300px; margin:0 auto; }
   font-size: .82rem !important;
   cursor: pointer !important;
   line-height: 1.4 !important;
+  pointer-events: auto !important;
 }
+.pac-item * { pointer-events: none !important; /* nested spans nemajú kradnúť click */ }
 .pac-item:first-child { border-top: none !important; }
 .pac-item:hover,
 .pac-item-selected { background: rgba(212,130,10,.15) !important; }
@@ -1478,13 +1484,25 @@ function initMrMap(){
 }
 
 // ══════════════════════════════════════════════════════════
-// ── attachAutocomplete — Google Places Autocomplete ──
-// Používame Google Places pre presné adresy s číslom domu.
-// Výhody: najlepší autocomplete, globálne pokrytie (aj Balkán),
-// fuzzy matching, multilingual. Free do ~11k sessions/mesiac.
-// Pri zlyhaní (SDK not loaded) → fallback na Mapbox geocoding.
+// ── attachAutocomplete — Programmatic Google Places Autocomplete ──
+// Používame AutocompleteService.getPlacePredictions() namiesto
+// deprecated Autocomplete widget. Výhoda: plná kontrola nad UI,
+// žiadne deprecation warnings, lacnejšie (session + geocoding).
+// Pri zlyhaní Google SDK → fallback na Mapbox geocoding.
 // ══════════════════════════════════════════════════════════
-const _inputCoords = {}; // { inputId: [lng, lat] } — uložené GPS z Google Places výberu
+const _inputCoords = {};   // { inputId: [lng, lat] } — uložené GPS z výberu
+const _inputSessions = {}; // { inputId: sessionToken } — session token per input
+let _autocompleteService = null;
+let _geocoderService = null;
+
+// Debounce helper aby sme nevolali API pri každom písmene
+function _debounce(fn, ms){
+  let t;
+  return function(...args){
+    clearTimeout(t);
+    t = setTimeout(() => fn.apply(this, args), ms);
+  };
+}
 
 function attachAutocomplete(inputId){
   const input = document.getElementById(inputId);
@@ -1496,40 +1514,89 @@ function attachAutocomplete(inputId){
     delete _inputCoords[inputId];
   });
 
-  // Enter triggers calculate
+  // Enter triggers calculate (ak dropdown nie je otvorený) alebo vyberie prvý item
   input.addEventListener('keydown', (e) => {
-    if(e.key === 'Enter' && !e.isComposing){
-      // Zatvor Google Places dropdown ak je otvorený
-      const pac = document.querySelector('.pac-container:not([style*="display: none"])');
-      if(!pac){
-        e.preventDefault();
-        calcMapRoute();
-      }
+    if(e.key !== 'Enter' || e.isComposing) return;
+    const drop = document.getElementById(`ac-drop-${inputId}`);
+    const activeItem = drop?.querySelector('[data-active="1"]');
+    if(activeItem){
+      // User má označený item cez šípky — vyber ho
+      e.preventDefault();
+      activeItem.click();
+      return;
     }
+    // Ak je otvorený dropdown ale nič nie je aktívne, vyber prvý
+    const firstItem = drop?.querySelector('[data-pred="1"]');
+    if(firstItem){
+      e.preventDefault();
+      firstItem.click();
+      return;
+    }
+    // Žiadny dropdown → triggeruj calculate
+    e.preventDefault();
+    calcMapRoute();
   });
 
-  // Skús nastaviť Google Places Autocomplete ak je SDK loadnuté
+  // Arrow keys navigation v dropdowne
+  input.addEventListener('keydown', (e) => {
+    if(e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return;
+    const drop = document.getElementById(`ac-drop-${inputId}`);
+    if(!drop) return;
+    e.preventDefault();
+    const items = Array.from(drop.querySelectorAll('[data-pred="1"]'));
+    if(!items.length) return;
+    let cur = items.findIndex(i => i.dataset.active === '1');
+    items.forEach(i => { i.dataset.active = ''; i.style.background = ''; });
+    cur = e.key === 'ArrowDown' ? (cur + 1) % items.length : (cur - 1 + items.length) % items.length;
+    items[cur].dataset.active = '1';
+    items[cur].style.background = 'rgba(212,130,10,.2)';
+    items[cur].scrollIntoView({ block: 'nearest' });
+  });
+
+  // Blur → zatvor dropdown (s malým delay aby sa stihol zachytiť click)
+  input.addEventListener('blur', () => {
+    setTimeout(() => removeAcDropdown(inputId), 200);
+  });
+
+  // Skús použiť Google AutocompleteService, ak nie je loadnuté — fallback Mapbox
   const tryAttachGoogle = () => {
-    if(!window.google?.maps?.places?.Autocomplete) return false;
+    if(!window.google?.maps?.places?.AutocompleteService) return false;
     try {
-      const ac = new google.maps.places.Autocomplete(input, {
-        // Bez types filtra — povolíme mestá + adresy + POI (benzínky, atrakcie)
-        // types: ['geocode'] by vyľúčilo POI; my chceme všetko
-        fields: ['name', 'formatted_address', 'geometry.location'],
-      });
-      ac.addListener('place_changed', () => {
-        const place = ac.getPlace();
-        if(!place.geometry?.location) return;
-        // Ulož GPS pre neskoršie použitie v calcMapRoute
-        _inputCoords[inputId] = [
-          place.geometry.location.lng(),
-          place.geometry.location.lat(),
-        ];
-        // Aktualizuj text inputu na plnú formátovanú adresu
-        input.value = place.formatted_address || place.name || input.value;
-        console.log('[Places]', inputId, '→', input.value, _inputCoords[inputId]);
-      });
+      if(!_autocompleteService) _autocompleteService = new google.maps.places.AutocompleteService();
+      if(!_geocoderService) _geocoderService = new google.maps.Geocoder();
+
+      // Debounced input handler — zníži počet volaní pri rýchlom písaní
+      const onInput = _debounce(async function(){
+        const q = input.value.trim();
+        if(q.length < 2){ removeAcDropdown(inputId); return; }
+
+        // Session token — spojí všetky predictions + final selection do 1 billable session
+        if(!_inputSessions[inputId]){
+          _inputSessions[inputId] = new google.maps.places.AutocompleteSessionToken();
+        }
+
+        _autocompleteService.getPlacePredictions({
+          input: q,
+          sessionToken: _inputSessions[inputId],
+          // Biasing: Európa (všetky krajiny ktoré podporujeme)
+          // Zlepší relevantnosť pre balkán, menšie dediny atď.
+        }, (predictions, status) => {
+          if(status !== google.maps.places.PlacesServiceStatus.OK || !predictions){
+            // Žiadne predictions, ale nie error = skry dropdown
+            if(status === google.maps.places.PlacesServiceStatus.ZERO_RESULTS){
+              removeAcDropdown(inputId);
+              return;
+            }
+            console.warn('[Places] Prediction error:', status);
+            return;
+          }
+          showGooglePredictions(inputId, predictions);
+        });
+      }, 250); // 250ms debounce
+
+      input.addEventListener('input', onInput);
       input.dataset.acEngine = 'google';
+      console.log('[Places] Google AutocompleteService attached to', inputId);
       return true;
     } catch(err){
       console.warn('[Places] Attach failed:', err.message);
@@ -1537,12 +1604,10 @@ function attachAutocomplete(inputId){
     }
   };
 
-  // Okamžitý pokus
+  // Okamžitý pokus, alebo počkaj kým sa načíta SDK
   if(!tryAttachGoogle()){
-    // Ak Google SDK ešte nie je loadnuté, počkaj naň
     loadGoogleMapsSDK().then(() => {
       if(!tryAttachGoogle()){
-        // Google zlyhal → fallback na Mapbox
         console.warn('[Places] Falling back to Mapbox geocoding for', inputId);
         attachMapboxFallback(input, inputId);
       }
@@ -1550,6 +1615,89 @@ function attachAutocomplete(inputId){
       attachMapboxFallback(input, inputId);
     });
   }
+}
+
+// Zobrazí predictions z Google AutocompleteService vo vlastnom dropdowne
+function showGooglePredictions(inputId, predictions){
+  removeAcDropdown(inputId);
+  if(!predictions?.length) return;
+  const input = document.getElementById(inputId);
+  if(!input) return;
+
+  const div = document.createElement('div');
+  div.id = `ac-drop-${inputId}`;
+  div.style.cssText = 'position:absolute;background:#141922;border:1px solid rgba(255,255,255,.15);border-radius:8px;z-index:99999;width:100%;max-height:260px;overflow-y:auto;box-shadow:0 8px 24px rgba(0,0,0,.5);top:100%;left:0;margin-top:4px;';
+
+  predictions.forEach((pred, i) => {
+    const item = document.createElement('div');
+    item.dataset.pred = '1';
+    item.style.cssText = 'padding:.55rem .85rem;cursor:pointer;font-size:.82rem;color:#E2E8F0;border-bottom:1px solid rgba(255,255,255,.05);line-height:1.35;';
+
+    // Rozdelíme description na main_text (bold) + secondary_text (muted)
+    const main = pred.structured_formatting?.main_text || pred.description;
+    const secondary = pred.structured_formatting?.secondary_text || '';
+    item.innerHTML = `
+      <div style="font-weight:600;color:#fff;">${main}</div>
+      ${secondary ? `<div style="font-size:.72rem;color:rgba(255,255,255,.4);margin-top:.1rem;">${secondary}</div>` : ''}
+    `;
+
+    item.onmousedown = async (e) => {
+      e.preventDefault(); // Zabráni blur predtým než stihneme spracovať click
+      input.value = pred.description;
+      removeAcDropdown(inputId);
+
+      // Namiesto drahého Place Details → Geocoding (lacnejšie, rovnaká presnosť pre GPS)
+      // place_id je z predikcie priamo
+      try {
+        _geocoderService.geocode({ placeId: pred.place_id }, (results, status) => {
+          if(status === 'OK' && results[0]?.geometry?.location){
+            _inputCoords[inputId] = [
+              results[0].geometry.location.lng(),
+              results[0].geometry.location.lat(),
+            ];
+            // Použijeme aj formatted_address z geocodingu (plnejšie než description)
+            const formatted = results[0].formatted_address;
+            if(formatted && formatted.length > pred.description.length){
+              input.value = formatted;
+            }
+            console.log('[Places]', inputId, '→', input.value, _inputCoords[inputId]);
+          } else {
+            console.warn('[Places] Geocode failed for', pred.place_id, status);
+          }
+        });
+      } catch(err){
+        console.warn('[Places] Geocode error:', err);
+      }
+
+      // Invalidate session token (session končí po final selection)
+      delete _inputSessions[inputId];
+    };
+
+    item.onmouseover = () => {
+      // Clear previous active + highlight this one
+      div.querySelectorAll('[data-active="1"]').forEach(el => {
+        el.dataset.active = ''; el.style.background = '';
+      });
+      item.dataset.active = '1';
+      item.style.background = 'rgba(212,130,10,.2)';
+    };
+    item.onmouseout = () => {
+      item.dataset.active = '';
+      item.style.background = '';
+    };
+
+    div.appendChild(item);
+  });
+
+  // "Powered by Google" — required by ToS keď nepoužívame Map
+  const attribution = document.createElement('div');
+  attribution.style.cssText = 'padding:.35rem .85rem;text-align:right;font-size:.6rem;color:rgba(255,255,255,.3);border-top:1px solid rgba(255,255,255,.05);background:rgba(255,255,255,.02);';
+  attribution.textContent = 'powered by Google';
+  div.appendChild(attribution);
+
+  const wrap = input.parentElement;
+  wrap.style.position = 'relative';
+  wrap.appendChild(div);
 }
 
 // Fallback: Mapbox geocoding dropdown — len ak Google SDK úplne zlyhá
