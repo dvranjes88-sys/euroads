@@ -1311,9 +1311,10 @@ function renderENC(){
 function switchTab(id,btn){
   document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
   document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
-  btn.classList.add('active');
-  if(id==='maproute'){ btn.classList.remove('tab-highlight'); initMrMap(); }
-  document.getElementById('view-'+id).classList.add('active');
+  const tabBtn = btn || document.querySelector(`.tab[data-tab="${id}"]`);
+  if(tabBtn) tabBtn.classList.add('active');
+  if(id==='maproute'){ if(tabBtn) tabBtn.classList.remove('tab-highlight'); initMrMap(); }
+  document.getElementById('view-'+id)?.classList.add('active');
 }
 
 
@@ -1807,7 +1808,7 @@ let activeRouteIdx = 0;
 
 
 
-async function selectRoute(idx, _unused){
+async function selectRoute(idx){
   if(!window.currentRouteData) return;
   const routeData=window.currentRouteData;
   const stopInputs=window.currentStopInputs||[];
@@ -1904,7 +1905,7 @@ async function calcMapRoute(){
         const km=(r.distance/1000).toFixed(0);
         const h=Math.floor(r.duration/3600),m=Math.floor((r.duration%3600)/60);
         const isActive=i===0;
-        return `<button onclick="selectRoute(${i},routeData_)" id="rtab-${i}" style="padding:.4rem .8rem;border-radius:8px;border:2px solid ${isActive?'var(--accent)':'rgba(255,255,255,.1)'};background:${isActive?'var(--accent)':'rgba(255,255,255,.05)'};color:${isActive?'#000':'var(--text)'};font-size:.75rem;font-weight:700;cursor:pointer;font-family:'Geist',sans-serif;transition:all .15s;">Route ${i+1} · ${km}km · ${h}h${m}m</button>`;
+        return `<button onclick="selectRoute(${i})" id="rtab-${i}" style="padding:.4rem .8rem;border-radius:8px;border:2px solid ${isActive?'var(--accent)':'rgba(255,255,255,.1)'};background:${isActive?'var(--accent)':'rgba(255,255,255,.05)'};color:${isActive?'#000':'var(--text)'};font-size:.75rem;font-weight:700;cursor:pointer;font-family:'Geist',sans-serif;transition:all .15s;">Route ${i+1} · ${km}km · ${h}h${m}m</button>`;
       }).join('');
       // Ulož routeData globálne pre switchovanie
       window.currentRouteData=routeData;
