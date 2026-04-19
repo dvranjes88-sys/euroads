@@ -5,146 +5,135 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>EuroRoads — Complete European Highway Guide</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flag-icons@7.2.3/css/flag-icons.min.css"/>
+<link href="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.css" rel="stylesheet">
 <link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700;800;900&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 :root {
-  --bg: #0D1117; --surface: #141922; --border: rgba(255,255,255,.08); --text: #E2E8F0; --muted: rgba(255,255,255,.35);
-  --v: #5DCEA8; --vl: rgba(27,77,62,.2); --t: #F4A45A; --tl: rgba(122,50,0,.2);
-  --f: #6EB3F7; --fl: rgba(15,52,96,.2); --enc: #C084FC; --encl: rgba(192,132,252,.1);
-  --accent: #D4820A; --r: 12px;
+  --bg: #F5F3EE; --surface: #FFF; --border: #E2DDD4; --text: #18160F; --muted: #7A7670;
+  --v: #1B4D3E; --vl: #E6F2EE; --t: #7A3200; --tl: #FDF0E6;
+  --f: #0F3460; --fl: #E6EDF8; --enc: #4A1060; --encl: #F5E8FA;
+  --accent: #D4820A; --r: 10px;
 }
 html { scroll-behavior: smooth; }
-body { background:#0D1117; color:#E2E8F0; font-family:'Geist',sans-serif; font-size:15px; line-height:1.6; overflow-x:hidden; }
+body { background:var(--bg); color:var(--text); font-family:'Geist',sans-serif; font-size:15px; line-height:1.6; overflow-x:hidden; }
 
-header { background:#18160F; color:#fff; height:58px; display:flex; align-items:center; justify-content:space-between; padding:0 2rem; position:sticky; top:0; z-index:200; border-bottom:3px solid var(--accent); }
+header { background:var(--text); color:#fff; height:58px; display:flex; align-items:center; justify-content:space-between; padding:0 2rem; position:sticky; top:0; z-index:200; border-bottom:3px solid var(--accent); }
 .logo { font-family:'Geist',sans-serif; font-weight:900; font-size:1.2rem; letter-spacing:-0.04em; }
 .logo span { color:var(--accent); }
 .hm { font-size:.7rem; color:rgba(255,255,255,.4); letter-spacing:.1em; text-transform:uppercase; }
 
-.hero { background:#18160F; color:#fff; padding:2.5rem 2rem 2rem; position:relative; overflow:hidden; }
-.hero::after { content:''; }
-#heroCanvas { position:absolute; inset:0; width:100%; height:100%; pointer-events:none; z-index:0; opacity:.6; }
-.hero h1 { font-family:'Geist',sans-serif; font-weight:800; font-size:clamp(1.6rem,4vw,2.8rem); letter-spacing:-0.03em; line-height:1.05; margin-bottom:.6rem; position:relative; z-index:1; }
+.hero { background:var(--text); color:#fff; padding:2.5rem 2rem 2rem; position:relative; overflow:hidden; }
+.hero::after { content:'🛣️'; position:absolute; font-size:14rem; right:-1rem; top:-2rem; opacity:.04; pointer-events:none; }
+.hero h1 { font-family:'Geist',sans-serif; font-weight:800; font-size:clamp(1.6rem,4vw,2.8rem); letter-spacing:-0.03em; line-height:1.05; margin-bottom:.6rem; }
 .hero h1 em { color:var(--accent); font-style:normal; }
-.hero h1 .char { display:inline-block; animation:charFloat 3s ease-in-out infinite; }
-.hero h1 .char-space { display:inline-block; width:0.28em; }
-@keyframes charFloat { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-5px)} }
-.hero p { color:rgba(255,255,255,.5); font-size:.82rem; max-width:500px; margin-bottom:1.5rem; position:relative; z-index:1; }
-.hstats { display:flex; gap:2rem; flex-wrap:wrap; position:relative; z-index:1; }
+.hero p { color:rgba(255,255,255,.5); font-size:.82rem; max-width:500px; margin-bottom:1.5rem; }
+.hstats { display:flex; gap:2rem; flex-wrap:wrap; }
 .hstat-n { font-family:'Geist',sans-serif; font-weight:800; font-size:1.4rem; color:var(--accent); }
 .hstat-l { font-size:.65rem; color:rgba(255,255,255,.4); letter-spacing:.08em; text-transform:uppercase; }
 
-.tab-bar { display:flex; background:#18160F; border-bottom:1px solid rgba(255,255,255,.07); padding:0 2rem; position:sticky; top:58px; z-index:190; overflow-x:auto; gap:0; scrollbar-width:none; }
-.tab-bar::-webkit-scrollbar { display:none; }
-.tab { padding:.85rem 1.1rem; font-family:'Geist',sans-serif; font-weight:700; font-size:.68rem; letter-spacing:.05em; text-transform:uppercase; border:none; background:none; cursor:pointer; color:rgba(255,255,255,.3); border-bottom:2.5px solid transparent; margin-bottom:-1px; white-space:nowrap; transition:all .15s; display:flex; align-items:center; gap:.42rem; }
-.tab svg { opacity:.5; transition:opacity .15s; flex-shrink:0; }
-.tab.active { color:#fff; border-bottom-color:var(--accent); }
-.tab.active svg { opacity:1; }
-.tab:hover:not(.active) { color:rgba(255,255,255,.65); }
-.tab:hover:not(.active) svg { opacity:.75; }
-.tab-badge { font-size:.46rem; background:var(--accent); color:#000; font-weight:900; padding:.1rem .28rem; border-radius:3px; }
+.tab-bar { display:flex; background:var(--surface); border-bottom:2px solid var(--border); padding:0 2rem; position:sticky; top:58px; z-index:190; overflow-x:auto; gap:.25rem; }
+.tab { padding:.75rem 1.3rem; font-family:'Geist',sans-serif; font-weight:700; font-size:.72rem; letter-spacing:.04em; text-transform:uppercase; border:none; background:none; cursor:pointer; color:var(--muted); border-bottom:3px solid transparent; margin-bottom:-2px; white-space:nowrap; transition:all .18s; border-radius:6px 6px 0 0; display:flex; align-items:center; gap:.4rem; }
+.tab.active { color:var(--text); border-bottom-color:var(--accent); background:rgba(212,130,10,0.06); }
+.tab:hover:not(.active) { color:var(--text); background:var(--bg); }
 
-main { padding:1.2rem 2rem 2rem; max-width:1300px; margin:0 auto; background:#0D1117; min-height:60vh; }
+main { padding:2rem; max-width:1300px; margin:0 auto; }
 .view { display:none; }
 .view.active { display:block; }
 
-.toolbar { display:flex; gap:.4rem; margin-bottom:1.2rem; flex-wrap:nowrap; align-items:center; overflow-x:auto; scrollbar-width:none; }
-.toolbar::-webkit-scrollbar { display:none; }
-.fb { display:flex; align-items:center; gap:.32rem; padding:.38rem .82rem; border-radius:100px; border:1.5px solid rgba(255,255,255,.1); background:transparent; font-family:'Geist',sans-serif; font-size:.65rem; font-weight:700; cursor:pointer; transition:all .15s; color:rgba(255,255,255,.4); white-space:nowrap; }
-.fb:hover { border-color:rgba(255,255,255,.28); color:rgba(255,255,255,.75); }
-.fb.active { background:#fff; border-color:#fff; color:#18160F; }
-.fb.fv.active { background:rgba(27,77,62,.25); border-color:#1B4D3E; color:#5DCEA8; }
-.fb.ft.active { background:rgba(122,50,0,.25); border-color:#7A3200; color:#F4A45A; }
-.fb.ff.active { background:rgba(15,52,96,.25); border-color:#0F3460; color:#6EB3F7; }
+.toolbar { display:flex; gap:.5rem; margin-bottom:1.5rem; flex-wrap:wrap; align-items:center; }
+.fb { padding:.38rem .85rem; border-radius:100px; border:1.5px solid var(--border); background:var(--surface); font-size:.73rem; font-weight:500; cursor:pointer; transition:all .15s; color:var(--muted); white-space:nowrap; }
+.fb:hover, .fb.active { border-color:var(--text); background:var(--text); color:#fff; }
+.fb.fv.active { background:var(--v); border-color:var(--v); }
+.fb.ft.active { background:var(--t); border-color:var(--t); }
+.fb.ff.active { background:var(--f); border-color:var(--f); }
+.sbox { margin-left:auto; display:flex; align-items:center; gap:.4rem; background:var(--surface); border:1.5px solid var(--border); border-radius:100px; padding:.38rem .9rem; }
+.sbox input { border:none; outline:none; font-family:'Geist',sans-serif; font-size:.78rem; background:transparent; width:150px; color:var(--text); }
 
-.cc-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(300px,1fr)); gap:.65rem; }
-.cc { background:#141922; border:1px solid rgba(255,255,255,.07); border-radius:12px; overflow:hidden; transition:all .2s; display:flex; flex-direction:column; }
-.cc:hover { transform:translateY(-2px); box-shadow:0 8px 28px rgba(0,0,0,.3); border-color:rgba(212,130,10,.25); }
-.cc-top { padding:.85rem 1rem .7rem; border-bottom:1px solid rgba(255,255,255,.05); display:flex; align-items:center; gap:.75rem; }
-.cc-fl { width:2.8rem; height:1.85rem; flex-shrink:0; border-radius:4px; overflow:hidden; box-shadow:0 1px 4px rgba(0,0,0,.3); }
-.cc-nm { font-family:'Geist',sans-serif; font-weight:800; font-size:.9rem; letter-spacing:-.01em; display:flex; align-items:center; gap:.38rem; color:#fff; }
-.cc-code { font-size:.55rem; font-weight:700; color:rgba(255,255,255,.25); background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.09); border-radius:3px; padding:.08rem .3rem; letter-spacing:.06em; }
-.cc-rg { font-size:.55rem; color:rgba(255,255,255,.25); letter-spacing:.08em; text-transform:uppercase; margin-top:.08rem; }
-.tbadge { font-size:.52rem; font-weight:700; letter-spacing:.07em; text-transform:uppercase; padding:.13rem .42rem; border-radius:100px; margin-top:.22rem; display:inline-flex; align-items:center; gap:.25rem; }
-.tbv { background:rgba(27,77,62,.2); color:#5DCEA8; border:1px solid rgba(93,206,168,.15); }
-.tbt { background:rgba(122,50,0,.2); color:#F4A45A; border:1px solid rgba(244,164,90,.15); }
-.tbf { background:rgba(15,52,96,.2); color:#6EB3F7; border:1px solid rgba(110,179,247,.15); }
+.cc-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(300px,1fr)); gap:.85rem; }
+.cc { background:var(--surface); border:1.5px solid var(--border); border-radius:var(--r); overflow:hidden; transition:all .2s; display:flex; flex-direction:column; }
+.cc:hover { transform:translateY(-3px); box-shadow:0 10px 28px rgba(0,0,0,.09); }
+.cc-top { padding:1rem 1.2rem .8rem; border-bottom:1px solid var(--border); display:flex; align-items:flex-start; gap:.8rem; }
+.cc-fl { font-size:1.9rem; line-height:1; flex-shrink:0; }
+.cc-nm { font-family:'Geist',sans-serif; font-weight:800; font-size:.95rem; letter-spacing:-.01em; }
+.cc-rg { font-size:.58rem; color:var(--muted); letter-spacing:.08em; text-transform:uppercase; margin-top:.1rem; }
+.tbadge { font-size:.57rem; font-weight:500; letter-spacing:.1em; text-transform:uppercase; padding:.16rem .5rem; border-radius:100px; margin-top:.28rem; display:inline-block; }
+.tbv { background:var(--vl); color:var(--v); }
+.tbt { background:var(--tl); color:var(--t); }
+.tbf { background:var(--fl); color:var(--f); }
 
-.cc-body { padding:.75rem 1rem; flex:1; }
-.cc-info { font-size:.72rem; color:rgba(255,255,255,.35); line-height:1.65; margin-bottom:.65rem; }
-.prices { display:flex; flex-direction:column; gap:.2rem; margin-bottom:.65rem; }
-.pr { display:flex; justify-content:space-between; font-size:.72rem; padding:.18rem 0; border-bottom:1px solid rgba(255,255,255,.04); }
-.pr-p { color:rgba(255,255,255,.35); }
-.pr-v { font-family:'Geist',sans-serif; font-weight:800; color:#fff; }
-.epill { display:inline-flex; align-items:center; gap:.3rem; font-size:.62rem; color:#C084FC; background:rgba(192,132,252,.1); border:1px solid rgba(192,132,252,.15); padding:.18rem .55rem; border-radius:100px; margin-bottom:.65rem; font-weight:500; }
-.rules { display:flex; flex-wrap:wrap; gap:.28rem; margin-bottom:.55rem; }
-.rp { font-size:.6rem; padding:.15rem .42rem; border-radius:4px; display:flex; align-items:center; gap:.2rem; }
-.rp-ok { background:rgba(27,77,62,.2); color:#5DCEA8; }
-.rp-warn { background:rgba(122,80,0,.2); color:#F4A45A; }
-.rp-bad { background:rgba(153,60,50,.2); color:#F87171; }
+.cc-body { padding:.9rem 1.2rem; flex:1; }
+.cc-info { font-size:.75rem; color:var(--muted); line-height:1.7; margin-bottom:.75rem; }
+.prices { display:flex; flex-direction:column; gap:.28rem; margin-bottom:.75rem; }
+.pr { display:flex; justify-content:space-between; font-size:.73rem; }
+.pr-p { color:var(--muted); }
+.pr-v { font-family:'Geist',sans-serif; font-weight:700; }
+.epill { display:inline-flex; align-items:center; gap:.3rem; font-size:.65rem; color:var(--enc); background:var(--encl); padding:.22rem .6rem; border-radius:100px; margin-bottom:.75rem; font-weight:500; }
+.rules { display:flex; flex-wrap:wrap; gap:.3rem; margin-bottom:.6rem; }
+.rp { font-size:.62rem; padding:.18rem .48rem; border-radius:4px; display:flex; align-items:center; gap:.2rem; }
+.rp-ok { background:#e6f2ee; color:#1B4D3E; }
+.rp-warn { background:#fdf3e3; color:#8A5A00; }
+.rp-bad { background:#fde8e6; color:#9B2D22; }
 
-.cc-foot { padding:0 1rem .85rem; }
-.bbuy { width:100%; padding:.52rem; background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.09); border-radius:8px; font-family:'Geist',sans-serif; font-size:.68rem; font-weight:600; cursor:pointer; text-decoration:none; display:flex; align-items:center; justify-content:center; gap:.35rem; transition:all .15s; color:rgba(255,255,255,.5); }
-.bbuy:hover { background:var(--accent); border-color:var(--accent); color:#000; }
-.bbuy.na { background:rgba(255,255,255,.03); color:rgba(255,255,255,.18); cursor:default; pointer-events:none; border-color:rgba(255,255,255,.05); }
+.cc-foot { padding:0 1.2rem 1rem; }
+.bbuy { width:100%; padding:.58rem; background:var(--text); color:#fff; border:none; border-radius:7px; font-family:'Geist',sans-serif; font-size:.73rem; font-weight:500; cursor:pointer; text-decoration:none; display:flex; align-items:center; justify-content:center; gap:.3rem; transition:all .15s; }
+.bbuy:hover { background:#333; }
+.bbuy.na { background:var(--border); color:var(--muted); cursor:default; pointer-events:none; }
 
 /* SPEED TABLE */
 .speed-table-wrap { overflow-x:auto; }
-.speed-table { width:100%; border-collapse:collapse; font-size:.8rem; background:#141922; border-radius:12px; overflow:hidden; border:1px solid rgba(255,255,255,.07); }
-.speed-table th { background:#0D1117; color:rgba(255,255,255,.5); font-family:'Geist',sans-serif; font-weight:700; font-size:.65rem; letter-spacing:.08em; text-transform:uppercase; padding:.7rem .9rem; text-align:left; white-space:nowrap; border-bottom:1px solid rgba(255,255,255,.07); }
-.speed-table td { padding:.6rem .9rem; border-bottom:1px solid rgba(255,255,255,.04); vertical-align:middle; color:#fff; }
+.speed-table { width:100%; border-collapse:collapse; font-size:.8rem; background:var(--surface); border-radius:var(--r); overflow:hidden; border:1.5px solid var(--border); }
+.speed-table th { background:var(--text); color:#fff; font-family:'Geist',sans-serif; font-weight:700; font-size:.68rem; letter-spacing:.06em; text-transform:uppercase; padding:.7rem .9rem; text-align:left; white-space:nowrap; }
+.speed-table td { padding:.6rem .9rem; border-bottom:1px solid var(--border); vertical-align:middle; }
 .speed-table tr:last-child td { border-bottom:none; }
-.speed-table tr:hover td { background:rgba(255,255,255,.03); }
-.spd { font-family:'Geist',sans-serif; font-weight:700; color:#fff; }
-.spd.fast { color:#F4A45A; }
-.spd.slow { color:#6EB3F7; }
-.spd.none { color:rgba(255,255,255,.3); font-size:.72rem; font-weight:400; }
-.nc { font-size:.7rem; color:rgba(255,255,255,.3); }
+.speed-table tr:hover td { background:var(--bg); }
+.spd { font-family:'Geist',sans-serif; font-weight:700; }
+.spd.fast { color:var(--t); }
+.spd.slow { color:var(--f); }
+.spd.none { color:var(--muted); font-size:.72rem; font-weight:400; }
+.nc { font-size:.7rem; color:var(--muted); }
 
 /* CALC */
 .cw { display:grid; grid-template-columns:1fr 1fr; gap:1.5rem; align-items:start; }
-.cpanel { background:#141922; border:1px solid rgba(255,255,255,.08); border-radius:12px; padding:1.6rem; }
-.cpanel h2 { font-family:'Geist',sans-serif; font-weight:800; font-size:1.1rem; margin-bottom:.3rem; color:#fff; }
-.cpanel p { font-size:.78rem; color:rgba(255,255,255,.4); margin-bottom:1.1rem; }
+.cpanel { background:var(--surface); border:1.5px solid var(--border); border-radius:var(--r); padding:1.6rem; }
+.cpanel h2 { font-family:'Geist',sans-serif; font-weight:800; font-size:1.1rem; margin-bottom:.3rem; }
+.cpanel p { font-size:.78rem; color:var(--muted); margin-bottom:1.1rem; }
 .ckg { display:grid; grid-template-columns:1fr 1fr; gap:.45rem; margin-bottom:1.1rem; }
-.cck { display:flex; align-items:center; gap:.5rem; padding:.5rem .75rem; border:1.5px solid rgba(255,255,255,.1); border-radius:8px; cursor:pointer; font-size:.76rem; user-select:none; transition:all .15s; color:#E2E8F0; }
+.cck { display:flex; align-items:center; gap:.5rem; padding:.5rem .75rem; border:1.5px solid var(--border); border-radius:8px; cursor:pointer; font-size:.76rem; user-select:none; transition:all .15s; }
 .cck:hover { border-color:#aaa; }
 .cck.sel { border-color:var(--v); background:var(--vl); }
 .cck input { display:none; }
-.bcalc { width:100%; padding:.65rem; background:var(--accent); color:#000; border:none; border-radius:7px; font-size:.8rem; font-weight:700; cursor:pointer; font-family:'Geist',sans-serif; }
-.bcalc:hover { background:#e8920b; }
+.bcalc { width:100%; padding:.65rem; background:var(--text); color:#fff; border:none; border-radius:7px; font-size:.8rem; font-weight:500; cursor:pointer; font-family:'Geist',sans-serif; }
+.bcalc:hover { background:#333; }
 .cres { background:var(--surface); border:1.5px solid var(--border); border-radius:var(--r); padding:1.6rem; }
-.cres h2 { font-family:'Geist',sans-serif; font-weight:800; font-size:1.1rem; margin-bottom:1.1rem; color:#fff; }
-.re { text-align:center; padding:3rem 1rem; color:rgba(255,255,255,.35); font-size:.83rem; }
-.ri { display:flex; align-items:center; gap:.8rem; border:1px solid rgba(255,255,255,.08); border-radius:8px; padding:.9rem 1rem; margin-bottom:.65rem; background:#1a2133; }
+.cres h2 { font-family:'Geist',sans-serif; font-weight:800; font-size:1.1rem; margin-bottom:1.1rem; }
+.re { text-align:center; padding:3rem 1rem; color:var(--muted); font-size:.83rem; }
+.ri { display:flex; align-items:center; gap:.8rem; border:1.5px solid var(--border); border-radius:8px; padding:.9rem 1rem; margin-bottom:.65rem; }
 .ri-f { font-size:1.6rem; }
 .ri-i { flex:1; }
-.ri-n { font-family:'Geist',sans-serif; font-weight:700; font-size:.88rem; color:#fff; }
-.ri-a { font-size:.7rem; color:rgba(255,255,255,.4); }
-.ri-p { font-family:'Geist',sans-serif; font-weight:800; font-size:.95rem; color:#5DCEA8; }
-.rtot { border-top:1px solid rgba(255,255,255,.1); padding-top:.8rem; margin-top:.2rem; display:flex; justify-content:space-between; align-items:center; }
-.rtl { font-size:.7rem; color:rgba(255,255,255,.4); text-transform:uppercase; letter-spacing:.08em; }
+.ri-n { font-family:'Geist',sans-serif; font-weight:700; font-size:.88rem; }
+.ri-a { font-size:.7rem; color:var(--muted); }
+.ri-p { font-family:'Geist',sans-serif; font-weight:800; font-size:.95rem; color:var(--v); }
+.rtot { border-top:2px solid var(--border); padding-top:.8rem; margin-top:.2rem; display:flex; justify-content:space-between; align-items:center; }
+.rtl { font-size:.7rem; color:var(--muted); text-transform:uppercase; letter-spacing:.08em; }
 .rtv { font-family:'Geist',sans-serif; font-weight:800; font-size:1.35rem; }
-.rnote { font-size:.68rem; color:rgba(255,255,255,.3); margin-top:.65rem; line-height:1.7; }
+.rnote { font-size:.68rem; color:var(--muted); margin-top:.65rem; line-height:1.7; }
 
 /* ENC */
 .enc-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(260px,1fr)); gap:1rem; margin-top:1.2rem; }
-.enc-card { background:#141922; border:1px solid rgba(255,255,255,.07); border-radius:12px; padding:1.2rem; transition:border-color .2s; }
-.enc-card:hover { border-color:rgba(212,130,10,.25); }
+.enc-card { background:var(--surface); border:1.5px solid var(--border); border-radius:var(--r); padding:1.3rem; }
 .enc-h { display:flex; align-items:center; gap:.7rem; margin-bottom:.7rem; }
-.enc-ico { width:38px; height:38px; background:rgba(192,132,252,.1); border:1px solid rgba(192,132,252,.15); border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:1.1rem; flex-shrink:0; }
-.enc-ti { font-family:'Geist',sans-serif; font-weight:800; font-size:.9rem; color:#fff; }
-.enc-sc { font-size:.65rem; color:#C084FC; font-weight:500; }
-.enc-tl { font-size:.73rem; color:rgba(255,255,255,.3); font-style:italic; margin-bottom:.55rem; }
-.enc-d { font-size:.75rem; color:rgba(255,255,255,.3); line-height:1.7; margin-bottom:.8rem; }
+.enc-ico { width:38px; height:38px; background:var(--encl); border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:1.1rem; flex-shrink:0; }
+.enc-ti { font-family:'Geist',sans-serif; font-weight:800; font-size:.9rem; }
+.enc-sc { font-size:.65rem; color:var(--enc); font-weight:500; }
+.enc-tl { font-size:.73rem; color:var(--muted); font-style:italic; margin-bottom:.55rem; }
+.enc-d { font-size:.75rem; color:var(--muted); line-height:1.7; margin-bottom:.8rem; }
 .enc-tags { display:flex; flex-wrap:wrap; gap:.3rem; }
-.enc-tag { font-size:.63rem; background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.08); padding:.16rem .42rem; border-radius:4px; color:rgba(255,255,255,.35); }
+.enc-tag { font-size:.63rem; background:var(--bg); border:1px solid var(--border); padding:.16rem .42rem; border-radius:4px; color:var(--muted); }
 
 .sh { margin-bottom:1.3rem; }
-.sh h2 { font-family:'Geist',sans-serif; font-weight:800; font-size:1.3rem; letter-spacing:-0.02em; color:#fff; }
-.sh p { font-size:.8rem; color:rgba(255,255,255,.35); margin-top:.2rem; }
+.sh h2 { font-family:'Geist',sans-serif; font-weight:800; font-size:1.3rem; letter-spacing:-0.02em; }
+.sh p { font-size:.8rem; color:var(--muted); margin-top:.2rem; }
 
 /* CAMERAS */
 .cam-note { background:var(--accent-l,#FDF3E3); border:1.5px solid #f0d090; border-radius:8px; padding:.7rem 1rem; font-size:.75rem; color:#7A5000; margin-bottom:1.5rem; }
@@ -172,8 +161,8 @@ main { padding:1.2rem 2rem 2rem; max-width:1300px; margin:0 auto; background:#0D
 
 /* DATE ROW */
 .date-row { display:grid; grid-template-columns:1fr 1fr; gap:.75rem; margin-bottom:1.1rem; }
-.date-field label { display:block; font-size:.7rem; font-weight:600; color:rgba(255,255,255,.4); text-transform:uppercase; letter-spacing:.08em; margin-bottom:.35rem; }
-.date-field input { width:100%; padding:.55rem .75rem; border:1.5px solid rgba(255,255,255,.1); border-radius:8px; font-family:'Geist',sans-serif; font-size:.82rem; background:rgba(255,255,255,.05); color:#E2E8F0; outline:none; transition:border-color .15s; }
+.date-field label { display:block; font-size:.7rem; font-weight:600; color:var(--muted); text-transform:uppercase; letter-spacing:.08em; margin-bottom:.35rem; }
+.date-field input { width:100%; padding:.55rem .75rem; border:1.5px solid var(--border); border-radius:8px; font-family:'Geist',sans-serif; font-size:.82rem; background:var(--surface); color:var(--text); outline:none; transition:border-color .15s; }
 .date-field input:focus { border-color:var(--accent); }
 
 /* RECOMMENDED BADGE */
@@ -186,35 +175,35 @@ main { padding:1.2rem 2rem 2rem; max-width:1300px; margin:0 auto; background:#0D
 
 /* MAP ROUTE */
 .mr-layout { display:grid; grid-template-columns:380px 1fr; gap:1.5rem; align-items:start; }
-.mr-panel { background:#141922; border:1px solid rgba(255,255,255,.08); border-radius:12px; padding:1.6rem; }
+.mr-panel { background:var(--surface); border:1.5px solid var(--border); border-radius:var(--r); padding:1.6rem; }
 .mr-field { margin-bottom:.85rem; }
-.mr-field label { display:block; font-size:.68rem; font-weight:700; color:rgba(255,255,255,.4); text-transform:uppercase; letter-spacing:.08em; margin-bottom:.3rem; }
-.mr-field input { width:100%; padding:.6rem .85rem; border:1.5px solid rgba(255,255,255,.1); border-radius:8px; font-family:'Geist',sans-serif; font-size:.85rem; background:rgba(255,255,255,.05); color:#E2E8F0; outline:none; transition:border-color .15s; }
+.mr-field label { display:block; font-size:.68rem; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:.08em; margin-bottom:.3rem; }
+.mr-field input { width:100%; padding:.6rem .85rem; border:1.5px solid var(--border); border-radius:8px; font-family:'Geist',sans-serif; font-size:.85rem; background:var(--surface); color:var(--text); outline:none; transition:border-color .15s; }
 .mr-field input:focus { border-color:var(--accent); }
-.mr-map-wrap { position:sticky; top:120px; border-radius:var(--r); overflow:hidden; border:1.5px solid var(--border); height:580px; background:#e8e4dc; }
+.mr-map-wrap { position:sticky; top:120px; border-radius:var(--r); overflow:hidden; border:1.5px solid var(--border); height:580px; background:#0D1117; }
 #mr-map { width:100%; height:100%; }
-.mr-legend { position:absolute; bottom:1rem; left:1rem; background:rgba(13,17,23,.9); border:1px solid rgba(255,255,255,.1); border-radius:8px; padding:.6rem .9rem; z-index:10; }
-.mrl-item { display:flex; align-items:center; gap:.5rem; font-size:.72rem; font-weight:500; margin-bottom:.25rem; color:#E2E8F0; }
+.mr-legend { position:absolute; bottom:1rem; left:1rem; background:rgba(255,255,255,.92); border-radius:8px; padding:.6rem .9rem; z-index:10; }
+.mrl-item { display:flex; align-items:center; gap:.5rem; font-size:.72rem; font-weight:500; margin-bottom:.25rem; }
 .mrl-item:last-child { margin-bottom:0; }
 .mrl-dot { width:12px; height:12px; border-radius:50%; flex-shrink:0; }
-.mr-country-item { display:flex; align-items:center; gap:.85rem; border:1px solid rgba(255,255,255,.08); border-radius:8px; padding:.85rem 1rem; margin-bottom:.6rem; background:#1a2133; }
-.mr-ci-code { font-size:.72rem; font-weight:800; color:rgba(255,255,255,.4); width:2.2rem; text-align:center; flex-shrink:0; }
+.mr-country-item { display:flex; align-items:center; gap:.85rem; border:1.5px solid var(--border); border-radius:8px; padding:.85rem 1rem; margin-bottom:.6rem; }
+.mr-ci-code { font-size:.72rem; font-weight:800; color:var(--muted); width:2.2rem; text-align:center; flex-shrink:0; }
 .mr-ci-info { flex:1; }
-.mr-ci-name { font-weight:700; font-size:.88rem; color:#fff; }
-.mr-ci-sub { font-size:.72rem; color:rgba(255,255,255,.4); margin-top:.1rem; }
-.mr-ci-price { font-family:'Geist',sans-serif; font-weight:800; font-size:.95rem; color:#5DCEA8; }
-.mr-total-box { background:rgba(27,77,62,.15); border:1px solid rgba(93,206,168,.25); border-radius:10px; padding:1rem 1.2rem; margin-top:1rem; }
-.mr-total-label { font-size:.68rem; font-weight:700; text-transform:uppercase; letter-spacing:.1em; color:#5DCEA8; margin-bottom:.4rem; }
+.mr-ci-name { font-weight:700; font-size:.88rem; }
+.mr-ci-sub { font-size:.72rem; color:var(--muted); margin-top:.1rem; }
+.mr-ci-price { font-family:'Geist',sans-serif; font-weight:800; font-size:.95rem; color:var(--v); }
+.mr-total-box { background:var(--vl); border:2px solid #a8d5c5; border-radius:10px; padding:1rem 1.2rem; margin-top:1rem; }
+.mr-total-label { font-size:.68rem; font-weight:700; text-transform:uppercase; letter-spacing:.1em; color:var(--v); margin-bottom:.4rem; }
 .mr-total-row { display:flex; justify-content:space-between; align-items:center; }
-.mr-total-amt { font-family:'Geist',sans-serif; font-weight:900; font-size:1.6rem; color:#5DCEA8; }
-.mr-route-info { font-size:.75rem; color:rgba(255,255,255,.4); background:rgba(255,255,255,.04); border-radius:6px; padding:.6rem .85rem; margin-bottom:1rem; display:flex; gap:1.5rem; flex-wrap:wrap; }
+.mr-total-amt { font-family:'Geist',sans-serif; font-weight:900; font-size:1.6rem; color:var(--v); }
+.mr-route-info { font-size:.75rem; color:var(--muted); background:var(--bg); border-radius:6px; padding:.6rem .85rem; margin-bottom:1rem; display:flex; gap:1.5rem; flex-wrap:wrap; }
 .mr-route-stat strong { display:block; font-size:.95rem; font-weight:800; color:var(--text); }
 @media(max-width:900px){ .mr-layout{grid-template-columns:1fr;} .mr-map-wrap{height:320px;position:relative;top:0;} }
 
 /* MULTI-STOP */
 .stop-row { display:flex; align-items:center; gap:.5rem; margin-bottom:.5rem; }
 .stop-label { font-size:.68rem; font-weight:800; color:var(--muted); width:1.5rem; text-align:center; flex-shrink:0; text-transform:uppercase; }
-.stop-row input { flex:1; padding:.55rem .75rem; border:1.5px solid rgba(255,255,255,.1); border-radius:8px; font-family:'Geist',sans-serif; font-size:.82rem; background:rgba(255,255,255,.05); color:#E2E8F0; outline:none; transition:border-color .15s; }
+.stop-row input { flex:1; padding:.55rem .75rem; border:1.5px solid var(--border); border-radius:8px; font-family:'Geist',sans-serif; font-size:.82rem; background:var(--surface); color:var(--text); outline:none; transition:border-color .15s; }
 .stop-row input:focus { border-color:var(--accent); }
 .stop-remove { background:none; border:none; cursor:pointer; color:var(--muted); font-size:1.1rem; padding:.2rem; line-height:1; transition:color .15s; flex-shrink:0; }
 .stop-remove:hover { color:var(--danger,#c00); }
@@ -232,8 +221,8 @@ main { padding:1.2rem 2rem 2rem; max-width:1300px; margin:0 auto; background:#0D
 .drop-item:hover { background:var(--bg); }
 .drop-item .di-type { font-size:.6rem; color:var(--muted); margin-left:auto; }
 
-.broute { width:100%; padding:.6rem; background:rgba(110,179,247,.15); color:#6EB3F7; border:1px solid rgba(110,179,247,.25); border-radius:7px; font-size:.78rem; font-weight:600; cursor:pointer; font-family:'Geist',sans-serif; margin-bottom:.85rem; transition:all .15s; }
-.broute:hover { background:rgba(110,179,247,.25); }
+.broute { width:100%; padding:.6rem; background:var(--f); color:#fff; border:none; border-radius:7px; font-size:.78rem; font-weight:600; cursor:pointer; font-family:'Geist',sans-serif; margin-bottom:.85rem; transition:background .15s; }
+.broute:hover { background:#0a2850; }
 
 .divider-or { text-align:center; font-size:.7rem; color:var(--muted); margin:.75rem 0; display:flex; align-items:center; gap:.6rem; }
 .divider-or::before, .divider-or::after { content:''; flex:1; height:1px; background:var(--border); }
@@ -244,7 +233,7 @@ main { padding:1.2rem 2rem 2rem; max-width:1300px; margin:0 auto; background:#0D
 .cc-search-wrap .route-dropdown { top:calc(100% + 4px); }
 
 .selected-countries { display:flex; flex-wrap:wrap; gap:.4rem; min-height:1rem; margin-bottom:.85rem; }
-.sel-tag { display:inline-flex; align-items:center; gap:.4rem; background:rgba(27,77,62,.2); border:1px solid rgba(93,206,168,.25); color:#5DCEA8; border-radius:100px; padding:.25rem .7rem; font-size:.75rem; font-weight:500; }
+.sel-tag { display:inline-flex; align-items:center; gap:.4rem; background:var(--vl); border:1.5px solid #a8d5c5; color:var(--v); border-radius:100px; padding:.25rem .7rem; font-size:.75rem; font-weight:500; }
 .sel-tag button { background:none; border:none; cursor:pointer; color:var(--v); font-size:.9rem; line-height:1; padding:0; opacity:.6; }
 .sel-tag button:hover { opacity:1; }
 
@@ -260,7 +249,17 @@ main { padding:1.2rem 2rem 2rem; max-width:1300px; margin:0 auto; background:#0D
   0%,100% { box-shadow:0 0 0 0 rgba(27,77,62,0); background:rgba(27,77,62,0.08); color:#1B4D3E; }
   50%      { box-shadow:0 0 0 8px rgba(27,77,62,0); background:rgba(27,77,62,0.16); color:#1B4D3E; }
 }
-/* tab-highlight removed */
+.tab-highlight {
+  color: var(--v) !important;
+  border-bottom-color: var(--v) !important;
+  animation: pulse-tab 1.8s ease-in-out infinite;
+  font-weight: 800 !important;
+}
+.tab-highlight::after {
+  content: ' ✦';
+  font-size: .6rem;
+  color: var(--v);
+}
 
 /* ── LANDING SCREEN ── */
 #landing {
@@ -324,23 +323,19 @@ main { padding:1.2rem 2rem 2rem; max-width:1300px; margin:0 auto; background:#0D
   min-width: 140px; text-align: center;
   transform: translateY(20px); opacity: 0;
   animation: featIn .5s forwards;
-  cursor: pointer; transition: background .2s, border-color .2s, transform .2s;
 }
-.land-feat:hover { background: rgba(212,130,10,.15); border-color: rgba(212,130,10,.5); transform: translateY(-3px) !important; }
 .land-feat:nth-child(1) { animation-delay: .3s; }
 .land-feat:nth-child(2) { animation-delay: .5s; }
 .land-feat:nth-child(3) { animation-delay: .7s; }
 @keyframes featIn {
   to { opacity: 1; transform: translateY(0); }
 }
-.land-feat-icon { margin-bottom: .5rem; display:flex; align-items:center; justify-content:center; }
-.land-feat-icon svg { width:28px; height:28px; stroke: #D4820A; fill:none; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; }
+.land-feat-icon { font-size: 1.6rem; margin-bottom: .35rem; }
 .land-feat-title {
   font-family: 'Geist', sans-serif; font-weight: 700;
   font-size: .78rem; color: #fff; margin-bottom: .2rem;
 }
 .land-feat-desc { font-size: .68rem; color: rgba(255,255,255,.4); line-height: 1.4; }
-.land-feat-arrow { font-size: .58rem; color: rgba(212,130,10,.6); margin-top: .35rem; letter-spacing: .05em; text-transform: uppercase; font-weight: 700; }
 .land-cta {
   display: inline-flex; align-items: center; gap: .6rem;
   background: #D4820A; color: #000;
@@ -396,23 +391,20 @@ main { padding:1.2rem 2rem 2rem; max-width:1300px; margin:0 auto; background:#0D
     </div>
 
     <div class="land-features">
-      <div class="land-feat" onclick="dismissLanding('countries')">
-        <div class="land-feat-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/></svg></div>
+      <div class="land-feat">
+        <div class="land-feat-icon">🏷️</div>
         <div class="land-feat-title">Vignettes & Tolls</div>
         <div class="land-feat-desc">Prices for every country, updated 2026</div>
-        <div class="land-feat-arrow">Explore →</div>
       </div>
-      <div class="land-feat" onclick="dismissLanding('maproute')">
-        <div class="land-feat-icon"><svg viewBox="0 0 24 24"><circle cx="6" cy="19" r="3"/><path d="M9 19h8.5a3.5 3.5 0 0 0 0-7h-11a3.5 3.5 0 0 1 0-7H15"/><circle cx="18" cy="5" r="3"/></svg></div>
+      <div class="land-feat">
+        <div class="land-feat-icon">🗺️</div>
         <div class="land-feat-title">Route Calculator</div>
         <div class="land-feat-desc">Total road costs for your exact trip</div>
-        <div class="land-feat-arrow">Calculate →</div>
       </div>
-      <div class="land-feat" onclick="dismissLanding('speed')">
-        <div class="land-feat-icon"><svg viewBox="0 0 24 24"><path d="m12 14 4-4"/><path d="M3.34 19a10 10 0 1 1 17.32 0"/></svg></div>
+      <div class="land-feat">
+        <div class="land-feat-icon">⚡</div>
         <div class="land-feat-title">Speed Limits</div>
         <div class="land-feat-desc">Urban, rural & motorway — every country</div>
-        <div class="land-feat-arrow">View →</div>
       </div>
     </div>
 
@@ -424,6 +416,7 @@ main { padding:1.2rem 2rem 2rem; max-width:1300px; margin:0 auto; background:#0D
     </button>
   </div>
 
+  <button class="land-skip" onclick="dismissLanding()">Skip intro ✕</button>
 </div>
 <!-- ── END LANDING ── -->
 
@@ -433,55 +426,34 @@ main { padding:1.2rem 2rem 2rem; max-width:1300px; margin:0 auto; background:#0D
 </header>
 
 <div class="hero">
-  <canvas id="heroCanvas"></canvas>
-  <h1 id="heroTitle"></h1>
+  <h1>Every road in <em>Europe</em>,<br>one place.</h1>
   <p>Vignettes, tolls, speed limits and driving rules for every European country — from Portugal to Greece, from Norway to Turkey.</p>
   <div class="hstats">
     <div><div class="hstat-n" id="stat-countries">50</div><div class="hstat-l">Countries</div></div>
     <div><div class="hstat-n">3</div><div class="hstat-l">Road systems</div></div>
-    <div><div class="hstat-n">8</div><div class="hstat-l">ENC devices</div></div>
+    <div><div class="hstat-n">7</div><div class="hstat-l">ENC devices</div></div>
   </div>
 </div>
 
 <div class="tab-bar">
-  <button class="tab active" data-tab="countries" onclick="switchTab('countries',this)">
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/></svg>
-    Countries
-  </button>
-  <button class="tab" data-tab="speed" onclick="switchTab('speed',this)">
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 14 4-4"/><path d="M3.34 19a10 10 0 1 1 17.32 0"/></svg>
-    Speed Limits
-  </button>
-  <button class="tab" data-tab="maproute" onclick="switchTab('maproute',this)">
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="19" r="3"/><path d="M9 19h8.5a3.5 3.5 0 0 0 0-7h-11a3.5 3.5 0 0 1 0-7H15"/><circle cx="18" cy="5" r="3"/></svg>
-    Route Calculator <span class="tab-badge">NEW</span>
-  </button>
-  <button class="tab" data-tab="enc" onclick="switchTab('enc',this)">
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="2"/><rect x="9" y="9" width="6" height="6"/><path d="M15 2v2M9 2v2M2 15h2M2 9h2M15 22v-2M9 22v-2M22 15h-2M22 9h-2"/></svg>
-    ENC Devices
-  </button>
-  <button class="tab" data-tab="game" onclick="switchTab('game',this)">
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="3 6 9 3 15 6 21 3 21 18 15 21 9 18 3 21"/><line x1="9" x2="9" y1="3" y2="18"/><line x1="15" x2="15" y1="6" y2="21"/></svg>
-    EuroTour Game
-  </button>
+  <button class="tab active" onclick="switchTab('countries',this)">🗺️ Countries</button>
+  <button class="tab" onclick="switchTab('speed',this)">⚡ Speed Limits</button>
+  <button class="tab tab-highlight" onclick="switchTab('maproute',this)">🧮 Route Calculator</button>
+  <button class="tab" onclick="switchTab('enc',this)">📦 ENC Devices</button>
+  <button class="tab" onclick="switchTab('game',this)">🎮 EuroTour Game</button>
 </div>
 
 <main>
 <div class="view active" id="view-countries">
   <div class="toolbar">
-    <button class="fb active" onclick="filterCC('all',this)">All countries</button>
-    <button class="fb fv" onclick="filterCC('vignette',this)">
-      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12V22H4V12"/><path d="M22 7H2v5h20V7z"/><path d="M12 22V7"/></svg>Vignette
-    </button>
-    <button class="fb ft" onclick="filterCC('toll',this)">
-      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M12 12h.01M17 12h.01M7 12h.01"/></svg>Toll gates
-    </button>
-    <button class="fb ff" onclick="filterCC('free',this)">
-      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="m9 11 3 3L22 4"/></svg>Free
-    </button>
-    <div style="margin-left:auto;position:relative;flex-shrink:0;">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.25)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="position:absolute;left:.75rem;top:50%;transform:translateY(-50%);pointer-events:none;"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
-      <input id="cc-search" type="text" placeholder="Search country, e.g. Austria…" oninput="searchCC()" style="background:rgba(255,255,255,.05);border:1.5px solid rgba(255,255,255,.09);border-radius:10px;padding:.55rem .85rem .55rem 2.4rem;font-family:'Geist',sans-serif;font-size:.78rem;color:#fff;outline:none;width:220px;" onfocus="this.style.borderColor='rgba(212,130,10,.45)'" onblur="this.style.borderColor='rgba(255,255,255,.09)'">
+    <span style="font-size:.72rem;color:var(--muted);font-weight:500">Filter:</span>
+    <button class="fb active" onclick="filterCC('all',this)">All</button>
+    <button class="fb fv" onclick="filterCC('vignette',this)">🏷️ Vignette</button>
+    <button class="fb ft" onclick="filterCC('toll',this)">🚧 Toll</button>
+    <button class="fb ff" onclick="filterCC('free',this)">🆓 Free</button>
+    <div class="sbox">
+      <span style="color:var(--muted)">🔍</span>
+      <input id="cc-search" type="text" placeholder="Search country…" oninput="searchCC()">
     </div>
   </div>
   <div class="cc-grid" id="country-grid"></div>
@@ -526,7 +498,7 @@ main { padding:1.2rem 2rem 2rem; max-width:1300px; margin:0 auto; background:#0D
 
       <div class="mr-field" style="margin-top:.75rem;">
         <label>Vehicle category</label>
-        <select id="mr-vehicle-cat" style="width:100%;padding:.55rem .75rem;border:1.5px solid rgba(255,255,255,.1);border-radius:8px;font-family:'Geist',sans-serif;font-size:.82rem;background:rgba(255,255,255,.05);color:#E2E8F0;outline:none;">
+        <select id="mr-vehicle-cat" style="width:100%;padding:.55rem .75rem;border:1.5px solid var(--border);border-radius:8px;font-family:'Geist',sans-serif;font-size:.82rem;background:var(--surface);color:var(--text);outline:none;">
           <option value="I">Category I — Passenger car (up to 1.9m height)</option>
           <option value="IA">Category IA — Motorcycle</option>
           <option value="II">Category II — SUV/Van over 1.9m or car with trailer</option>
@@ -538,12 +510,12 @@ main { padding:1.2rem 2rem 2rem; max-width:1300px; margin:0 auto; background:#0D
         <div class="mr-field" style="flex:1;">
           <label>⛽ Fuel price (€/L)</label>
           <input type="number" id="mr-fuel-price" value="1.55" step="0.01" min="0.5" max="5"
-            style="width:100%;padding:.55rem .75rem;border:1.5px solid rgba(255,255,255,.1);border-radius:8px;font-family:'Geist',sans-serif;font-size:.82rem;background:rgba(255,255,255,.05);color:#E2E8F0;outline:none;">
+            style="width:100%;padding:.55rem .75rem;border:1.5px solid var(--border);border-radius:8px;font-family:'Geist',sans-serif;font-size:.82rem;background:var(--surface);color:var(--text);outline:none;">
         </div>
         <div class="mr-field" style="flex:1;">
           <label>Consumption (L/100km)</label>
           <input type="number" id="mr-fuel-consumption" value="7" step="0.5" min="1" max="30"
-            style="width:100%;padding:.55rem .75rem;border:1.5px solid rgba(255,255,255,.1);border-radius:8px;font-family:'Geist',sans-serif;font-size:.82rem;background:rgba(255,255,255,.05);color:#E2E8F0;outline:none;">
+            style="width:100%;padding:.55rem .75rem;border:1.5px solid var(--border);border-radius:8px;font-family:'Geist',sans-serif;font-size:.82rem;background:var(--surface);color:var(--text);outline:none;">
         </div>
       </div>
 
@@ -591,7 +563,7 @@ const C = [
     enc:null,buy:'https://eznamka.sk',bl:'eznamka.sk',
     rules:[{i:'🚭',t:'Alcohol 0.0‰',c:'bad'},{i:'❄️',t:'Winter tyres req.',c:'warn'},{i:'💡',t:'Lights always on',c:'ok'},{i:'🦺',t:'Vest in car',c:'ok'}]},
   { id:'cz',flag:'🇨🇿',name:'Czechia',region:'EU',type:'vignette',
-    info:'Electronic vignette (eZnámka CZ). Linked to plate. Prices updated 2026.',
+    info:'Electronic vignette (eZnámka CZ). Updated pricing 2024. Linked to plate.',
     prices:[{p:'1 day',v:'CZK 230'},{p:'10 days',v:'CZK 300'},{p:'1 month',v:'CZK 480'},{p:'1 year',v:'CZK 2,570'}],
     enc:null,buy:'https://edalnice.cz',bl:'edalnice.cz',
     rules:[{i:'🚭',t:'Alcohol 0.0‰',c:'bad'},{i:'❄️',t:'Winter tyres req.',c:'warn'},{i:'💡',t:'Lights always on',c:'ok'}]},
@@ -601,9 +573,9 @@ const C = [
     enc:null,buy:'https://www.asfinag.at/toll/vignette/',bl:'asfinag.at',
     rules:[{i:'🍺',t:'Alcohol 0.5‰',c:'warn'},{i:'❄️',t:'Winter tyres req.',c:'warn'},{i:'💡',t:'Lights always on',c:'ok'},{i:'🦺',t:'Vest in car',c:'ok'}]},
   { id:'ch',flag:'🇨🇭',name:'Switzerland',region:'Non-EU',type:'vignette',
-    info:'Annual vignette only (CHF 40). Valid 14 months (Dec–Jan). Covers Liechtenstein. No short-term option. E-vignette available since 2023.',
+    info:'Annual vignette only (CHF 40). Valid Dec–Jan. Also covers Liechtenstein. No short-term option.',
     prices:[{p:'1 year',v:'CHF 40'}],
-    enc:null,buy:'https://via.admin.ch/shop',bl:'via.admin.ch',
+    enc:null,buy:'https://via.admin.ch/shop',bl:'bazg.admin.ch',
     rules:[{i:'🍺',t:'Alcohol 0.5‰',c:'warn'},{i:'💡',t:'Lights always on',c:'ok'},{i:'⛓️',t:'Winter tyres/chains',c:'warn'}]},
   { id:'hu',flag:'🇭🇺',name:'Hungary',region:'EU',type:'vignette',
     info:'Electronic vignette (e-matrica). No sticker, linked to plate. Prices updated January 2026.',
@@ -626,7 +598,7 @@ const C = [
     enc:null,buy:'https://web.bgtoll.bg',bl:'bgtoll.bg',
     rules:[{i:'🍺',t:'Alcohol 0.5‰',c:'warn'},{i:'💡',t:'Lights always on',c:'ok'},{i:'🦺',t:'Vest in car',c:'ok'}]},
   { id:'md',flag:'🇲🇩',name:'Moldova',region:'Non-EU',type:'vignette',
-    info:'Vignette required on ALL national roads. Very affordable. Buy at border crossings or petrol stations.',
+    info:'Vignette required on ALL roads (not just motorways). Very affordable.',
     prices:[{p:'1 day',v:'~€1.50'},{p:'7 days',v:'~€3'},{p:'1 month',v:'~€6'}],
     enc:null,buy:null,bl:null,
     rules:[{i:'🚭',t:'Alcohol 0.0‰',c:'bad'},{i:'💡',t:'Lights always on',c:'ok'}]},
@@ -916,18 +888,14 @@ function renderCC(filter='all',search=''){
     const ms=!search||c.name.toLowerCase().includes(search.toLowerCase());
     return mf&&ms;
   });
-  const tl={
-    vignette:'<svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12V22H4V12"/><path d="M22 7H2v5h20V7z"/><path d="M12 22V7"/></svg> Vignette',
-    toll:'<svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M12 12h.01M17 12h.01M7 12h.01"/></svg> Toll gates',
-    free:'<svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="m9 11 3 3L22 4"/></svg> Free'
-  };
+  const tl={vignette:'🏷️ Vignette',toll:'🚧 Toll gates',free:'🆓 Free'};
   const tc={vignette:'tbv',toll:'tbt',free:'tbf'};
   grid.innerHTML=items.map(c=>`
     <div class="cc" data-type="${c.type}">
       <div class="cc-top">
-        <div class="cc-fl"><span class="fi fi-${c.id}" style="width:100%;height:100%;background-size:cover;background-position:center;display:block;"></span></div>
+        <div class="cc-fl">${c.flag}</div>
         <div>
-          <div class="cc-nm">${c.name} <span class="cc-code">${c.id.toUpperCase()}</span></div>
+          <div class="cc-nm">${c.name}</div>
           <div class="cc-rg">${c.region}</div>
           <span class="tbadge ${tc[c.type]}">${tl[c.type]}</span>
         </div>
@@ -1336,337 +1304,54 @@ function switchTab(id,btn){
   document.getElementById('view-'+id).classList.add('active');
 }
 
-// ── MAP ROUTE ──────────────────────────────────────────────
-const GKEY='AIzaSyD65WK4E-yPe5koojoRlFHqBulad5zReg0';
-let mrMap=null, mrRenderers=[], mrPolylines=[], mrMarkers=[];
-let mrStops=[]; // array of stop values
+// ── MAP ROUTE — MAPBOX ──────────────────────────────────────
+const _ta='pk.eyJ1IjoiZGFuaWplbHZyYW5qZXMiLCJhIjoiY21vNWRscjZtMG9ybDJzcXB5';
+const _tb='eWYwY2swcyJ9.YY0cJRru_mlKwT8CCZZJRQ';
 
-const CC_MAP={
-  'SK':'sk','CZ':'cz','AT':'at','CH':'ch','HU':'hu','SI':'si','RO':'ro','BG':'bg',
-  'HR':'hr','FR':'fr','IT':'it','ES':'es','PT':'pt','PL':'pl','GR':'gr','IE':'ie',
-  'DE':'de','NL':'nl','BE':'be','LU':'lu','DK':'dk','SE':'se','FI':'fi',
-  'GB':'gb','LT':'lt','LV':'lv','EE':'ee','CY':'cy','MT':'mt','IS':'is',
-  'NO':'no','RS':'rs','ME':'me','BA':'ba','MK':'mk','AL':'al','XK':'xk',
-  'TR':'tr','UA':'ua','BY':'by','GE':'ge','AM':'am','AZ':'az','MD':'md',
-  'AD':'ad','MC':'mc','SM':'sm','LI':'li',
-};
+let mrMap=null, mrMarkers=[], mrLayerIds=[];
+let mrStops=[];
 
-// Countries where local/non-motorway roads are FREE even if route passes through
-// BUT note: HU vignette is needed even for short motorway sections
-const FREE_LOCAL={'ba':true,'rs':true,'me':true,'mk':true,'al':true,'xk':true,'ge':true,'am':true,'az':true,'md':true};
+const CC_MAP={'SK':'sk','CZ':'cz','AT':'at','CH':'ch','HU':'hu','SI':'si','RO':'ro','BG':'bg','HR':'hr','FR':'fr','IT':'it','ES':'es','PT':'pt','PL':'pl','GR':'gr','IE':'ie','DE':'de','NL':'nl','BE':'be','LU':'lu','DK':'dk','SE':'se','FI':'fi','GB':'gb','LT':'lt','LV':'lv','EE':'ee','CY':'cy','MT':'mt','IS':'is','NO':'no','RS':'rs','ME':'me','BA':'ba','MK':'mk','AL':'al','XK':'xk','TR':'tr','UA':'ua','BY':'by','GE':'ge','AM':'am','AZ':'az','MD':'md','AD':'ad','MC':'mc','SM':'sm','LI':'li'};
+const VIGNETTE_CC=new Set(['SK','CZ','AT','CH','HU','SI','RO','BG','MD','LI']);
+const TOLL_CC=new Set(['HR','FR','IT','ES','PT','PL','GR','IE','NO','RS','ME','BA','MK','AL','XK','TR','UA','BY','GE']);
+const FREE_CC=new Set(['DE','NL','BE','LU','DK','SE','FI','LT','LV','EE','GB','CY','MT','IS','AD','MC','SM','AM','AZ']);
 
-// ── HAC CROATIA LIVE API ──────────────────────────────────
-// API: https://cro3-tmp.hac.hr/tollcalculator/price/{ENTRY}/{EXIT}
-// Accepts Croatian HAC station names only
-
-// All HAC toll station names exactly as used in the API
-// Source: hac.hr toll rates pages + karta.hac.hr API responses
-const HAC_STATIONS = [
-  // A4: Goričan (HU border) → Zagreb
-  'Goričan','Čakovec','Varaždin','Ludbreg','Varaždinske Toplice',
-  'Novi Marof','Breznički Hum','Komin','Sveta Helena',
-  // A1: Zagreb → Split → Ploče
-  'Lučko','Jankomir','Demerje','Donja Zdenčina','Jastrebarsko',
-  'Karlovac','Novigrad','Bosiljevo','Ogulin','Josipdol','Žuta Lokva',
-  'Otočac','Perušić','Gornja Ploča','Maslenica','Zadar sjever',
-  'Zadar istok','Zadar zapad','Benkovac','Pirovac','Šibenik',
-  'Prgomet','Dugopolje','Split','Bisko','Šestanovac','Zagvozd',
-  'Ravča','Karamatići','Čarapine',
-  // A6/A10: Rijeka → Ploče
-  'Bosiljevo','Delnice','Oštrovica','Kikovica','Rijeka',
-  'Ploče','Opuzen','Metković',
-  // A7: Rupa (SLO border) → Rijeka
-  'Rupa','Rijeka zapad',
-  // A3/A5: Bregana (SLO border) → Lipovac (SRB border)
-  'Bregana','Jankomir','Zagreb istok','Rugvica','Ivanić-Grad',
-  'Križ','Kutina','Novska','Okučani','Nova Gradiška',
-  'Slavonski Brod zapad','Slavonski Brod','Stara Gradiška',
-  'Babina Greda','Županja','Lipovac',
-  // A5: Beli Manastir → Osijek → Svilaj (BiH border)
-  'Beli Manastir','Osijek jug','Đakovo','Slavonski Brod jug','Svilaj',
-  // A2: Macelj (SLO border) → Zagreb
-  'Macelj','Krapina','Zabok','Zaprešić',
-  // A11: Zagreb → Sisak
-  'Jakuševec','Velika Gorica jug','Buševec','Lekenik','Sisak',
-  // A10: Ploče → BiH border
-  'Karasovići',
-  // Bridges/tunnels
-  'Krčki most','Sveti Ilija',
-];
-
-// Border CC → default HAC entry station name
-const HAC_BORDER_ENTRY = {
-  'HU':'Goričan', 'SI':'Bregana', 'BA':'Stara Gradiška',
-  'RS':'Lipovac', 'ME':'Karasovići',
-};
-
-// Call HAC live API with station names — tries variants if needed
-async function fetchHACToll(entry, exit, vehicleCat){
-  const cat = vehicleCat || 'I';
-
-  // Try exact name first, then common variants
-  const makeVariants = (name) => {
-    if(!name) return [];
-    const v = [name];
-    // Remove parenthetical suffix: "Zagreb (Lučko)" → "Zagreb"
-    const parenMatch = name.match(/^(.+?)\s*\([^)]+\)$/);
-    if(parenMatch) v.push(parenMatch[1].trim());
-    // Remove directional suffix: "Zadar zapad" → "Zadar"
-    const suffixMatch = name.match(/^(.+?)\s+(zapad|istok|sjever|jug|north|south|east|west|1|2)$/i);
-    if(suffixMatch) v.push(suffixMatch[1].trim());
-    // "Zagreb-istok (Ježevo)" → "Zagreb istok"
-    v.push(name.replace('-', ' ').replace(/\s*\([^)]+\)/, '').trim());
-    return [...new Set(v)];
-  };
-
-  const exitVariants = makeVariants(exit);
-  const entryVariants = makeVariants(entry);
-
-  for(const e of entryVariants){
-    for(const x of exitVariants){
-      if(!e || !x || e===x) continue;
-      const url=`https://cro3-tmp.hac.hr/tollcalculator/price/${encodeURIComponent(e)}/${encodeURIComponent(x)}`;
-      try {
-        const r=await fetch(url);
-        if(!r.ok) continue;
-        const data=await r.json();
-        if(!data.Segments?.length) continue;
-        let total=0; const segments=[];
-        for(const seg of data.Segments){
-          const price=seg.Prices?.find(p=>p.Category===cat)||seg.Prices?.find(p=>p.Category==='I');
-          if(price){ total+=price.Amount; segments.push({entry:seg.EntryName,exit:seg.ExitName,amount:price.Amount}); }
-        }
-        if(total>0){ console.log('[HAC] API success:', e, '→', x); return {total,segments}; }
-      } catch(err){ continue; }
-    }
-  }
-  return null;
+function routeColor(cc){
+  if(VIGNETTE_CC.has(cc)) return '#1B4D3E';
+  if(TOLL_CC.has(cc)) return '#7A3200';
+  if(FREE_CC.has(cc)) return '#0F3460';
+  return '#7C3AED';
 }
 
-// HAC station GPS coordinates — VERIFIED against cro3-tmp.hac.hr API
-// Only stations that return valid Segments[] from the API
-const HAC_STATION_GPS = [
-  // A1: Zagreb → Čarapine (verified OK)
-  ['Jastrebarsko',        45.663, 15.649],
-  ['Karlovac',            45.487, 15.547],
-  ['Novigrad',            45.381, 15.550],
-  ['Bosiljevo',           45.399, 15.294],
-  ['Ogulin',              45.266, 15.224],
-  ['Brinje',              45.084, 15.139],
-  ['Žuta Lokva',          44.934, 15.069],
-  ['Otočac',              44.870, 15.233],
-  ['Perušić',             44.651, 15.374],
-  ['Gospić',              44.547, 15.374],
-  ['Gornja Ploča',        44.468, 15.313],
-  ['Sveti Rok',           44.363, 15.656],
-  ['Rovanjska',           44.281, 15.535],
-  ['Posedarje',           44.214, 15.326],
-  ['Zadar istok',         44.134, 15.277],  // "Zadar zapad" NOT valid in API!
-  ['Benkovac',            44.043, 15.607],
-  ['Skradin',             43.819, 15.924],
-  ['Šibenik',             43.745, 15.900],
-  ['Podi',                43.715, 15.997],
-  ['Prgomet',             43.635, 16.244],
-  ['Vučevica',            43.612, 16.387],
-  ['Bisko',               43.533, 16.716],
-  ['Blato na Cetini',     43.491, 16.812],
-  ['Šestanovac',          43.468, 16.912],
-  ['Zagvozd',             43.439, 17.050],
-  ['Ravča',               43.211, 17.323],
-  ['Vrgorac',             43.198, 17.378],
-  ['Karamatići',          43.330, 17.271],
-  ['Čarapine',            43.139, 17.417],
-  // A2: Trakošćan (SLO border) → Zaprešić (verified OK)
-  ['Trakošćan',           46.255, 15.773],
-  ['Đurmanec',            46.173, 15.871],
-  ['Krapina',             46.160, 15.874],
-  ['Mokrice',             45.921, 15.908],
-  ['Začretje',            46.005, 15.888],
-  ['Zaprešić',            45.855, 15.803],
-  // A3: Bregana (SLO) → Lipovac (SRB) (verified OK)
-  ['Bregana',             45.841, 15.666],
-  ['Zagreb Istok',        45.754, 16.271],  // from HAC API: 45.7544991, 16.271342
-  ['Ivanić Grad',         45.710, 16.398],
-  ['Križ',                45.668, 16.541],
-  ['Popovača',            45.564, 16.621],
-  ['Kutina',              45.480, 16.774],
-  ['Lipovljani',          45.488, 16.792],
-  ['Novska',              45.339, 16.979],
-  ['Okučani',             45.272, 17.179],
-  ['Nova Gradiška',       45.255, 17.383],
-  ['Lužani',              45.220, 17.564],
-  ['Babina Greda',        45.073, 18.530],
-  ['Spačva',              45.060, 18.621],
-  ['Županja',             45.077, 18.690],
-  ['Lipovac',             45.054, 19.010],
-  ['Velika Kopanica',     45.094, 18.213],
-  // A5: Beli Manastir → Osijek → Svilaj (BIH border)
-  ['Sudaraž (Beli Manastir)', 45.782, 18.557],
-  ['Osijek',              45.575, 18.559],
-  ['Čepin',               45.504, 18.513],
-  ['Đakovo',              45.308, 18.411],
-  ['Svilaj',              45.039, 17.644],
-  ['Sveta Helena',        45.921, 16.274],
-  ['Komin',               46.043, 16.240],
-  ['Breznički Hum',       46.098, 16.257],
-  ['Novi Marof',          46.160, 16.327],
-  ['Varaždin',            46.295, 16.337],
-  ['Ludbreg',             46.250, 16.617],
-  ['Čakovec',             46.395, 16.432],
-  ['Goričan',             46.413, 16.641],
-  // A6/A7: Rupa (SLO) → Vrata/Oštrovica (verified OK)
-  ['Rupa',                45.491, 14.256],
-  ['Vrata',               45.373, 14.640],
-  ['Oštrovica',           45.337, 14.457],
-  ['Delnice',             45.401, 14.804],
-  ['Vrbovsko',            45.376, 15.076],
-  ['Ravna Gora',          45.387, 14.951],
-  // A8/A9: Istria (Bina Istra) — verified with HAC API
-  ['Tunel Učka',          45.312, 14.182],
-  ['Vranja',              45.275, 14.095],
-  ['Lupoglav',            45.248, 14.055],
-  ['Cerovlje',            45.217, 13.958],
-  ['Ivoli',               45.209, 13.894],
-  ['Rogovići',            45.193, 13.836],
-  ['Žminj',               45.143, 13.889],
-  ['Kanfanar',            45.121, 13.842],
-  ['Medaki',              45.098, 13.832],
-  ['Baderna',             45.162, 13.744],
-  ['Višnjan',             45.274, 13.712],
-  ['Nova Vas',            45.358, 13.699],
-  ['Buje',                45.406, 13.658],
-  ['Umag',                45.432, 13.521],
-  ['Vodnjan sjever',      44.975, 13.851],
-  ['Vodnjan jug',         44.950, 13.848],
-  ['Pula',                44.867, 13.848],
-];
-
-// Find nearest HAC station to a GPS point
-function nearestHACStation(lat, lng){
-  let best=null, bestDist=Infinity;
-  for(const [name,slat,slng] of HAC_STATION_GPS){
-    const d=Math.sqrt((lat-slat)**2+(lng-slng)**2);
-    if(d<bestDist){ bestDist=d; best=name; }
-  }
-  return {name:best, dist:bestDist};
+function clearMapLayers(){
+  if(!mrMap||!mrMap.isStyleLoaded()) return;
+  mrLayerIds.forEach(id=>{try{if(mrMap.getLayer(id))mrMap.removeLayer(id);if(mrMap.getSource(id))mrMap.removeSource(id);}catch(e){}});
+  mrLayerIds=[];
+  mrMarkers.forEach(m=>m.remove());
+  mrMarkers=[];
 }
 
-// Border entry stations — valid HAC API entry points
-const HAC_BORDER_STATIONS = {
-  'HU': ['Goričan', 'Zagreb Istok'],  // A4 via Goričan; A5 via Beli Manastir enters near Zagreb Istok
-  'SI': ['Trakošćan', 'Bregana', 'Rupa'],
-  'BA': ['Stara Gradiška', 'Novska', 'Slavonski Brod zapad'],  // nearest toll stations to BA border
-  'RS': ['Lipovac'],
-  'ME': ['Karasovići'],
-};
-
-// Main HR toll calculator
-async function calcHRToll(hrEntryCC, hrExitCC, hrDistKm, steps, vehicleCat, countrySegments){
-  const cat = vehicleCat||'I';
-  const segs = (countrySegments||[]).filter(Boolean);
-
-  // Find first HR point and pre-border point
-  let firstHR=null, preHR=null, lastHR=null, postHR=null;
-  for(let i=0;i<segs.length;i++){
-    if(segs[i]?.cc==='HR'){
-      if(!firstHR){ firstHR=segs[i]; if(i>0) preHR=segs[i-1]; }
-      lastHR=segs[i];
-      if(i<segs.length-1) postHR=segs[i+1];
-    }
-  }
-
-  // ENTRY: pick correct border station based on which is nearest to firstHR
-  // Only consider valid border stations for this entry country
-  const borderOptions = HAC_BORDER_STATIONS[hrEntryCC] || [HAC_BORDER_ENTRY[hrEntryCC]];
-  let entryStation = borderOptions[0]; // default = first option
-
-  if(firstHR && borderOptions.length > 1){
-    // Multiple border options (e.g. SI: Trakošćan, Bregana, Rupa)
-    // Pick the one nearest to firstHR GPS point
-    let bestDist = Infinity;
-    for(const stName of borderOptions){
-      const st = HAC_STATION_GPS.find(([n])=>n===stName);
-      if(!st) continue;
-      const d = Math.sqrt((firstHR.lat-st[1])**2 + (firstHR.lng-st[2])**2);
-      if(d < bestDist){ bestDist=d; entryStation=stName; }
-    }
-    console.log('[HAC] Border options:', borderOptions, '→ chosen:', entryStation, '(firstHR:', firstHR, ')');
-  }
-
-  // EXIT: find the HR point closest to the route destination
-  // For destinations inside HR, lastHR is best; for exits to another country, postHR
-  let exitStation = HAC_BORDER_ENTRY[hrExitCC] || null;
-
-  // Use all HR points — find the one with the highest lat/lng variance from entry
-  // i.e. the HR point furthest along the route (closest to destination)
-  const exitSearchPt = postHR || lastHR;
-  if(exitSearchPt){
-    const n = nearestHACStation(exitSearchPt.lat, exitSearchPt.lng);
-    if(n.dist < 0.5 && !Object.values(HAC_BORDER_STATIONS).flat().includes(n.name)){
-      exitStation = n.name;
-    } else if(n.dist < 0.3){
-      exitStation = n.name;
-    }
-    console.log('[HAC] Exit search:', exitSearchPt, '→ nearest:', n, '→ exit:', exitStation);
-  }
-
-  // Also check ALL HR points — sometimes lastHR is not the most accurate
-  // Try nearestHACStation for each HR segment and pick the one closest to a valid station
-  if(!exitStation || exitStation === HAC_BORDER_ENTRY[hrExitCC]){
-    let bestDist = 999, bestStation = null;
-    for(const seg of segs.filter(s=>s?.cc==='HR')){
-      const n = nearestHACStation(seg.lat, seg.lng);
-      if(n.dist < bestDist && !Object.values(HAC_BORDER_STATIONS).flat().includes(n.name)){
-        // Prefer stations closer to the END of the route (higher index)
-        bestDist = n.dist; bestStation = n.name;
-      }
-    }
-    if(bestStation && bestDist < 0.4) exitStation = bestStation;
-    console.log('[HAC] Best HR station scan:', bestStation, 'dist:', bestDist);
-  }
-
-  // Try last toll exit step as fallback
-  if(!exitStation || exitStation === HAC_BORDER_ENTRY[hrExitCC]){
-    const fromStep = findHRExitFromSteps(steps);
-    if(fromStep) exitStation = fromStep;
-  }
-
-  console.log('[HAC] Final:', entryStation, '→', exitStation);
-
-  if(entryStation && exitStation && entryStation !== exitStation){
-    const result = await fetchHACToll(entryStation, exitStation, cat);
-    if(result?.total > 0){
-      return {amount:result.total, segments:result.segments,
-              entry:entryStation, exit:exitStation, live:true, precise:true};
-    }
-  }
-
-  // Fallback estimate
-  const mult=({'I':1,'IA':1,'II':1.576,'III':2.516,'IV':3.2})[cat]||1;
-  const base=hrDistKm<50?3:hrDistKm<100?6:hrDistKm<180?10:hrDistKm<280?16:hrDistKm<380?22:28;
-  return {amount:parseFloat((base*mult).toFixed(2)), segments:[],
-          entry:entryStation||'?', exit:exitStation||'?', live:false, precise:false};
+async function mbGeocode(q){
+  const r=await fetch('https://api.mapbox.com/geocoding/v5/mapbox.places/'+encodeURIComponent(q)+'.json?access_token='+(_ta+_tb)+'&types=place,address&limit=1');
+  const d=await r.json();
+  if(!d.features?.length) throw new Error('Not found: '+q);
+  return d.features[0].center;
 }
 
-// Find last HAC exit station from step instructions
-function findHRExitFromSteps(steps){
-  const exitSteps = steps.filter(s=>{
-    const instr=(s.instructions||'').replace(/<[^>]+>/g,' ');
-    return /výjazdom|exit|Abfahrt/i.test(instr) && /Spoplatnená cesta/i.test(instr);
-  });
-  for(let i=exitSteps.length-1; i>=0; i--){
-    const instr=(exitSteps[i].instructions||'').replace(/<[^>]+>/g,' ');
-    for(const [name] of HAC_STATION_GPS){
-      if(new RegExp(name.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'),'i').test(instr)){
-        console.log('[HAC] Exit from step:', name);
-        return name;
-      }
-    }
-  }
-  return null;
+async function mbRoute(coords){
+  const coordStr=coords.map(c=>c.join(',')).join(';');
+  const r=await fetch('https://api.mapbox.com/directions/v5/mapbox/driving/'+coordStr+'?access_token='+(_ta+_tb)+'&geometries=geojson&overview=full&steps=false');
+  const d=await r.json();
+  if(!d.routes?.length) throw new Error('No route found');
+  return d.routes[0];
 }
 
-// Multi-stop UI
+async function mbCountry(lng,lat){
+  const r=await fetch('https://api.mapbox.com/geocoding/v5/mapbox.places/'+lng+','+lat+'.json?access_token='+(_ta+_tb)+'&types=country&limit=1');
+  const d=await r.json();
+  return d.features?.[0]?.properties?.short_code?.toUpperCase()||null;
+}
+
 function initStops(){
   mrStops=[];
   const wrap=document.getElementById('mr-stops-wrap');
@@ -1678,7 +1363,7 @@ function initStops(){
 let stopCounter=0;
 function addStop(placeholder){
   stopCounter++;
-  const id=`mr-stop-${stopCounter}`;
+  const id='mr-stop-'+stopCounter;
   const idx=mrStops.length;
   mrStops.push(id);
   const wrap=document.getElementById('mr-stops-wrap');
@@ -1686,30 +1371,21 @@ function addStop(placeholder){
   const div=document.createElement('div');
   div.className='stop-row'; div.dataset.stopId=id;
   const label=labels[idx]||String(idx+1);
-  const canRemove=idx>=2; // can only remove extra stops
-  div.innerHTML=`
-    <span class="stop-label">${label}</span>
-    <input type="text" id="${id}" placeholder="${placeholder||`Stop ${label} — city`}" autocomplete="off">
-    ${canRemove?`<button class="stop-remove" onclick="removeStop('${id}')" title="Remove stop">×</button>`:'<span style="width:1.6rem"></span>'}
-  `;
+  const canRemove=idx>=2;
+  div.innerHTML='<span class="stop-label">'+label+'</span><input type="text" id="'+id+'" placeholder="'+(placeholder||'Stop '+label+' — city')+'" autocomplete="off">'+(canRemove?'<button class="stop-remove" onclick="removeStop(''+id+'')" title="Remove stop">&times;</button>':'<span style="width:1.6rem"></span>');
   wrap.appendChild(div);
-  // Attach Google Places autocomplete if Maps is loaded
-  if(window.google?.maps?.places) attachAutocomplete(id);
-  // re-label all
   relabelStops();
 }
 
 function removeStop(id){
   mrStops=mrStops.filter(s=>s!==id);
-  document.querySelector(`.stop-row[data-stop-id="${id}"]`).remove();
+  document.querySelector('.stop-row[data-stop-id="'+id+'"]').remove();
   relabelStops();
 }
 
 function relabelStops(){
   const labels=['A','B','C','D','E','F','G','H'];
-  document.querySelectorAll('.stop-row').forEach((row,i)=>{
-    row.querySelector('.stop-label').textContent=labels[i]||String(i+1);
-  });
+  document.querySelectorAll('.stop-row').forEach((row,i)=>{row.querySelector('.stop-label').textContent=labels[i]||String(i+1);});
 }
 
 function initMrMap(){
@@ -1719,69 +1395,28 @@ function initMrMap(){
   document.getElementById('mr-date-from').value=today.toISOString().split('T')[0];
   document.getElementById('mr-date-to').value=nextWeek.toISOString().split('T')[0];
   initStops();
-
-  if(!window.google){
+  if(typeof mapboxgl==='undefined'){
     const s=document.createElement('script');
-    s.src=`https://maps.googleapis.com/maps/api/js?key=${GKEY}&libraries=geometry,places`;
+    s.src='https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.js';
     s.onload=createMrMap;
     document.head.appendChild(s);
   } else { createMrMap(); }
 }
 
-function attachAutocomplete(inputId){
-  if(!window.google?.maps?.places) return;
-  const input=document.getElementById(inputId);
-  if(!input||input.dataset.ac) return;
-  input.dataset.ac='1';
-  const ac=new google.maps.places.Autocomplete(input,{
-    types:['(cities)'],
-    // no componentRestrictions — all Europe
-    fields:['name','formatted_address'],
-  });
-  // Prevent form submit on enter
-  ac.addListener('place_changed',()=>{});
-}
-
 function createMrMap(){
-  mrMap=new google.maps.Map(document.getElementById('mr-map'),{
-    center:{lat:47,lng:15},zoom:5,
-    mapTypeId:'roadmap',
-    styles:[{featureType:'poi',stylers:[{visibility:'off'}]},{featureType:'transit',stylers:[{visibility:'off'}]}],
-    zoomControl:true,streetViewControl:false,fullscreenControl:true,
-  });
-  // Attach autocomplete to existing stop inputs
-  mrStops.forEach(id=>attachAutocomplete(id));
+  mapboxgl.accessToken=_ta+_tb;
+  mrMap=new mapboxgl.Map({container:'mr-map',style:'mapbox://styles/mapbox/dark-v11',center:[15,47],zoom:4.5,attributionControl:false});
+  mrMap.addControl(new mapboxgl.NavigationControl({showCompass:false}),'top-right');
+  mrMap.addControl(new mapboxgl.AttributionControl({compact:true}));
+  mrMap.on('load',()=>{document.getElementById('mr-legend').style.display='block';});
 }
 
-// Color per country type
-function countryColor(id){
-  const c=C.find(x=>x.id===id);
-  if(!c) return '#888';
-  if(c.type==='vignette') return '#1B4D3E';
-  if(c.type==='toll') return '#7A3200';
-  return '#0F3460';
-}
-
-// Store last directions result for route switching
-let lastDirectionsResult = null;
-let activeRouteIdx = 0;
-
-function switchRoute(idx){
-  if(!lastDirectionsResult) return;
-  activeRouteIdx = idx;
-  updateRouteTabs();
-  renderRoute(lastDirectionsResult);
-}
-
-function updateRouteTabs(){
-  if(!lastDirectionsResult) return;
-  lastDirectionsResult.routes.forEach((_,i)=>{
-    const btn=document.getElementById(`rtab-${i}`);
-    if(!btn) return;
-    btn.style.border=`2px solid ${i===activeRouteIdx?'var(--accent)':'var(--border)'}`;
-    btn.style.background=i===activeRouteIdx?'var(--accent)':'var(--surface)';
-    btn.style.color=i===activeRouteIdx?'#000':'var(--text)';
-  });
+function addMapMarker(coords,label,name){
+  const el=document.createElement('div');
+  el.style.cssText='width:28px;height:28px;border-radius:50%;background:#D4820A;color:#000;font-family:Geist,sans-serif;font-weight:900;font-size:12px;display:flex;align-items:center;justify-content:center;border:2px solid rgba(255,255,255,.8);box-shadow:0 2px 10px rgba(0,0,0,.5);cursor:pointer;z-index:10;';
+  el.textContent=label;
+  const marker=new mapboxgl.Marker({element:el}).setLngLat(coords).setPopup(new mapboxgl.Popup({offset:20,closeButton:false}).setHTML('<strong style="font-size:12px;">'+name+'</strong>')).addTo(mrMap);
+  mrMarkers.push(marker);
 }
 
 async function calcMapRoute(){
@@ -1790,383 +1425,94 @@ async function calcMapRoute(){
     document.getElementById('mr-result').innerHTML='<div style="font-size:.8rem;color:#c00;padding:.75rem;background:#fde8e6;border-radius:8px;">Please enter at least an origin and destination.</div>';
     return;
   }
-
   const resultEl=document.getElementById('mr-result');
-  resultEl.innerHTML='<div style="font-size:.8rem;color:var(--muted);padding:.5rem 0;">⏳ Calculating route...</div>';
-
-  if(!window.google||!mrMap){ initMrMap(); await new Promise(r=>setTimeout(r,2500)); }
+  resultEl.innerHTML='<div style="font-size:.8rem;color:var(--muted);padding:.5rem 0;">&#8987; Geocoding stops...</div>';
+  if(!mrMap){initMrMap();await new Promise(r=>setTimeout(r,3000));}
   if(!Object.keys(FX).length) await loadFX();
-
-  const directionsService=new google.maps.DirectionsService();
-
-  try {
-    const origin=stopInputs[0];
-    const destination=stopInputs[stopInputs.length-1];
-    const waypoints=stopInputs.slice(1,-1).map(v=>({location:v,stopover:true}));
-
-    const result=await new Promise((res,rej)=>{
-      directionsService.route({
-        origin,destination,waypoints,
-        travelMode:google.maps.TravelMode.DRIVING,
-        provideRouteAlternatives: waypoints.length===0,
-        region:'eu',
-      },(r,s)=>{ if(s==='OK') res(r); else rej(s); });
+  try{
+    const coords=await Promise.all(stopInputs.map(s=>mbGeocode(s)));
+    resultEl.innerHTML='<div style="font-size:.8rem;color:var(--muted);padding:.5rem 0;">&#8987; Getting route...</div>';
+    const route=await mbRoute(coords);
+    const rc=route.geometry.coordinates;
+    resultEl.innerHTML='<div style="font-size:.8rem;color:var(--muted);padding:.5rem 0;">&#8987; Detecting countries...</div>';
+    clearMapLayers();
+    const sampleStep=Math.max(1,Math.floor(rc.length/25));
+    const samples=[];
+    for(let i=0;i<rc.length;i+=sampleStep) samples.push(i);
+    if(!samples.includes(rc.length-1)) samples.push(rc.length-1);
+    const countries=await Promise.all(samples.map(i=>mbCountry(rc[i][0],rc[i][1])));
+    let segments=[],curCC=countries[0],segStart=0;
+    for(let i=1;i<samples.length;i++){
+      if(countries[i]!==curCC){segments.push({cc:curCC,coords:rc.slice(samples[segStart],samples[i]+1)});curCC=countries[i];segStart=i;}
+    }
+    segments.push({cc:curCC,coords:rc.slice(samples[segStart])});
+    segments.forEach((seg,idx)=>{
+      if(!seg.coords||seg.coords.length<2) return;
+      const id='route-seg-'+idx; mrLayerIds.push(id);
+      mrMap.addSource(id,{type:'geojson',data:{type:'Feature',geometry:{type:'LineString',coordinates:seg.coords}}});
+      mrMap.addLayer({id,type:'line',source:id,layout:{'line-join':'round','line-cap':'round'},paint:{'line-color':routeColor(seg.cc),'line-width':5,'line-opacity':.9}});
     });
-
-    lastDirectionsResult=result;
-    activeRouteIdx=0;
-    await renderRoute(result);
-
-  } catch(err){
-    document.getElementById('mr-result').innerHTML=`<div style="font-size:.8rem;color:#c00;padding:.75rem;background:#fde8e6;border-radius:8px;">Could not calculate route: ${err}</div>`;
+    const bounds=new mapboxgl.LngLatBounds();
+    rc.forEach(c=>bounds.extend(c));
+    mrMap.fitBounds(bounds,{padding:60});
+    const labels=['A','B','C','D','E','F','G','H'];
+    coords.forEach((c,i)=>addMapMarker(c,labels[i]||String(i+1),stopInputs[i]));
+    const seen=new Set();const ccList=[];
+    segments.forEach(s=>{if(s.cc&&!seen.has(s.cc)){seen.add(s.cc);ccList.push(s.cc);}});
+    const dateFrom=document.getElementById('mr-date-from').value;
+    const dateTo=document.getElementById('mr-date-to').value;
+    let tripDays=7;
+    if(dateFrom&&dateTo){const d1=new Date(dateFrom),d2=new Date(dateTo);tripDays=Math.max(1,Math.ceil((d2-d1)/(1000*60*60*24)));}
+    const distKm=(route.distance/1000).toFixed(0);
+    const durH=Math.floor(route.duration/3600);
+    const durM=Math.floor((route.duration%3600)/60);
+    let html='<div class="mr-route-info"><div class="mr-route-stat"><strong>'+distKm+' km</strong>distance</div><div class="mr-route-stat"><strong>'+durH+'h '+durM+'m</strong>drive time</div><div class="mr-route-stat"><strong>'+ccList.length+'</strong>countries</div><div class="mr-route-stat"><strong>'+tripDays+'d</strong>trip</div></div>';
+    html+='<div style="font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);margin-bottom:.6rem;">Countries on route</div>';
+    let totalEur=0;
+    ccList.forEach(cc=>{
+      const id=CC_MAP[cc];const country=C.find(c=>c.id===id);if(!country) return;
+      const color=routeColor(cc);let action='',priceStr='',priceEur=0,needsPay=false;
+      if(country.type==='vignette'&&country.prices.length){
+        const rec=getBestVignette(country.prices,tripDays);
+        priceStr=rec.v;priceEur=parseEuro(rec.v);
+        const eurNote=priceStr.startsWith('€')?'':' ≈ '+toEurStr(priceEur);
+        action='Buy vignette · '+rec.p+eurNote;needsPay=true;totalEur+=priceEur;
+      } else if(country.type==='toll'){
+        const est=country.prices[0];priceEur=est?parseEuro(est.v):0;priceStr=est?'~'+est.v:'varies';
+        action='Pay at toll gate'+(country.enc?' · ENC: '+country.enc:'');needsPay=!!priceEur;if(needsPay)totalEur+=priceEur;
+      } else {action='Free — no payment needed';priceStr='FREE';}
+      html+='<div class="mr-country-item" style="border-left:4px solid '+color+';"><div class="mr-ci-code">'+cc+'</div><div class="mr-ci-info"><div class="mr-ci-name">'+country.name+'</div><div class="mr-ci-sub">'+action+(country.buy&&needsPay?' · <a href="'+country.buy+'" target="_blank" style="color:var(--accent);text-decoration:none;">'+country.bl+' ↗</a>':'')+'</div></div>'+(needsPay?'<div class="mr-ci-price">'+priceStr+'</div>':'<div style="color:var(--f);font-weight:800;font-size:.8rem;">FREE</div>')+'</div>';
+    });
+    const fuelPrice=parseFloat(document.getElementById('mr-fuel-price')?.value)||1.55;
+    const fuelConsumption=parseFloat(document.getElementById('mr-fuel-consumption')?.value)||7;
+    const fuelCost=parseFloat(((route.distance/1000)*fuelConsumption/100*fuelPrice).toFixed(2));
+    const grandTotal=parseFloat((totalEur+fuelCost).toFixed(2));
+    if(totalEur>0||fuelCost>0){
+      html+='<div class="mr-total-box"><div class="mr-total-label">&#128176; Estimated total trip costs</div>'+(totalEur>0?'<div class="mr-total-row"><div style="font-size:.75rem;color:var(--muted);">&#128739; Vignettes + tolls</div><div style="font-weight:800;">'+toEurStr(totalEur)+'</div></div>':'')+'<div class="mr-total-row"><div style="font-size:.75rem;color:var(--muted);">&#9981; Fuel · '+distKm+'km × '+fuelConsumption+'L/100km × €'+fuelPrice+'/L</div><div style="font-weight:800;">'+toEurStr(fuelCost)+'</div></div><div class="mr-total-row" style="border-top:1px solid var(--border);margin-top:.4rem;padding-top:.4rem;"><div style="font-size:.8rem;font-weight:700;">Total estimated trip cost</div><div class="mr-total-amt">'+toEurStr(grandTotal)+'</div></div></div>';
+    }
+    html+='<div class="rnote" style="margin-top:.75rem;">&#9888; Estimates are approximate. Buy vignettes online before your trip.</div>';
+    resultEl.innerHTML=html;
+  }catch(err){
+    resultEl.innerHTML='<div style="font-size:.8rem;color:#c00;padding:.75rem;background:#fde8e6;border-radius:8px;">Error: '+err.message+'</div>';
+    console.error(err);
   }
 }
 
-async function renderRoute(result){
-  const dateFrom=document.getElementById('mr-date-from').value;
-  const dateTo=document.getElementById('mr-date-to').value;
-  let tripDays=7;
-  if(dateFrom&&dateTo){
-    const d1=new Date(dateFrom),d2=new Date(dateTo);
-    tripDays=Math.max(1,Math.ceil((d2-d1)/(1000*60*60*24)));
-  }
-
-  const resultEl=document.getElementById('mr-result');
-  const geocoder=new google.maps.Geocoder();
-
-  // Clear old renderers & polylines & markers
-  mrRenderers.forEach(r=>r.setMap(null)); mrRenderers=[];
-  mrPolylines.forEach(p=>p.setMap(null)); mrPolylines=[];
-  mrMarkers.forEach(m=>m.setMap(null)); mrMarkers=[];
-
-  try {
-
-    // Gather all legs data
-    const allLegs=result.routes[activeRouteIdx].legs;
-    const totalDist=allLegs.reduce((s,l)=>s+l.distance.value,0);
-    const totalDur=allLegs.reduce((s,l)=>s+l.duration.value,0);
-    const path=result.routes[activeRouteIdx].overview_path;
-
-    // Sample more points for better country detection (~25 points along route)
-    const samplePoints=[];
-    const step=Math.max(1,Math.floor(path.length/25));
-    for(let i=0;i<path.length;i+=step) samplePoints.push(path[i]);
-    // Always include first and last point
-    if(samplePoints[samplePoints.length-1]!==path[path.length-1])
-      samplePoints.push(path[path.length-1]);
-
-    // Reverse geocode — detect countries in order
-    const countryOrder=[];
-    const countryCodes=new Set();
-    // Also track entry/exit countries for HR toll calc
-    const countrySegments=[]; // [{cc, lat, lng, distShare}]
-
-    // Geocode sample points — maintain order by index
-    const geocodeResults = new Array(samplePoints.length).fill(null);
-    await Promise.all(samplePoints.map((pt,i)=>new Promise(res=>{
-      geocoder.geocode({location:pt},(results,status)=>{
-        if(status==='OK'&&results[0]){
-          const cc=results[0].address_components.find(c=>c.types.includes('country'))?.short_name;
-          if(cc){
-            geocodeResults[i]={cc, lat:pt.lat(), lng:pt.lng()};
-          }
-        }
-        res();
-      });
-    })));
-
-    // Build ordered country list from geocode results (preserving route order)
-    for(let i=0;i<geocodeResults.length;i++){
-      const r=geocodeResults[i];
-      if(!r) continue;
-      if(!countryCodes.has(r.cc)){ countryCodes.add(r.cc); countryOrder.push(r.cc); }
-      countrySegments[i]=r;
-    }
-
-    // Detect HR entry/exit countries for precise toll
-    let hrEntryCC=null, hrExitCC=null, hrDistKm=0;
-    const segs=countrySegments.filter(Boolean);
-    for(let i=0;i<segs.length;i++){
-      if(segs[i]?.cc==='HR'){
-        if(!hrEntryCC&&i>0) hrEntryCC=segs[i-1]?.cc;
-        hrExitCC=segs[i+1]?.cc||hrExitCC;
-      }
-    }
-    if(countryCodes.has('HR')){
-      const hrCount=segs.filter(s=>s?.cc==='HR').length;
-      hrDistKm=(hrCount/segs.length)*(totalDist/1000);
-    }
-
-    // Get vehicle category
-    const vehicleCat=document.getElementById('mr-vehicle-cat')?.value||'I';
-    const catLabel={'I':'Cat. I (car)','IA':'Cat. IA (moto)','II':'Cat. II (van/trailer)','III':'Cat. III (3-axle)'}[vehicleCat];
-
-    // Build country results
-    const countryResults=[];
-    let totalEur=0;
-    const seen=new Set();
-
-    for(const cc of countryOrder){
-      if(seen.has(cc)) continue; seen.add(cc);
-      const id=CC_MAP[cc];
-      const country=C.find(c=>c.id===id);
-      if(!country) continue;
-
-      let action='',priceStr='',priceEur=0,color=countryColor(id),needsPay=false;
-      let note='', hacInfo=null;
-
-      if(country.type==='vignette'&&country.prices.length){
-        const rec=getBestVignette(country.prices,tripDays);
-        priceStr=rec.v; priceEur=parseEuro(rec.v);
-        const eurNote=priceStr.startsWith('€')?'':` ≈ ${toEurStr(priceEur)}`;
-        // Check if route goes through local roads (no motorway segments detected)
-        const countryKm=(countrySegments.filter(s=>s?.cc===cc).length/countrySegments.filter(Boolean).length)*(totalDist/1000);
-        action=`Buy vignette · ${rec.p}${eurNote}`;
-        if(id==='hu'&&countryKm<30){
-          // Short HU section — might be local roads
-          note='⚠️ Route may use local roads. If you enter any HU motorway, vignette is required.';
-          needsPay=true; totalEur+=priceEur;
-        } else {
-          needsPay=true; totalEur+=priceEur;
-        }
-
-      } else if(country.type==='toll'){
-        if(id==='hr'){
-          const allSteps=result.routes[activeRouteIdx].legs.flatMap(l=>l.steps);
-          const hacResult=await calcHRToll(hrEntryCC,hrExitCC,hrDistKm,allSteps,vehicleCat,countrySegments);
-          priceEur=hacResult.amount;
-          priceStr=toEurStr(priceEur);
-          const srcIcon=hacResult.live
-            ? (hacResult.precise ? '🟢 Live HAC · route detected' : '🟡 Live HAC · border estimate')
-            : '🟠 Distance estimate';
-          action=`Distance-based toll · ${catLabel} · ${srcIcon}`;
-          const debugInfo=hacResult.debugDetected?.length
-            ? `<br><span style="font-size:.6rem;color:#aaa;">Detected: [${hacResult.debugDetected.join(', ')}]</span>`
-            : '';
-          if(hacResult.segments?.length){
-            const segText=hacResult.segments.map(s=>{
-              const label = s.entry===s.exit
-                ? `<strong>${s.entry}</strong> (border toll)`
-                : `<strong>${s.entry}</strong>→<strong>${s.exit}</strong>`;
-              return `${label}: €${s.amount.toFixed(2)}`;
-            }).join(' + ');
-            note=`${segText}<br>ENC 21% → ${toEurStr(priceEur*0.7826)} · <a href="https://karta.hac.hr/map/map" target="_blank" style="color:var(--accent)">karta.hac.hr ↗</a>${debugInfo}`;
-          } else {
-            note=`${hacResult.entry}→${hacResult.exit} · ENC 21% → ${toEurStr(priceEur*0.7826)} · <a href="https://karta.hac.hr/map/map" target="_blank" style="color:var(--accent)">karta.hac.hr ↗</a>${debugInfo}`;
-          }
-          needsPay=true; totalEur+=priceEur;
-        } else if(FREE_LOCAL[id]){
-          action='Local roads — free (no motorway tolls on this section)';
-          color='#0F3460'; needsPay=false;
-          note='Only motorways are tolled in this country';
-        } else {
-          const est=country.prices[0];
-          priceEur=est?parseEuro(est.v):0;
-          priceStr=est?`~${est.v}`:'varies';
-          action='Pay at toll gate'+(country.enc?` · ENC: ${country.enc}`:'');
-          needsPay=!!priceEur; if(needsPay) totalEur+=priceEur;
-        }
-      } else {
-        action='Free — no payment needed';
-      }
-
-      countryResults.push({cc,country,action,priceStr,priceEur,color,needsPay,note,hacInfo});
-    }
-
-    // ── Draw colored polylines per STEP based on road type ──
-    mrRenderers.forEach(r=>r.setMap(null)); mrRenderers=[];
-    mrPolylines.forEach(p=>p.setMap(null)); mrPolylines=[];
-
-    // Road classification based on ACTUAL Google Maps step data
-    // Key insight from debug: Google Maps uses "Spoplatnená cesta" for ALL paid roads
-    const TOLL_COUNTRIES = new Set(['HR','FR','IT','PL','GR','NO','RS','ME','BA','MK','IE','PT','TR']);
-    const FREE_COUNTRIES  = new Set(['DE','NL','BE','LU','DK','SE','FI','LT','LV','EE','GB','IS','CY','MT']);
-    const VIGNETTE_COUNTRIES = new Set(['SK','CZ','AT','CH','HU','SI','RO','BG','MD','LI']);
-    const PAID_ROAD = /Spoplatnená cesta|toll road|mautpflichtig|péage|pedaggio|útdíjas/i;
-    const FREE_MOTORWAY_NUM = /\b(A\d+|E\d+|M\d+|Rv?\d+|Vt?\d+)\b/;
-
-    function classifyStep(step, cc){
-      const instr = (step.instructions||'').replace(/<[^>]+>/g,' ');
-      const isPaid = PAID_ROAD.test(instr);
-
-      // Exit ramps to local roads — even if marked "Spoplatnená" they lead OFF motorway
-      // Detect: "Zíďte výjazdom ... na D|M|R|Č|B|local road"
-      // If maneuver is ramp/exit AND destination road is local (D=HR local, M=BA, not M1/M7)
-      const isExitRamp = /ramp|exit/.test(step.maneuver||'') ||
-                         /Zíďte výjazdom|výjazdom|výjazd|exit|sortie|Abfahrt/i.test(instr);
-
-      // Local road indicators after exit (D47, M14 in BA, county roads)
-      // HR: D\d+ = local; A\d+ = motorway
-      // HU: after exit ramp onto numbered county roads (86, 75, etc) = local
-      // BA: M14, M15 = local main roads
-      const exitToLocal = isExitRamp && (
-        /D\d+/.test(instr) ||    // HR local road Dxx
-        /M1[3-9]|M[2-9]\d/.test(instr) ||  // BA/RS local Mxx (not M1-M12 motorways)
-        /smerom na\s+\w+\s*\/\s*\w+.*(?!Spoplatn)/.test(instr)
-      );
-
-      if(isPaid && !exitToLocal){
-        if(TOLL_COUNTRIES.has(cc))     return 'toll';
-        if(VIGNETTE_COUNTRIES.has(cc)) return 'vignette';
-        if(FREE_COUNTRIES.has(cc))     return 'free';
-        return 'toll';
-      }
-      if(FREE_COUNTRIES.has(cc) && FREE_MOTORWAY_NUM.test(instr) && !isExitRamp) return 'free';
-      return 'local';
-    }
-
-    const allStepsOrdered = result.routes[activeRouteIdx].legs.flatMap(l=>l.steps);
-
-    // Build a country lookup from step start points using countrySegments
-    // Also detect country changes from step instructions ("Vchádzate do krajiny X")
-    let currentStepCC = countryOrder[0] || null;
-    const CC_NAME_MAP = {
-      'Slovensko':'SK','Maďarsko':'HU','Rakúsko':'AT','Slovinsko':'SI',
-      'Chorvátsko':'HR','Bosna a Hercegovina':'BA','Srbsko':'RS','Taliansko':'IT',
-      'Nemecko':'DE','Česko':'CZ','Poľsko':'PL','Rumunsko':'RO','Bulharsko':'BG',
-      'Grécko':'GR','Čierna Hora':'ME','Severné Macedónsko':'MK','Francúzsko':'FR',
-      'Hungary':'HU','Austria':'AT','Slovenia':'SI','Croatia':'HR',
-      'Bosnia':'BA','Serbia':'RS','Germany':'DE','Italy':'IT',
-    };
-
-    for(const step of allStepsOrdered){
-      if(!step.polyline?.points) continue;
-      let stepPath;
-      try { stepPath=google.maps.geometry.encoding.decodePath(step.polyline.points); }
-      catch(e){ continue; }
-      if(!stepPath||stepPath.length<2) continue;
-
-      // Check if this step changes country
-      const instr=(step.instructions||'').replace(/<[^>]+>/g,' ');
-      const countryChange = instr.match(/Vchádzate do krajiny\s+(.+?)(?:\s|$)/i) ||
-                            instr.match(/Entering\s+(.+?)(?:\s|$)/i);
-      if(countryChange){
-        const cname = countryChange[1].trim();
-        for(const [name,cc] of Object.entries(CC_NAME_MAP)){
-          if(cname.startsWith(name)){ currentStepCC=cc; break; }
-        }
-      }
-
-      // Find country from nearest sample point
-      const startPt=stepPath[0];
-      let bestCC=currentStepCC, bestDist=999;
-      for(const seg of countrySegments.filter(Boolean)){
-        const d=Math.abs(seg.lat-startPt.lat())+Math.abs(seg.lng-startPt.lng());
-        if(d<bestDist){ bestDist=d; bestCC=seg.cc; }
-      }
-      // Only use sample point CC if it's close enough (within ~0.8°)
-      const stepCC = bestDist < 0.8 ? bestCC : currentStepCC;
-
-      const roadType = classifyStep(step, stepCC);
-
-      let color, weight, opacity;
-      switch(roadType){
-        case 'vignette': color='#1B4D3E'; weight=6; opacity=0.88; break;
-        case 'toll':     color='#7A3200'; weight=6; opacity=0.88; break;
-        case 'free':     color='#0F3460'; weight=6; opacity=0.88; break;
-        default:         color='#7C3AED'; weight=3; opacity=0.5;  break;
-      }
-
-      mrPolylines.push(new google.maps.Polyline({
-        path:stepPath, strokeColor:color,
-        strokeWeight:weight, strokeOpacity:opacity, map:mrMap,
-      }));
-    }
-
-    // Add markers for stops — derive stopInputs from current mrStops
-    const stopInputs=mrStops.map(id=>document.getElementById(id)?.value?.trim()).filter(Boolean);
-    stopInputs.forEach((addr,i)=>{
-      const labels=['A','B','C','D','E','F','G','H'];
-      const marker = new google.maps.Marker({
-        map:mrMap,
-        position:result.routes[activeRouteIdx].legs[Math.min(i,result.routes[activeRouteIdx].legs.length-1)][i===0?'start_location':'end_location'],
-        label:{text:labels[i]||String(i+1),color:'white',fontWeight:'bold'},
-        title:addr,
-      });
-      mrMarkers.push(marker);
-    });
-
-    // Fit map to route
-    const bounds=new google.maps.LatLngBounds();
-    path.forEach(p=>bounds.extend(p));
-    mrMap.fitBounds(bounds);
-
-    // Build result HTML
-    const distKm=(totalDist/1000).toFixed(0);
-    const durH=Math.floor(totalDur/3600);
-    const durM=Math.floor((totalDur%3600)/60);
-
-    let html=`<div class="mr-route-info">
-      <div class="mr-route-stat"><strong>${distKm} km</strong>distance</div>
-      <div class="mr-route-stat"><strong>${durH}h ${durM}m</strong>drive time</div>
-      <div class="mr-route-stat"><strong>${countryResults.length}</strong>countries</div>
-      <div class="mr-route-stat"><strong>${tripDays}d</strong>trip</div>
-    </div>`;
-
-    html+='<div style="font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);margin-bottom:.6rem;">Countries on route</div>';
-
-    countryResults.forEach(r=>{
-      html+=`<div class="mr-country-item" style="border-left:4px solid ${r.color};">
-        <div class="mr-ci-code">${r.cc}</div>
-        <div class="mr-ci-info">
-          <div class="mr-ci-name">${r.country.name}</div>
-          <div class="mr-ci-sub">${r.action}${r.country.buy&&r.needsPay&&r.country.id!=='hr'?` · <a href="${r.country.buy}" target="_blank" style="color:var(--accent);text-decoration:none;">${r.country.bl} ↗</a>`:''}</div>
-          ${r.note?`<div style="font-size:.65rem;color:var(--enc);margin-top:.25rem;">ℹ️ ${r.note}</div>`:''}
-        </div>
-        ${r.needsPay?`<div class="mr-ci-price">${r.priceStr}</div>`:'<div style="color:var(--f);font-weight:700;font-size:.8rem;">FREE</div>'}
-      </div>`;
-    });
-
-    // Fuel cost calculation
-    const fuelPrice=parseFloat(document.getElementById('mr-fuel-price')?.value)||1.55;
-    const fuelConsumption=parseFloat(document.getElementById('mr-fuel-consumption')?.value)||7;
-    const fuelCost=parseFloat(((totalDist/1000)*fuelConsumption/100*fuelPrice).toFixed(2));
-    const grandTotal=parseFloat((totalEur+fuelCost).toFixed(2));
-
-    if(totalEur>0||fuelCost>0){
-      html+=`<div class="mr-total-box">
-        <div class="mr-total-label">💰 Estimated total trip costs</div>
-        ${totalEur>0?`<div class="mr-total-row"><div style="font-size:.75rem;color:var(--muted);">🛣️ Vignettes + tolls${Object.keys(FX).length?' · live rates':''}</div><div style="font-weight:800;">${toEurStr(totalEur)}</div></div>`:''}
-        <div class="mr-total-row"><div style="font-size:.75rem;color:var(--muted);">⛽ Fuel · ${distKm}km × ${fuelConsumption}L/100km × €${fuelPrice}/L</div><div style="font-weight:800;">${toEurStr(fuelCost)}</div></div>
-        <div class="mr-total-row" style="border-top:1px solid var(--border);margin-top:.4rem;padding-top:.4rem;">
-          <div style="font-size:.8rem;font-weight:700;color:var(--text);">Total estimated trip cost</div>
-          <div class="mr-total-amt">${toEurStr(grandTotal)}</div>
-        </div>
-      </div>`;
-    }
-
-    html+='<div class="rnote" style="margin-top:.75rem;">⚠️ Estimates are approximate. Croatian tolls are distance-based — exact price depends on your entry/exit point. BiH/RS/ME local roads are free even if route passes through.</div>';
-    resultEl.innerHTML=html;
-    document.getElementById('mr-legend').style.display='block';
-
-    // Render route tabs after result
-    const routeTabs=document.getElementById('mr-route-tabs');
-    if(result.routes.length>1){
-      routeTabs.style.display='flex';
-      routeTabs.style.gap='.4rem';
-      routeTabs.style.flexWrap='wrap';
-      routeTabs.innerHTML=result.routes.map((r,i)=>{
-        const km=(r.legs.reduce((s,l)=>s+l.distance.value,0)/1000).toFixed(0);
-        const dur=r.legs.reduce((s,l)=>s+l.duration.value,0);
-        const h=Math.floor(dur/3600), m=Math.floor((dur%3600)/60);
-        const isActive=i===activeRouteIdx;
-        return `<button onclick="switchRoute(${i})" id="rtab-${i}"
-          style="padding:.4rem .8rem;border-radius:8px;
-          border:2px solid ${isActive?'var(--accent)':'var(--border)'};
-          background:${isActive?'var(--accent)':'var(--surface)'};
-          color:${isActive?'#000':'var(--text)'};
-          font-size:.75rem;font-weight:700;cursor:pointer;font-family:'Geist',sans-serif;">
-          Route ${i+1} · ${km}km · ${h}h${m}m
-        </button>`;
-      }).join('');
-    } else {
-      routeTabs.style.display='none';
-    }
-
-  } catch(err){
-    document.getElementById('mr-result').innerHTML=`<div style="font-size:.8rem;color:#c00;padding:.75rem;background:#fde8e6;border-radius:8px;">Could not render route: <strong>${err}</strong>.</div>`;
-    console.error('renderRoute error:', err);
-  }
+// Legacy stubs
+function suggestRoute(){}
+function filterRouteDropdown(){}
+function selectRoute(){}
+function hideDropdown(){}
+function filterCalcSearch(){}
+function hideCalcDrop(){}
+function addCalcCountry(){}
+function removeCalcCountry(){}
+function renderTags(){}
+function doCalc(){}
+function renderCalcChecks(){
+  const today=new Date();const nextWeek=new Date(today);nextWeek.setDate(today.getDate()+7);
+  const f=document.getElementById('calc-date-from');const t=document.getElementById('calc-date-to');
+  if(f)f.value=today.toISOString().split('T')[0];if(t)t.value=nextWeek.toISOString().split('T')[0];
 }
 
 document.getElementById('stat-countries').textContent=C.length;
@@ -2269,103 +1615,15 @@ renderCC(); renderSpeed(); renderCalcChecks(); renderENC();
   window._stopRoadAnim = () => cancelAnimationFrame(animId);
 })();
 
-function dismissLanding(targetTab) {
+function dismissLanding() {
   const landing = document.getElementById('landing');
   landing.classList.add('hide');
   if (window._stopRoadAnim) window._stopRoadAnim();
-  setTimeout(() => {
-    landing.style.display = 'none';
-    window.scrollTo({ top: 0, behavior: 'instant' });
-    if (targetTab && targetTab !== 'countries') {
-      const tabBtn = document.querySelector(`.tab[data-tab="${targetTab}"]`);
-      if (tabBtn) switchTab(targetTab, tabBtn);
-      if (targetTab === 'maproute') initMrMap();
-    }
-  }, 650);
+  setTimeout(() => { landing.style.display = 'none'; }, 650);
   if (typeof gtag !== 'undefined') {
-    gtag('event', 'landing_cta_click', { event_category: 'engagement', event_label: targetTab || 'plan_trip' });
+    gtag('event', 'landing_cta_click', { event_category: 'engagement', event_label: 'Plan my trip' });
   }
 }
-
-// ── HERO ROAD ANIMATION ──
-(function() {
-  const canvas = document.getElementById('heroCanvas');
-  if (!canvas) return;
-  const ctx = canvas.getContext('2d');
-  let dashOffset = 0;
-  function resize() { canvas.width = canvas.offsetWidth; canvas.height = canvas.offsetHeight; }
-  window.addEventListener('resize', resize);
-  resize();
-  function draw() {
-    const W = canvas.width, H = canvas.height;
-    if (!W || !H) { requestAnimationFrame(draw); return; }
-    ctx.clearRect(0, 0, W, H);
-    const vx = W * 0.78, vy = H * 0.32;
-    const ease = t => t * t * t;
-    const grad = ctx.createLinearGradient(vx, vy, vx, H);
-    grad.addColorStop(0, 'rgba(8,7,15,0)');
-    grad.addColorStop(0.25,'rgba(8,7,15,0.5)');
-    grad.addColorStop(1, 'rgba(5,5,12,0.85)');
-    ctx.beginPath(); ctx.moveTo(vx, vy);
-    ctx.lineTo(W * 0.30, H); ctx.lineTo(W * 1.06, H);
-    ctx.closePath(); ctx.fillStyle = grad; ctx.fill();
-    [[0.30, 0.13],[1.06, 0.09]].forEach(([ex, alpha]) => {
-      ctx.beginPath(); ctx.moveTo(vx, vy); ctx.lineTo(W * ex, H);
-      ctx.strokeStyle = `rgba(255,255,255,${alpha})`; ctx.lineWidth = 1; ctx.stroke();
-    });
-    const N = 13;
-    const lane = (xFrac, rgb, alpha) => {
-      for (let i = 0; i < N; i++) {
-        const t0 = ((i / N) + dashOffset) % 1;
-        const t1 = ((i + 0.38) / N + dashOffset) % 1;
-        if (t0 < 0.05 || t1 < 0.05) continue;
-        const e0 = ease(t0), e1 = ease(t1);
-        const x0 = vx + (W * xFrac - vx) * e0, y0 = vy + (H - vy) * e0;
-        const x1 = vx + (W * xFrac - vx) * e1, y1 = vy + (H - vy) * e1;
-        const a = Math.min(1, t0 * 2.5) * alpha;
-        ctx.strokeStyle = `rgba(${rgb},${a.toFixed(2)})`;
-        ctx.lineWidth = 1 + e0 * 3.2;
-        ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1, y1); ctx.stroke();
-      }
-    };
-    lane(0.68, '212,130,10', 0.95);
-    lane(0.53, '255,255,255', 0.2);
-    lane(0.85, '255,255,255', 0.2);
-    dashOffset = (dashOffset + 0.004) % 1;
-    requestAnimationFrame(draw);
-  }
-  draw();
-})();
-
-// ── HERO TITLE FLOAT ──
-(function() {
-  const el = document.getElementById('heroTitle');
-  if (!el) return;
-  const segments = [
-    { text: 'Every road in ', em: false },
-    { text: 'Europe', em: true },
-    { text: ',', em: false },
-    { text: '\n', em: false },
-    { text: 'one place.', em: false },
-  ];
-  let idx = 0;
-  segments.forEach(seg => {
-    if (seg.text === '\n') { el.appendChild(document.createElement('br')); return; }
-    const wrap = seg.em ? document.createElement('em') : null;
-    const target = wrap || el;
-    seg.text.split('').forEach(ch => {
-      if (ch === ' ') {
-        const sp = document.createElement('span'); sp.className = 'char-space';
-        target.appendChild(sp); idx++; return;
-      }
-      const span = document.createElement('span');
-      span.className = 'char'; span.textContent = ch;
-      span.style.animationDelay = (idx * 0.05) + 's';
-      target.appendChild(span); idx++;
-    });
-    if (wrap) el.appendChild(wrap);
-  });
-})();
 </script>
 </body>
 </html>
