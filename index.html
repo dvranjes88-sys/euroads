@@ -1391,6 +1391,318 @@ function showAutocomplete(inputId, features){
   input.onblur = ()=>setTimeout(()=>div.remove(), 200);
 }
 
+// ── HAC CROATIA LIVE API ──────────────────────────────────
+// API: https://cro3-tmp.hac.hr/tollcalculator/price/{ENTRY}/{EXIT}
+// Accepts Croatian HAC station names only
+
+// All HAC toll station names exactly as used in the API
+// Source: hac.hr toll rates pages + karta.hac.hr API responses
+const HAC_STATIONS = [
+  // A4: Goričan (HU border) → Zagreb
+  'Goričan','Čakovec','Varaždin','Ludbreg','Varaždinske Toplice',
+  'Novi Marof','Breznički Hum','Komin','Sveta Helena',
+  // A1: Zagreb → Split → Ploče
+  'Lučko','Jankomir','Demerje','Donja Zdenčina','Jastrebarsko',
+  'Karlovac','Novigrad','Bosiljevo','Ogulin','Josipdol','Žuta Lokva',
+  'Otočac','Perušić','Gornja Ploča','Maslenica','Zadar sjever',
+  'Zadar istok','Zadar zapad','Benkovac','Pirovac','Šibenik',
+  'Prgomet','Dugopolje','Split','Bisko','Šestanovac','Zagvozd',
+  'Ravča','Karamatići','Čarapine',
+  // A6/A10: Rijeka → Ploče
+  'Bosiljevo','Delnice','Oštrovica','Kikovica','Rijeka',
+  'Ploče','Opuzen','Metković',
+  // A7: Rupa (SLO border) → Rijeka
+  'Rupa','Rijeka zapad',
+  // A3/A5: Bregana (SLO border) → Lipovac (SRB border)
+  'Bregana','Jankomir','Zagreb istok','Rugvica','Ivanić-Grad',
+  'Križ','Kutina','Novska','Okučani','Nova Gradiška',
+  'Slavonski Brod zapad','Slavonski Brod','Stara Gradiška',
+  'Babina Greda','Županja','Lipovac',
+  // A5: Beli Manastir → Osijek → Svilaj (BiH border)
+  'Beli Manastir','Osijek jug','Đakovo','Slavonski Brod jug','Svilaj',
+  // A2: Macelj (SLO border) → Zagreb
+  'Macelj','Krapina','Zabok','Zaprešić',
+  // A11: Zagreb → Sisak
+  'Jakuševec','Velika Gorica jug','Buševec','Lekenik','Sisak',
+  // A10: Ploče → BiH border
+  'Karasovići',
+  // Bridges/tunnels
+  'Krčki most','Sveti Ilija',
+];
+
+// Border CC → default HAC entry station name
+const HAC_BORDER_ENTRY = {
+  'HU':'Goričan', 'SI':'Bregana', 'BA':'Stara Gradiška',
+  'RS':'Lipovac', 'ME':'Karasovići',
+};
+
+// Call HAC live API with station names — tries variants if needed
+async function fetchHACToll(entry, exit, vehicleCat){
+  const cat = vehicleCat || 'I';
+
+  // Try exact name first, then common variants
+  const makeVariants = (name) => {
+    if(!name) return [];
+    const v = [name];
+    // Remove parenthetical suffix: "Zagreb (Lučko)" → "Zagreb"
+    const parenMatch = name.match(/^(.+?)\s*\([^)]+\)$/);
+    if(parenMatch) v.push(parenMatch[1].trim());
+    // Remove directional suffix: "Zadar zapad" → "Zadar"
+    const suffixMatch = name.match(/^(.+?)\s+(zapad|istok|sjever|jug|north|south|east|west|1|2)$/i);
+    if(suffixMatch) v.push(suffixMatch[1].trim());
+    // "Zagreb-istok (Ježevo)" → "Zagreb istok"
+    v.push(name.replace('-', ' ').replace(/\s*\([^)]+\)/, '').trim());
+    return [...new Set(v)];
+  };
+
+  const exitVariants = makeVariants(exit);
+  const entryVariants = makeVariants(entry);
+
+  for(const e of entryVariants){
+    for(const x of exitVariants){
+      if(!e || !x || e===x) continue;
+      const url=`https://cro3-tmp.hac.hr/tollcalculator/price/${encodeURIComponent(e)}/${encodeURIComponent(x)}`;
+      try {
+        const r=await fetch(url);
+        if(!r.ok) continue;
+        const data=await r.json();
+        if(!data.Segments?.length) continue;
+        let total=0; const segments=[];
+        for(const seg of data.Segments){
+          const price=seg.Prices?.find(p=>p.Category===cat)||seg.Prices?.find(p=>p.Category==='I');
+          if(price){ total+=price.Amount; segments.push({entry:seg.EntryName,exit:seg.ExitName,amount:price.Amount}); }
+        }
+        if(total>0){ console.log('[HAC] API success:', e, '→', x); return {total,segments}; }
+      } catch(err){ continue; }
+    }
+  }
+  return null;
+}
+
+// HAC station GPS coordinates — VERIFIED against cro3-tmp.hac.hr API
+// Only stations that return valid Segments[] from the API
+const HAC_STATION_GPS = [
+  // A1: Zagreb → Čarapine (verified OK)
+  ['Jastrebarsko',        45.663, 15.649],
+  ['Karlovac',            45.487, 15.547],
+  ['Novigrad',            45.381, 15.550],
+  ['Bosiljevo',           45.399, 15.294],
+  ['Ogulin',              45.266, 15.224],
+  ['Brinje',              45.084, 15.139],
+  ['Žuta Lokva',          44.934, 15.069],
+  ['Otočac',              44.870, 15.233],
+  ['Perušić',             44.651, 15.374],
+  ['Gospić',              44.547, 15.374],
+  ['Gornja Ploča',        44.468, 15.313],
+  ['Sveti Rok',           44.363, 15.656],
+  ['Rovanjska',           44.281, 15.535],
+  ['Posedarje',           44.214, 15.326],
+  ['Zadar istok',         44.134, 15.277],  // "Zadar zapad" NOT valid in API!
+  ['Benkovac',            44.043, 15.607],
+  ['Skradin',             43.819, 15.924],
+  ['Šibenik',             43.745, 15.900],
+  ['Podi',                43.715, 15.997],
+  ['Prgomet',             43.635, 16.244],
+  ['Vučevica',            43.612, 16.387],
+  ['Bisko',               43.533, 16.716],
+  ['Blato na Cetini',     43.491, 16.812],
+  ['Šestanovac',          43.468, 16.912],
+  ['Zagvozd',             43.439, 17.050],
+  ['Ravča',               43.211, 17.323],
+  ['Vrgorac',             43.198, 17.378],
+  ['Karamatići',          43.330, 17.271],
+  ['Čarapine',            43.139, 17.417],
+  // A2: Trakošćan (SLO border) → Zaprešić (verified OK)
+  ['Trakošćan',           46.255, 15.773],
+  ['Đurmanec',            46.173, 15.871],
+  ['Krapina',             46.160, 15.874],
+  ['Mokrice',             45.921, 15.908],
+  ['Začretje',            46.005, 15.888],
+  ['Zaprešić',            45.855, 15.803],
+  // A3: Bregana (SLO) → Lipovac (SRB) (verified OK)
+  ['Bregana',             45.841, 15.666],
+  ['Zagreb Istok',        45.754, 16.271],  // from HAC API: 45.7544991, 16.271342
+  ['Ivanić Grad',         45.710, 16.398],
+  ['Križ',                45.668, 16.541],
+  ['Popovača',            45.564, 16.621],
+  ['Kutina',              45.480, 16.774],
+  ['Lipovljani',          45.488, 16.792],
+  ['Novska',              45.339, 16.979],
+  ['Okučani',             45.272, 17.179],
+  ['Nova Gradiška',       45.255, 17.383],
+  ['Lužani',              45.220, 17.564],
+  ['Babina Greda',        45.073, 18.530],
+  ['Spačva',              45.060, 18.621],
+  ['Županja',             45.077, 18.690],
+  ['Lipovac',             45.054, 19.010],
+  ['Velika Kopanica',     45.094, 18.213],
+  // A5: Beli Manastir → Osijek → Svilaj (BIH border)
+  ['Sudaraž (Beli Manastir)', 45.782, 18.557],
+  ['Osijek',              45.575, 18.559],
+  ['Čepin',               45.504, 18.513],
+  ['Đakovo',              45.308, 18.411],
+  ['Svilaj',              45.039, 17.644],
+  ['Sveta Helena',        45.921, 16.274],
+  ['Komin',               46.043, 16.240],
+  ['Breznički Hum',       46.098, 16.257],
+  ['Novi Marof',          46.160, 16.327],
+  ['Varaždin',            46.295, 16.337],
+  ['Ludbreg',             46.250, 16.617],
+  ['Čakovec',             46.395, 16.432],
+  ['Goričan',             46.413, 16.641],
+  // A6/A7: Rupa (SLO) → Vrata/Oštrovica (verified OK)
+  ['Rupa',                45.491, 14.256],
+  ['Vrata',               45.373, 14.640],
+  ['Oštrovica',           45.337, 14.457],
+  ['Delnice',             45.401, 14.804],
+  ['Vrbovsko',            45.376, 15.076],
+  ['Ravna Gora',          45.387, 14.951],
+  // A8/A9: Istria (Bina Istra) — verified with HAC API
+  ['Tunel Učka',          45.312, 14.182],
+  ['Vranja',              45.275, 14.095],
+  ['Lupoglav',            45.248, 14.055],
+  ['Cerovlje',            45.217, 13.958],
+  ['Ivoli',               45.209, 13.894],
+  ['Rogovići',            45.193, 13.836],
+  ['Žminj',               45.143, 13.889],
+  ['Kanfanar',            45.121, 13.842],
+  ['Medaki',              45.098, 13.832],
+  ['Baderna',             45.162, 13.744],
+  ['Višnjan',             45.274, 13.712],
+  ['Nova Vas',            45.358, 13.699],
+  ['Buje',                45.406, 13.658],
+  ['Umag',                45.432, 13.521],
+  ['Vodnjan sjever',      44.975, 13.851],
+  ['Vodnjan jug',         44.950, 13.848],
+  ['Pula',                44.867, 13.848],
+];
+
+// Find nearest HAC station to a GPS point
+function nearestHACStation(lat, lng){
+  let best=null, bestDist=Infinity;
+  for(const [name,slat,slng] of HAC_STATION_GPS){
+    const d=Math.sqrt((lat-slat)**2+(lng-slng)**2);
+    if(d<bestDist){ bestDist=d; best=name; }
+  }
+  return {name:best, dist:bestDist};
+}
+
+// Border entry stations — valid HAC API entry points
+const HAC_BORDER_STATIONS = {
+  'HU': ['Goričan', 'Zagreb Istok'],  // A4 via Goričan; A5 via Beli Manastir enters near Zagreb Istok
+  'SI': ['Trakošćan', 'Bregana', 'Rupa'],
+  'BA': ['Stara Gradiška', 'Novska', 'Slavonski Brod zapad'],  // nearest toll stations to BA border
+  'RS': ['Lipovac'],
+  'ME': ['Karasovići'],
+};
+
+// Main HR toll calculator
+async function calcHRToll(hrEntryCC, hrExitCC, hrDistKm, steps, vehicleCat, countrySegments){
+  const cat = vehicleCat||'I';
+  const segs = (countrySegments||[]).filter(Boolean);
+
+  // Find first HR point and pre-border point
+  let firstHR=null, preHR=null, lastHR=null, postHR=null;
+  for(let i=0;i<segs.length;i++){
+    if(segs[i]?.cc==='HR'){
+      if(!firstHR){ firstHR=segs[i]; if(i>0) preHR=segs[i-1]; }
+      lastHR=segs[i];
+      if(i<segs.length-1) postHR=segs[i+1];
+    }
+  }
+
+  // ENTRY: pick correct border station based on which is nearest to firstHR
+  // Only consider valid border stations for this entry country
+  const borderOptions = HAC_BORDER_STATIONS[hrEntryCC] || [HAC_BORDER_ENTRY[hrEntryCC]];
+  let entryStation = borderOptions[0]; // default = first option
+
+  if(firstHR && borderOptions.length > 1){
+    // Multiple border options (e.g. SI: Trakošćan, Bregana, Rupa)
+    // Pick the one nearest to firstHR GPS point
+    let bestDist = Infinity;
+    for(const stName of borderOptions){
+      const st = HAC_STATION_GPS.find(([n])=>n===stName);
+      if(!st) continue;
+      const d = Math.sqrt((firstHR.lat-st[1])**2 + (firstHR.lng-st[2])**2);
+      if(d < bestDist){ bestDist=d; entryStation=stName; }
+    }
+    console.log('[HAC] Border options:', borderOptions, '→ chosen:', entryStation, '(firstHR:', firstHR, ')');
+  }
+
+  // EXIT: find the HR point closest to the route destination
+  // For destinations inside HR, lastHR is best; for exits to another country, postHR
+  let exitStation = HAC_BORDER_ENTRY[hrExitCC] || null;
+
+  // Use all HR points — find the one with the highest lat/lng variance from entry
+  // i.e. the HR point furthest along the route (closest to destination)
+  const exitSearchPt = postHR || lastHR;
+  if(exitSearchPt){
+    const n = nearestHACStation(exitSearchPt.lat, exitSearchPt.lng);
+    if(n.dist < 0.5 && !Object.values(HAC_BORDER_STATIONS).flat().includes(n.name)){
+      exitStation = n.name;
+    } else if(n.dist < 0.3){
+      exitStation = n.name;
+    }
+    console.log('[HAC] Exit search:', exitSearchPt, '→ nearest:', n, '→ exit:', exitStation);
+  }
+
+  // Also check ALL HR points — sometimes lastHR is not the most accurate
+  // Try nearestHACStation for each HR segment and pick the one closest to a valid station
+  if(!exitStation || exitStation === HAC_BORDER_ENTRY[hrExitCC]){
+    let bestDist = 999, bestStation = null;
+    for(const seg of segs.filter(s=>s?.cc==='HR')){
+      const n = nearestHACStation(seg.lat, seg.lng);
+      if(n.dist < bestDist && !Object.values(HAC_BORDER_STATIONS).flat().includes(n.name)){
+        // Prefer stations closer to the END of the route (higher index)
+        bestDist = n.dist; bestStation = n.name;
+      }
+    }
+    if(bestStation && bestDist < 0.4) exitStation = bestStation;
+    console.log('[HAC] Best HR station scan:', bestStation, 'dist:', bestDist);
+  }
+
+  // Try last toll exit step as fallback
+  if(!exitStation || exitStation === HAC_BORDER_ENTRY[hrExitCC]){
+    const fromStep = findHRExitFromSteps(steps);
+    if(fromStep) exitStation = fromStep;
+  }
+
+  console.log('[HAC] Final:', entryStation, '→', exitStation);
+
+  if(entryStation && exitStation && entryStation !== exitStation){
+    const result = await fetchHACToll(entryStation, exitStation, cat);
+    if(result?.total > 0){
+      return {amount:result.total, segments:result.segments,
+              entry:entryStation, exit:exitStation, live:true, precise:true};
+    }
+  }
+
+  // Fallback estimate
+  const mult=({'I':1,'IA':1,'II':1.576,'III':2.516,'IV':3.2})[cat]||1;
+  const base=hrDistKm<50?3:hrDistKm<100?6:hrDistKm<180?10:hrDistKm<280?16:hrDistKm<380?22:28;
+  return {amount:parseFloat((base*mult).toFixed(2)), segments:[],
+          entry:entryStation||'?', exit:exitStation||'?', live:false, precise:false};
+}
+
+// Find last HAC exit station from step instructions
+function findHRExitFromSteps(steps){
+  const exitSteps = steps.filter(s=>{
+    const instr=(s.instructions||'').replace(/<[^>]+>/g,' ');
+    return /výjazdom|exit|Abfahrt/i.test(instr) && /Spoplatnená cesta/i.test(instr);
+  });
+  for(let i=exitSteps.length-1; i>=0; i--){
+    const instr=(exitSteps[i].instructions||'').replace(/<[^>]+>/g,' ');
+    for(const [name] of HAC_STATION_GPS){
+      if(new RegExp(name.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'),'i').test(instr)){
+        console.log('[HAC] Exit from step:', name);
+        return name;
+      }
+    }
+  }
+  return null;
+}
+
+
 function initStops(){
   mrStops=[];
   const wrap=document.getElementById('mr-stops-wrap');
@@ -1498,6 +1810,21 @@ async function calcMapRoute(){
     coords.forEach((c,i)=>addMapMarker(c,labels[i]||String(i+1),stopInputs[i]));
     const seen=new Set();const ccList=[];
     segments.forEach(s=>{if(s.cc&&!seen.has(s.cc)){seen.add(s.cc);ccList.push(s.cc);}});
+
+    // Detekuj HR entry/exit pre HAC live ceny
+    let hrEntryCC=null, hrExitCC=null, hrDistKm=0;
+    const segsFlat=segments.filter(Boolean);
+    for(let i=0;i<segsFlat.length;i++){
+      if(segsFlat[i]?.cc==='HR'){
+        if(!hrEntryCC&&i>0) hrEntryCC=segsFlat[i-1]?.cc;
+        if(i<segsFlat.length-1) hrExitCC=segsFlat[i+1]?.cc||hrExitCC;
+      }
+    }
+    if(ccList.includes('HR')){
+      const hrCount=segsFlat.filter(s=>s?.cc==='HR').length;
+      hrDistKm=(hrCount/Math.max(segsFlat.length,1))*(route.distance/1000);
+    }
+
     const dateFrom=document.getElementById('mr-date-from').value;
     const dateTo=document.getElementById('mr-date-to').value;
     let tripDays=7;
@@ -1517,10 +1844,30 @@ async function calcMapRoute(){
         const eurNote=priceStr.startsWith('€')?'':` ≈ ${toEurStr(priceEur)}`;
         action=`Buy vignette · ${rec.p}${eurNote}`;needsPay=true;totalEur+=priceEur;
       } else if(country.type==='toll'){
-        const est=country.prices[0];priceEur=est?parseEuro(est.v):0;
-        priceStr=est?`~${est.v}`:'varies';
-        action='Pay at toll gate'+(country.enc?` · ENC: ${country.enc}`:'');
-        needsPay=!!priceEur;if(needsPay)totalEur+=priceEur;
+        if(id==='hr'){
+          // HAC live - async výpočet prebehne neskôr, teraz odhad
+          const vehicleCat=document.getElementById('mr-vehicle-cat')?.value||'I';
+          try {
+            const hacRes=await calcHRToll(hrEntryCC,hrExitCC,hrDistKm,[],vehicleCat,segsFlat);
+            priceEur=hacRes.amount; 
+            const liveIcon=hacRes.live?(hacRes.precise?'🟢 Live HAC':'🟡 Live HAC estimate'):'🟠 Distance estimate';
+            priceStr=`€${priceEur.toFixed(2)}`;
+            action=`Toll gates · ${liveIcon} · <a href="https://karta.hac.hr" target="_blank" style="color:var(--accent)">karta.hac.hr ↗</a>`;
+            if(hacRes.segments?.length){
+              const segTxt=hacRes.segments.map(s=>`${s.entry}→${s.exit}: €${s.amount.toFixed(2)}`).join(' + ');
+              action+=`<br><span style="font-size:.62rem;color:rgba(255,255,255,.4);">${segTxt}</span>`;
+            }
+          } catch(e) {
+            priceEur=18; priceStr='~€18 (est.)';
+            action=`Pay at toll gate · HAC · <a href="https://karta.hac.hr" target="_blank" style="color:var(--accent)">karta.hac.hr ↗</a>`;
+          }
+          needsPay=true; totalEur+=priceEur;
+        } else {
+          const est=country.prices[0];priceEur=est?parseEuro(est.v):0;
+          priceStr=est?`~${est.v}`:'varies';
+          action='Pay at toll gate'+(country.enc?` · ENC: ${country.enc}`:'');
+          needsPay=!!priceEur;if(needsPay)totalEur+=priceEur;
+        }
       } else {action='Free — no payment needed';priceStr='FREE';}
       html+=`<div class="mr-country-item" style="border-left:4px solid ${color};"><div class="mr-ci-code">${cc}</div><div class="mr-ci-info"><div class="mr-ci-name">${country.name}</div><div class="mr-ci-sub">${action}${country.buy&&needsPay?` · <a href="${country.buy}" target="_blank" style="color:var(--accent);text-decoration:none;">${country.bl} ↗</a>`:''}</div></div>${needsPay?`<div class="mr-ci-price">${priceStr}</div>`:`<div style="color:var(--f);font-weight:800;font-size:.8rem;">FREE</div>`}</div>`;
     });
