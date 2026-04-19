@@ -395,6 +395,33 @@ main { padding:2rem; max-width:1300px; margin:0 auto; }
   font-size: .62rem; color: rgba(255,255,255,.35);
   letter-spacing: .1em; text-transform: uppercase; margin-top: .2rem;
 }
+
+/* ── Google Places Autocomplete dark theme ── */
+.pac-container {
+  background: #141922 !important;
+  border: 1px solid rgba(255,255,255,.15) !important;
+  border-radius: 8px !important;
+  box-shadow: 0 8px 24px rgba(0,0,0,.5) !important;
+  margin-top: 4px !important;
+  font-family: 'Geist', sans-serif !important;
+  z-index: 9999 !important;
+}
+.pac-item {
+  padding: .55rem .85rem !important;
+  border-top: 1px solid rgba(255,255,255,.05) !important;
+  color: #E2E8F0 !important;
+  font-size: .82rem !important;
+  cursor: pointer !important;
+  line-height: 1.4 !important;
+}
+.pac-item:first-child { border-top: none !important; }
+.pac-item:hover,
+.pac-item-selected { background: rgba(212,130,10,.15) !important; }
+.pac-item-query { color: #fff !important; font-size: .82rem !important; font-weight: 600 !important; }
+.pac-matched { color: var(--accent) !important; font-weight: 700 !important; }
+.pac-icon { filter: invert(1) brightness(.6); margin-top: .2rem !important; }
+/* Google logo - required by ToS, nechávame viditeľné */
+.pac-logo:after { background-color: transparent !important; opacity: .5; }
 </style>
 </head>
 <body>
@@ -531,7 +558,7 @@ main { padding:2rem; max-width:1300px; margin:0 auto; }
   <div class="mr-layout">
     <div class="mr-panel">
       <h2 style="font-weight:800;font-size:1.15rem;margin-bottom:.3rem;">🧮 Route Calculator</h2>
-      <p style="font-size:.78rem;color:var(--muted);margin-bottom:1.1rem;">Enter cities along your route — we'll calculate exact roads, detect which countries and motorways you cross, and estimate total costs.</p>
+      <p style="font-size:.78rem;color:var(--muted);margin-bottom:1.1rem;">Enter cities, addresses or places along your route — we'll calculate exact roads, detect which countries and motorways you cross, and estimate total costs.</p>
 
       <div id="mr-stops-wrap"></div>
       <button class="broute" onclick="addStop()" style="margin-bottom:.85rem;">+ Add stop</button>
@@ -1100,7 +1127,7 @@ function loadGoogleMapsSDK(){
     const cbName = '_googleMapsReady_' + Date.now();
     window[cbName] = () => { delete window[cbName]; resolve(); };
     const script = document.createElement('script');
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_KEY}&callback=${cbName}&v=weekly&loading=async`;
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_KEY}&libraries=places&callback=${cbName}&v=weekly&loading=async`;
     script.async = true;
     script.defer = true;
     script.onerror = () => { delete window[cbName]; reject(new Error('Google Maps SDK failed to load')); };
@@ -1396,8 +1423,8 @@ function initStops(){
   mrStops=[];
   const wrap=document.getElementById('mr-stops-wrap');
   wrap.innerHTML='';
-  addStop('From — origin city');
-  addStop('To — destination city');
+  addStop('From — city, address, or place');
+  addStop('To — city, address, or place');
 }
 
 function addStop(placeholder){
@@ -1413,11 +1440,12 @@ function addStop(placeholder){
   const canRemove=idx>=2;
   div.innerHTML=`
     <span class="stop-label">${label}</span>
-    <input type="text" id="${id}" placeholder="${placeholder||`Stop ${label} — city`}" autocomplete="off">
+    <input type="text" id="${id}" placeholder="${placeholder||`Stop ${label} — city or address`}" autocomplete="off">
     ${canRemove?`<button class="stop-remove" onclick="removeStop('${id}')" title="Remove stop">×</button>`:'<span style="width:1.6rem"></span>'}
   `;
   wrap.appendChild(div);
-  if(window.mapboxgl) attachAutocomplete(id);
+  // Attach autocomplete vždy — funkcia si sama zvolí Google alebo Mapbox fallback
+  attachAutocomplete(id);
   relabelStops();
 }
 
@@ -1449,57 +1477,120 @@ function initMrMap(){
   } else { createMrMap(); }
 }
 
+// ══════════════════════════════════════════════════════════
+// ── attachAutocomplete — Google Places Autocomplete ──
+// Používame Google Places pre presné adresy s číslom domu.
+// Výhody: najlepší autocomplete, globálne pokrytie (aj Balkán),
+// fuzzy matching, multilingual. Free do ~11k sessions/mesiac.
+// Pri zlyhaní (SDK not loaded) → fallback na Mapbox geocoding.
+// ══════════════════════════════════════════════════════════
+const _inputCoords = {}; // { inputId: [lng, lat] } — uložené GPS z Google Places výberu
+
 function attachAutocomplete(inputId){
-  const input=document.getElementById(inputId);
-  if(!input||input.dataset.ac) return;
-  input.dataset.ac='1';
-  input.addEventListener('input', async function(){
-    const q=this.value.trim();
-    if(q.length<2){ removeAcDropdown(inputId); return; }
-    try {
-      const r=await fetch(`https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(q)}.json?access_token=${_ta+_tb}&types=place&limit=5&language=en`);
-      const d=await r.json();
-      showAcDropdown(inputId, d.features||[]);
-    } catch(e){}
+  const input = document.getElementById(inputId);
+  if(!input || input.dataset.ac) return;
+  input.dataset.ac = '1';
+
+  // Handler pri zmene textu — ak user zadá ručne, vymažeme uloženú GPS
+  input.addEventListener('input', () => {
+    delete _inputCoords[inputId];
   });
-  input.addEventListener('blur', ()=>setTimeout(()=>removeAcDropdown(inputId),200));
-  input.addEventListener('keydown', (e)=>{
-    const drop=document.getElementById(`ac-drop-${inputId}`);
-    const items=drop?Array.from(drop.querySelectorAll('div')):[];
-    if(!items.length && e.key==='Enter'){ calcMapRoute(); return; }
-    if(e.key==='ArrowDown'||e.key==='ArrowUp'){
-      e.preventDefault();
-      const cur=items.findIndex(i=>i.dataset.active==='1');
-      items.forEach(i=>{ i.dataset.active=''; i.style.background=''; });
-      const next=e.key==='ArrowDown'?items[(cur+1)%items.length]:items[(cur-1+items.length)%items.length];
-      if(next){ next.dataset.active='1'; next.style.background='rgba(212,130,10,.2)'; input.value=next.textContent.trim(); }
-    } else if(e.key==='Enter'){
-      const active=items.find(i=>i.dataset.active==='1');
-      if(active){ input.value=active.textContent.trim(); removeAcDropdown(inputId); }
-      else { removeAcDropdown(inputId); calcMapRoute(); }
+
+  // Enter triggers calculate
+  input.addEventListener('keydown', (e) => {
+    if(e.key === 'Enter' && !e.isComposing){
+      // Zatvor Google Places dropdown ak je otvorený
+      const pac = document.querySelector('.pac-container:not([style*="display: none"])');
+      if(!pac){
+        e.preventDefault();
+        calcMapRoute();
+      }
     }
   });
+
+  // Skús nastaviť Google Places Autocomplete ak je SDK loadnuté
+  const tryAttachGoogle = () => {
+    if(!window.google?.maps?.places?.Autocomplete) return false;
+    try {
+      const ac = new google.maps.places.Autocomplete(input, {
+        // Bez types filtra — povolíme mestá + adresy + POI (benzínky, atrakcie)
+        // types: ['geocode'] by vyľúčilo POI; my chceme všetko
+        fields: ['name', 'formatted_address', 'geometry.location'],
+      });
+      ac.addListener('place_changed', () => {
+        const place = ac.getPlace();
+        if(!place.geometry?.location) return;
+        // Ulož GPS pre neskoršie použitie v calcMapRoute
+        _inputCoords[inputId] = [
+          place.geometry.location.lng(),
+          place.geometry.location.lat(),
+        ];
+        // Aktualizuj text inputu na plnú formátovanú adresu
+        input.value = place.formatted_address || place.name || input.value;
+        console.log('[Places]', inputId, '→', input.value, _inputCoords[inputId]);
+      });
+      input.dataset.acEngine = 'google';
+      return true;
+    } catch(err){
+      console.warn('[Places] Attach failed:', err.message);
+      return false;
+    }
+  };
+
+  // Okamžitý pokus
+  if(!tryAttachGoogle()){
+    // Ak Google SDK ešte nie je loadnuté, počkaj naň
+    loadGoogleMapsSDK().then(() => {
+      if(!tryAttachGoogle()){
+        // Google zlyhal → fallback na Mapbox
+        console.warn('[Places] Falling back to Mapbox geocoding for', inputId);
+        attachMapboxFallback(input, inputId);
+      }
+    }).catch(() => {
+      attachMapboxFallback(input, inputId);
+    });
+  }
+}
+
+// Fallback: Mapbox geocoding dropdown — len ak Google SDK úplne zlyhá
+function attachMapboxFallback(input, inputId){
+  if(input.dataset.acEngine === 'google') return;
+  input.dataset.acEngine = 'mapbox';
+  input.addEventListener('input', async function(){
+    const q = this.value.trim();
+    if(q.length < 2){ removeAcDropdown(inputId); return; }
+    try {
+      const r = await fetch(`https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(q)}.json?access_token=${_ta+_tb}&types=place,address&limit=5&language=en`);
+      const d = await r.json();
+      showAcDropdown(inputId, d.features || []);
+    } catch(e){}
+  });
+  input.addEventListener('blur', () => setTimeout(() => removeAcDropdown(inputId), 200));
 }
 
 function showAcDropdown(inputId, features){
   removeAcDropdown(inputId);
   if(!features.length) return;
-  const input=document.getElementById(inputId);
+  const input = document.getElementById(inputId);
   if(!input) return;
-  const div=document.createElement('div');
-  div.id=`ac-drop-${inputId}`;
-  div.style.cssText='position:absolute;background:#141922;border:1px solid rgba(255,255,255,.15);border-radius:8px;z-index:9999;width:100%;max-height:200px;overflow-y:auto;box-shadow:0 8px 24px rgba(0,0,0,.5);top:100%;left:0;';
-  features.forEach(f=>{
-    const item=document.createElement('div');
-    item.style.cssText='padding:.55rem .85rem;cursor:pointer;font-size:.82rem;color:#E2E8F0;border-bottom:1px solid rgba(255,255,255,.05);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;';
-    item.textContent=f.place_name;
-    item.onmousedown=()=>{input.value=f.text||f.place_name.split(',')[0];removeAcDropdown(inputId);};
-    item.onmouseover=()=>item.style.background='rgba(212,130,10,.15)';
-    item.onmouseout=()=>item.style.background='';
+  const div = document.createElement('div');
+  div.id = `ac-drop-${inputId}`;
+  div.style.cssText = 'position:absolute;background:#141922;border:1px solid rgba(255,255,255,.15);border-radius:8px;z-index:9999;width:100%;max-height:200px;overflow-y:auto;box-shadow:0 8px 24px rgba(0,0,0,.5);top:100%;left:0;';
+  features.forEach(f => {
+    const item = document.createElement('div');
+    item.style.cssText = 'padding:.55rem .85rem;cursor:pointer;font-size:.82rem;color:#E2E8F0;border-bottom:1px solid rgba(255,255,255,.05);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;';
+    item.textContent = f.place_name;
+    item.onmousedown = () => {
+      input.value = f.place_name;
+      if(f.center) _inputCoords[inputId] = [f.center[0], f.center[1]];
+      removeAcDropdown(inputId);
+    };
+    item.onmouseover = () => item.style.background = 'rgba(212,130,10,.15)';
+    item.onmouseout = () => item.style.background = '';
     div.appendChild(item);
   });
-  const wrap=input.parentElement;
-  wrap.style.position='relative';
+  const wrap = input.parentElement;
+  wrap.style.position = 'relative';
   wrap.appendChild(div);
 }
 
@@ -2057,7 +2148,12 @@ async function recomputeResultsPanel(route, validPts, segments, stopInputs){
 // ── HLAVNÁ FUNKCIA: calcMapRoute ──
 // ══════════════════════════════════════════════════════════
 async function calcMapRoute(){
-  const stopInputs = mrStops.map(id => document.getElementById(id)?.value?.trim()).filter(Boolean);
+  const stopIds = mrStops.filter(id => {
+    const el = document.getElementById(id);
+    return el && el.value.trim().length > 0;
+  });
+  const stopInputs = stopIds.map(id => document.getElementById(id).value.trim());
+
   if(stopInputs.length < 2){
     document.getElementById('mr-result').innerHTML = '<div style="font-size:.8rem;color:#c00;padding:.75rem;background:#fde8e6;border-radius:8px;">Please enter at least an origin and destination.</div>';
     return;
@@ -2070,9 +2166,18 @@ async function calcMapRoute(){
   if(!Object.keys(FX).length) await loadFX();
 
   try {
-    // 1. Geokódovanie stopov cez Mapbox
-    const coords = await Promise.all(stopInputs.map(async s => {
-      const r = await fetch(`https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(s)}.json?access_token=${_ta+_tb}&types=place,address&limit=1`);
+    // 1. Získaj GPS súradnice — primárne z _inputCoords (Google Places výber)
+    //    Fallback na Mapbox geocoding ak user nevybral zo suggestions
+    const coords = await Promise.all(stopIds.map(async (id, i) => {
+      // Prednosť: GPS uložené z Google Places výberu (presnejšie)
+      if(_inputCoords[id]){
+        console.log('[Geocode] Using stored GPS for', id, _inputCoords[id]);
+        return _inputCoords[id];
+      }
+      // Fallback: Mapbox forward geocoding
+      const s = stopInputs[i];
+      console.log('[Geocode] Mapbox fallback for', id, '→', s);
+      const r = await fetch(`https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(s)}.json?access_token=${_ta+_tb}&types=place,address,locality&limit=1`);
       const d = await r.json();
       if(!d.features?.length) throw new Error('Not found: ' + s);
       return d.features[0].center;
