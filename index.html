@@ -534,10 +534,10 @@ main { padding:2rem; max-width:1300px; margin:0 auto; }
     <div class="mr-map-wrap">
       <div id="mr-map"></div>
       <div id="mr-legend" class="mr-legend" style="display:none;">
-        <div class="mrl-item"><span class="mrl-dot" style="background:#1B4D3E"></span> Vignette motorway</div>
-        <div class="mrl-item"><span class="mrl-dot" style="background:#7A3200"></span> Toll motorway</div>
-        <div class="mrl-item"><span class="mrl-dot" style="background:#0F3460"></span> Free motorway</div>
-        <div class="mrl-item"><span class="mrl-dot" style="background:#7C3AED"></span> Local road (free)</div>
+        <div class="mrl-item"><span class="mrl-dot" style="background:#22c997;border-radius:3px;"></span> Vignette</div>
+        <div class="mrl-item"><span class="mrl-dot" style="background:#f4a45a;border-radius:3px;"></span> Toll</div>
+        <div class="mrl-item"><span class="mrl-dot" style="background:#6eb3f7;border-radius:3px;"></span> Free</div>
+        <div class="mrl-item"><span class="mrl-dot" style="background:#c084fc;border-radius:3px;"></span> Local</div>
       </div>
     </div>
   </div>
@@ -1805,37 +1805,180 @@ async function calcMapRoute(){
     document.getElementById('mr-result').innerHTML='<div style="font-size:.8rem;color:#c00;padding:.75rem;background:#fde8e6;border-radius:8px;">Please enter at least an origin and destination.</div>';
     return;
   }
-
   const resultEl=document.getElementById('mr-result');
-  resultEl.innerHTML='<div style="font-size:.8rem;color:var(--muted);padding:.5rem 0;">⏳ Calculating route...</div>';
-
-  if(!window.google||!mrMap){ initMrMap(); await new Promise(r=>setTimeout(r,2500)); }
+  resultEl.innerHTML='<div style="font-size:.8rem;color:var(--muted);padding:.5rem 0;">⏳ Geocoding stops...</div>';
+  if(!mrMap){initMrMap();await new Promise(r=>setTimeout(r,3000));}
   if(!Object.keys(FX).length) await loadFX();
+  try{
+    // Geocode all stops via Mapbox
+    const coords=await Promise.all(stopInputs.map(async s=>{
+      const r=await fetch(`https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(s)}.json?access_token=${_ta+_tb}&types=place,address&limit=1`);
+      const d=await r.json();
+      if(!d.features?.length) throw new Error('Not found: '+s);
+      return d.features[0].center; // [lng, lat]
+    }));
 
-  const directionsService=new google.maps.DirectionsService();
+    resultEl.innerHTML='<div style="font-size:.8rem;color:var(--muted);padding:.5rem 0;">⏳ Getting route...</div>';
 
-  try {
-    const origin=stopInputs[0];
-    const destination=stopInputs[stopInputs.length-1];
-    const waypoints=stopInputs.slice(1,-1).map(v=>({location:v,stopover:true}));
+    // Get route via Mapbox Directions
+    const coordStr=coords.map(c=>c.join(',')).join(';');
+    const routeResp=await fetch(`https://api.mapbox.com/directions/v5/mapbox/driving/${coordStr}?access_token=${_ta+_tb}&geometries=geojson&overview=full&steps=false`);
+    const routeData=await routeResp.json();
+    if(!routeData.routes?.length) throw new Error('No route found');
+    const route=routeData.routes[0];
+    const rc=route.geometry.coordinates; // [[lng,lat], ...]
 
-    const result=await new Promise((res,rej)=>{
-      directionsService.route({
-        origin,destination,waypoints,
-        travelMode:google.maps.TravelMode.DRIVING,
-        provideRouteAlternatives: waypoints.length===0,
-        region:'eu',
-      },(r,s)=>{ if(s==='OK') res(r); else rej(s); });
+    resultEl.innerHTML='<div style="font-size:.8rem;color:var(--muted);padding:.5rem 0;">⏳ Detecting countries...</div>';
+
+    // Clear old layers
+    mrPolylines.forEach(id=>{try{if(mrMap.getLayer(id))mrMap.removeLayer(id);if(mrMap.getSource(id))mrMap.removeSource(id);}catch(e){}});
+    mrPolylines=[];
+    mrMarkers.forEach(m=>m.remove());
+    mrMarkers=[];
+
+    // Sample points for country detection
+    const sampleStep=Math.max(1,Math.floor(rc.length/25));
+    const samples=[];
+    for(let i=0;i<rc.length;i+=sampleStep) samples.push(i);
+    if(!samples.includes(rc.length-1)) samples.push(rc.length-1);
+
+    const countryResults=await Promise.all(samples.map(i=>
+      fetch(`https://api.mapbox.com/geocoding/v5/mapbox.places/${rc[i][0]},${rc[i][1]}.json?access_token=${_ta+_tb}&types=country&limit=1`)
+        .then(r=>r.json())
+        .then(d=>({cc:d.features?.[0]?.properties?.short_code?.toUpperCase()||null,lat:rc[i][1],lng:rc[i][0]}))
+        .catch(()=>null)
+    ));
+
+    // Build segments
+    let segments=[],curCC=countryResults.filter(Boolean)[0]?.cc,segStart=0;
+    const validPts=countryResults.filter(Boolean);
+    for(let i=1;i<validPts.length;i++){
+      if(validPts[i].cc!==curCC){
+        segments.push({cc:curCC,pts:validPts.slice(segStart,i)});
+        curCC=validPts[i].cc; segStart=i;
+      }
+    }
+    segments.push({cc:curCC,pts:validPts.slice(segStart)});
+
+    // Country list & HR detection
+    const seen=new Set(); const ccList=[];
+    segments.forEach(s=>{if(s.cc&&!seen.has(s.cc)){seen.add(s.cc);ccList.push(s.cc);}});
+    let hrEntryCC=null,hrExitCC=null,hrDistKm=0;
+    for(let i=0;i<segments.length;i++){
+      if(segments[i].cc==='HR'){
+        if(!hrEntryCC&&i>0) hrEntryCC=segments[i-1].cc;
+        if(i<segments.length-1) hrExitCC=segments[i+1].cc||hrExitCC;
+      }
+    }
+    if(ccList.includes('HR')){
+      const hrPts=validPts.filter(p=>p.cc==='HR').length;
+      hrDistKm=(hrPts/Math.max(validPts.length,1))*(route.distance/1000);
+    }
+
+    // Draw colored polylines
+    segments.forEach((seg,idx)=>{
+      if(!seg.pts||seg.pts.length<2) return;
+      const segCoords=seg.pts.map(p=>[p.lng,p.lat]);
+      const id=`rseg-${idx}`; mrPolylines.push(id);
+      const clr=countryColor(seg.cc);
+      mrMap.addSource(id,{type:'geojson',data:{type:'Feature',geometry:{type:'LineString',coordinates:segCoords}}});
+      mrMap.addLayer({id,type:'line',source:id,layout:{'line-join':'round','line-cap':'round'},paint:{'line-color':clr,'line-width':5,'line-opacity':.9}});
     });
 
-    lastDirectionsResult=result;
-    activeRouteIdx=0;
-    await renderRoute(result);
+    // Fit map
+    const bounds=new mapboxgl.LngLatBounds();
+    rc.forEach(p=>bounds.extend(p));
+    mrMap.fitBounds(bounds,{padding:60});
 
-  } catch(err){
-    document.getElementById('mr-result').innerHTML=`<div style="font-size:.8rem;color:#c00;padding:.75rem;background:#fde8e6;border-radius:8px;">Could not calculate route: ${err}</div>`;
+    // Markers
+    const labels=['A','B','C','D','E','F','G','H'];
+    coords.forEach((coord,i)=>addMbMarker(coord,labels[i]||String(i+1),stopInputs[i]));
+
+    // Dates
+    const dateFrom=document.getElementById('mr-date-from').value;
+    const dateTo=document.getElementById('mr-date-to').value;
+    let tripDays=7;
+    if(dateFrom&&dateTo){const d1=new Date(dateFrom),d2=new Date(dateTo);tripDays=Math.max(1,Math.ceil((d2-d1)/(1000*60*60*24)));}
+    const vehicleCat=document.getElementById('mr-vehicle-cat')?.value||'I';
+    const distKm=(route.distance/1000).toFixed(0);
+    const durH=Math.floor(route.duration/3600),durM=Math.floor((route.duration%3600)/60);
+
+    // Build results HTML
+    let html=`<div class="mr-route-info">
+      <div class="mr-route-stat"><strong>${distKm} km</strong>distance</div>
+      <div class="mr-route-stat"><strong>${durH}h ${durM}m</strong>drive time</div>
+      <div class="mr-route-stat"><strong>${ccList.length}</strong>countries</div>
+      <div class="mr-route-stat"><strong>${tripDays}d</strong>trip</div>
+    </div>`;
+    html+='<div style="font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);margin-bottom:.6rem;">Countries on route</div>';
+
+    let totalEur=0;
+    for(const cc of ccList){
+      const id=CC_MAP[cc]; const country=C.find(x=>x.id===id); if(!country) continue;
+      const clr=countryColor(cc); let action='',priceStr='',priceEur=0,needsPay=false,note='';
+      if(country.type==='vignette'&&country.prices.length){
+        const rec=getBestVignette(country.prices,tripDays);
+        priceStr=rec.v; priceEur=parseEuro(rec.v);
+        const eurNote=priceStr.startsWith('€')?'':` ≈ ${toEurStr(priceEur)}`;
+        action=`Buy vignette · ${rec.p}${eurNote}`; needsPay=true; totalEur+=priceEur;
+      } else if(country.type==='toll'){
+        if(id==='hr'){
+          // Use HAC segments as pseudo-steps for calcHRToll
+          const pseudoSteps=segments.filter(s=>s.cc==='HR').flatMap(s=>s.pts).map(p=>({instructions:'',polyline:{points:''}}));
+          const hacRes=await calcHRToll(hrEntryCC,hrExitCC,hrDistKm,pseudoSteps,vehicleCat,validPts);
+          priceEur=hacRes.amount; priceStr=`€${priceEur.toFixed(2)}`;
+          const icon=hacRes.live?(hacRes.precise?'🟢 Live HAC':'🟡 Live HAC est.'):'🟠 Distance est.';
+          action=`Toll gates · ${icon} · <a href="https://karta.hac.hr" target="_blank" style="color:var(--accent)">karta.hac.hr ↗</a>`;
+          if(hacRes.segments?.length) note=hacRes.segments.map(s=>`${s.entry}→${s.exit}: €${s.amount.toFixed(2)}`).join(' + ');
+          needsPay=true; totalEur+=priceEur;
+        } else if(FREE_LOCAL[id]){
+          action='Local roads — free'; priceStr='FREE';
+        } else {
+          const est=country.prices[0]; priceEur=est?parseEuro(est.v):0;
+          priceStr=est?`~${est.v}`:'varies';
+          action='Pay at toll gate'+(country.enc?` · ENC: ${country.enc}`:'');
+          needsPay=!!priceEur; if(needsPay) totalEur+=priceEur;
+        }
+      } else { action='Free — no payment needed'; priceStr='FREE'; }
+
+      html+=`<div class="mr-country-item" style="border-left:4px solid ${clr};">
+        <div class="mr-ci-code">${cc}</div>
+        <div class="mr-ci-info">
+          <div class="mr-ci-name">${country.name}</div>
+          <div class="mr-ci-sub">${action}${country.buy&&needsPay&&id!=='hr'?` · <a href="${country.buy}" target="_blank" style="color:var(--accent);text-decoration:none;">${country.bl} ↗</a>`:''}</div>
+          ${note?`<div style="font-size:.65rem;color:var(--enc);margin-top:.2rem;">ℹ️ ${note}</div>`:''}
+        </div>
+        ${needsPay?`<div class="mr-ci-price">${priceStr}</div>`:`<div style="color:var(--f);font-weight:800;font-size:.8rem;">FREE</div>`}
+      </div>`;
+    }
+
+    // Fuel
+    const fuelPrice=parseFloat(document.getElementById('mr-fuel-price')?.value)||1.55;
+    const fuelCons=parseFloat(document.getElementById('mr-fuel-consumption')?.value)||7;
+    const fuelCost=parseFloat(((route.distance/1000)*fuelCons/100*fuelPrice).toFixed(2));
+    const grandTotal=parseFloat((totalEur+fuelCost).toFixed(2));
+    if(totalEur>0||fuelCost>0){
+      html+=`<div class="mr-total-box">
+        <div class="mr-total-label">💰 Estimated total trip costs</div>
+        ${totalEur>0?`<div class="mr-total-row"><div style="font-size:.75rem;color:var(--muted);">🛣️ Vignettes + tolls</div><div style="font-weight:800;">${toEurStr(totalEur)}</div></div>`:''}
+        <div class="mr-total-row"><div style="font-size:.75rem;color:var(--muted);">⛽ Fuel · ${distKm}km × ${fuelCons}L/100km × €${fuelPrice}/L</div><div style="font-weight:800;">${toEurStr(fuelCost)}</div></div>
+        <div class="mr-total-row" style="border-top:1px solid var(--border);margin-top:.4rem;padding-top:.4rem;">
+          <div style="font-size:.8rem;font-weight:700;">Total estimated trip cost</div>
+          <div class="mr-total-amt">${toEurStr(grandTotal)}</div>
+        </div>
+      </div>`;
+    }
+    html+='<div class="rnote" style="margin-top:.75rem;">⚠️ Estimates are approximate. Buy vignettes before your trip.</div>';
+    resultEl.innerHTML=html;
+    document.getElementById('mr-legend').style.display='block';
+    document.getElementById('mr-route-tabs').style.display='none';
+
+  }catch(err){
+    document.getElementById('mr-result').innerHTML=`<div style="font-size:.8rem;color:#c00;padding:.75rem;background:#fde8e6;border-radius:8px;">Error: ${err.message}</div>`;
+    console.error(err);
   }
 }
+
 
 async function renderRoute(result){
   const dateFrom=document.getElementById('mr-date-from').value;
@@ -2039,43 +2182,6 @@ async function renderRoute(result){
 }
 
 
-async function calcMapRoute(){
-  const stopInputs=mrStops.map(id=>document.getElementById(id)?.value?.trim()).filter(Boolean);
-  if(stopInputs.length<2){
-    document.getElementById('mr-result').innerHTML='<div style="font-size:.8rem;color:#c00;padding:.75rem;background:#fde8e6;border-radius:8px;">Please enter at least an origin and destination.</div>';
-    return;
-  }
-
-  const resultEl=document.getElementById('mr-result');
-  resultEl.innerHTML='<div style="font-size:.8rem;color:var(--muted);padding:.5rem 0;">⏳ Calculating route...</div>';
-
-  if(!window.google||!mrMap){ initMrMap(); await new Promise(r=>setTimeout(r,2500)); }
-  if(!Object.keys(FX).length) await loadFX();
-
-  const directionsService=new google.maps.DirectionsService();
-
-  try {
-    const origin=stopInputs[0];
-    const destination=stopInputs[stopInputs.length-1];
-    const waypoints=stopInputs.slice(1,-1).map(v=>({location:v,stopover:true}));
-
-    const result=await new Promise((res,rej)=>{
-      directionsService.route({
-        origin,destination,waypoints,
-        travelMode:google.maps.TravelMode.DRIVING,
-        provideRouteAlternatives: waypoints.length===0,
-        region:'eu',
-      },(r,s)=>{ if(s==='OK') res(r); else rej(s); });
-    });
-
-    lastDirectionsResult=result;
-    activeRouteIdx=0;
-    await renderRoute(result);
-
-  } catch(err){
-    document.getElementById('mr-result').innerHTML=`<div style="font-size:.8rem;color:#c00;padding:.75rem;background:#fde8e6;border-radius:8px;">Could not calculate route: ${err}</div>`;
-  }
-}
 
 async function renderRoute(result){
   const dateFrom=document.getElementById('mr-date-from').value;
