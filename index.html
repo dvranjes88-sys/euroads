@@ -3038,6 +3038,11 @@ async function enterCustomRouteMode(){
     customRouteState.directionsRenderer.setDirections(result);
     customRouteState._latestResult = result;
 
+    // ULOŽ snapshot pôvodných coords pre neskoršie porovnanie pri Apply
+    // (aby sme vedeli ktoré waypointy sú nové / zmenené)
+    customRouteState._originalStopCoords = stopCoords.map(c => [...c]);
+    console.log('[CustomRoute] Saved original coords:', customRouteState._originalStopCoords);
+
     // Fit bounds aby bola celá trasa viditeľná
     if(result.routes?.[0]?.bounds){
       customRouteState.gmap.fitBounds(result.routes[0].bounds);
@@ -3063,52 +3068,117 @@ async function applyCustomRoute(){
     return;
   }
 
-  // KĽÚČOVÉ: Google DirectionsRenderer pri drag-u vloží nové waypointy do request.waypoints
-  // Každý nový bod má {location: LatLng, stopover: false} (via-point)
-  // Originálne waypointy z nášho requestu majú stopover: true
+  // KĽÚČOVÉ: detekcia nových/zmenených waypointov
+  // Google pri drag-u môže:
+  //   a) PRIDAŤ nový via-point (stopover: false) — pre prvý drag na trase bez waypointov
+  //   b) POSUNÚŤ existujúci waypoint (stopover: true) — pre ďalšie dragy
+  // Preto porovnáme pôvodné coords (uložené pri enter) s aktuálnymi.
   const currentRequest = renderer.getDirections().request;
   const allWaypoints = currentRequest.waypoints || [];
 
   console.log('[CustomRoute] Apply — total waypoints:', allWaypoints.length);
 
-  // Filter len tie ktoré majú stopover: false (to sú via-points pridané Googlom)
-  const viaWaypoints = allWaypoints.filter(wp => wp.stopover === false);
-  console.log('[CustomRoute] Via-waypoints (new):', viaWaypoints.length);
+  // Extract current waypoint coords (všetky, vrátane stopover:true)
+  const currentWaypointCoords = allWaypoints.map(wp => {
+    const loc = wp.location;
+    const lat = typeof loc.lat === 'function' ? loc.lat() : loc.lat;
+    const lng = typeof loc.lng === 'function' ? loc.lng() : loc.lng;
+    return { coord: [lng, lat], stopover: wp.stopover !== false };
+  });
 
-  if(!viaWaypoints.length){
-    console.log('[CustomRoute] No via-waypoints — route was not dragged');
+  // Pôvodné waypointy (medzi origin a destination) — zo snapshotu
+  const origStopCoords = customRouteState._originalStopCoords || [];
+  const origWaypointCoords = origStopCoords.slice(1, -1); // bez origin/dest
+
+  console.log('[CustomRoute] Current waypoints:', currentWaypointCoords.length);
+  console.log('[CustomRoute] Original waypoints:', origWaypointCoords.length);
+
+  // Porovnaj: každý current waypoint buď zodpovedá niektorému origWaypoint (nezmenený)
+  // alebo je NOVÝ/posunutý (pridať alebo update)
+  const TOLERANCE = 0.01; // ~1km
+  const matchedOrigIdxs = new Set();
+  const newOrChangedWaypoints = [];
+
+  for(const cwp of currentWaypointCoords){
+    // Nájdi najbližší orig waypoint
+    let closestOrigIdx = -1;
+    let closestDist = Infinity;
+    origWaypointCoords.forEach((oc, i) => {
+      if(matchedOrigIdxs.has(i)) return;
+      const d = Math.sqrt(
+        Math.pow(oc[0] - cwp.coord[0], 2) +
+        Math.pow(oc[1] - cwp.coord[1], 2)
+      );
+      if(d < closestDist){
+        closestDist = d;
+        closestOrigIdx = i;
+      }
+    });
+
+    if(closestOrigIdx >= 0 && closestDist < TOLERANCE){
+      // Tento current waypoint zodpovedá origWaypoint → nezmenený
+      matchedOrigIdxs.add(closestOrigIdx);
+      console.log('[CustomRoute] Matched waypoint at', cwp.coord, 'to orig idx', closestOrigIdx);
+    } else {
+      // Tento waypoint je nový alebo posunutý → pridaj ako nový
+      newOrChangedWaypoints.push(cwp.coord);
+      console.log('[CustomRoute] New/changed waypoint:', cwp.coord, 'closest orig dist:', closestDist.toFixed(4));
+    }
+  }
+
+  console.log('[CustomRoute] New/changed waypoints:', newOrChangedWaypoints.length);
+
+  if(!newOrChangedWaypoints.length){
+    console.log('[CustomRoute] Route was not modified');
     cleanupCustomRouteMode();
     return;
   }
 
-  // Pre každý via-waypoint urč najbližší leg (medzi ktorými originálnymi stopmi leží)
+  // Pre každý new/changed waypoint určime insert pozíciu v mrStops
   const stopIds = mrStops.filter(id => {
     const el = document.getElementById(id);
     return el && el.value.trim().length > 0;
   });
-  const origCoords = stopIds.map(id => _inputCoords[id]).filter(Boolean);
+  const origCoordsForInsert = stopIds.map(id => _inputCoords[id]).filter(Boolean);
 
-  // Haversine-like distance (jednoduchá, stačí na porovnanie)
+  // ALE POZOR: ak sa zmenil existujúci stopover waypoint, musíme ho najprv REMOVE z mrStops
+  // Potom pridáme nový. Inak by boli 2 na rovnakom mieste.
+  // Ako identifikujeme ktoré pôvodné stops boli zmenené?
+  //   → Pomocou matchedOrigIdxs — orig waypointy ktoré NIE SÚ v matchedOrigIdxs boli odstránené/zmenené
+  const removedOrigIdxs = [];
+  for(let i = 0; i < origWaypointCoords.length; i++){
+    if(!matchedOrigIdxs.has(i)){
+      removedOrigIdxs.push(i);
+    }
+  }
+  console.log('[CustomRoute] Original waypoints removed/changed at idxs:', removedOrigIdxs);
+
+  // Remove z mrStops (idx v origWaypointCoords = idx v stopIds - 1)
+  // Remove od najvyššieho indexu aby sme nepomotali zvyšok
+  const idsToRemove = removedOrigIdxs.map(i => stopIds[i + 1]).filter(Boolean);
+  console.log('[CustomRoute] Removing stops:', idsToRemove);
+  for(const idToRemove of idsToRemove){
+    mrStops = mrStops.filter(s => s !== idToRemove);
+    document.querySelector(`.stop-row[data-stop-id="${idToRemove}"]`)?.remove();
+    delete _inputCoords[idToRemove];
+  }
+
+  // Získaj čerstvý zoznam stops po remove
+  const freshStopIds = [...mrStops];
+  const freshCoords = freshStopIds.map(id => _inputCoords[id]).filter(Boolean);
+
+  // Pre každý nový waypoint urč insertIdx (detour analýza)
   const dist = (p1, p2) => {
     const dLat = (p2[1] - p1[1]);
     const dLng = (p2[0] - p1[0]);
     return Math.sqrt(dLat*dLat + dLng*dLng);
   };
 
-  // Konvertuj via-waypoints LatLng na [lng, lat]
-  const viaCoords = viaWaypoints.map(wp => {
-    const loc = wp.location;
-    const lat = typeof loc.lat === 'function' ? loc.lat() : loc.lat;
-    const lng = typeof loc.lng === 'function' ? loc.lng() : loc.lng;
-    return [lng, lat];
-  });
-
-  // Pre každý via-waypoint urč insertIdx (medzi ktorými originálnymi stopmi patrí)
-  const newWaypoints = viaCoords.map(coord => {
-    let bestInsertIdx = origCoords.length - 1;
+  const newWaypoints = newOrChangedWaypoints.map(coord => {
+    let bestInsertIdx = freshCoords.length - 1;
     let minDetour = Infinity;
-    for(let i = 0; i < origCoords.length - 1; i++){
-      const detour = dist(origCoords[i], coord) + dist(coord, origCoords[i+1]);
+    for(let i = 0; i < freshCoords.length - 1; i++){
+      const detour = dist(freshCoords[i], coord) + dist(coord, freshCoords[i+1]);
       if(detour < minDetour){
         minDetour = detour;
         bestInsertIdx = i + 1;
@@ -3117,12 +3187,10 @@ async function applyCustomRoute(){
     return { coord, insertIdx: bestInsertIdx };
   });
 
-  // Sort podľa insertIdx
   newWaypoints.sort((a, b) => a.insertIdx - b.insertIdx);
+  console.log('[CustomRoute] Processing', newWaypoints.length, 'new waypoints');
 
-  console.log('[CustomRoute] Detected', newWaypoints.length, 'new waypoints');
-
-  // Cleanup UI (ale zachovaj directionsRenderer pre extract)
+  // Cleanup UI
   cleanupCustomRouteMode();
 
   // Reverse-geocode každého
