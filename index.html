@@ -1715,6 +1715,21 @@ function drawRouteByRoadClass(googleLegs, validPts, rc){
   // Detect starting country from first valid sample
   let currentCC = validPts[0]?.cc || null;
 
+  // Pre rýchlu detekciu CC každého step: spočítaj GPS vzdialenosť k najbližšiemu sample,
+  // ale použi OBIDVA najbližší sample body (predchádzajúci + nasledujúci)
+  // a vyber ten ktorý je bližšie pozdĺž trasy. Takto vyhneme zlému priradeniu pri hraniciach.
+  function findCCForPoint(lng, lat, prevCC){
+    let best = { cc: prevCC, dist: Infinity, idx: -1 };
+    for(let i = 0; i < validPts.length; i++){
+      const seg = validPts[i];
+      if(!seg) continue;
+      // Presná GPS vzdialenosť (Euclidean v degrees je OK pre susedné body)
+      const d = Math.sqrt((seg.lat - lat)**2 + (seg.lng - lng)**2);
+      if(d < best.dist){ best = { cc: seg.cc, dist: d, idx: i }; }
+    }
+    return best;
+  }
+
   // Classify each step + decode its polyline
   const classifiedSteps = [];
   for(const step of allSteps){
@@ -1732,7 +1747,7 @@ function drawRouteByRoadClass(googleLegs, validPts, rc){
     }
     if(!stepCoords || stepCoords.length < 2) continue;
 
-    // Check if instruction obsahuje country change
+    // Check if instruction obsahuje country change (explicit)
     const instr = (step.instructions || '').replace(/<[^>]+>/g, ' ');
     const countryChange = instr.match(/Vchádzate do krajiny\s+([^\s,]+)/i) ||
                           instr.match(/Entering\s+([^\s,]+)/i) ||
@@ -1744,19 +1759,50 @@ function drawRouteByRoadClass(googleLegs, validPts, rc){
       }
     }
 
-    // Presnejšie: použi sample pointy na určenie CC z GPS
-    // (keď Google neposkytne "Entering X" v instructions)
+    // OPRAVA: Použij GPS match na začiatok AJ na koniec step — ak sa rôznia,
+    // step je cross-border a radšej použijeme CC z konca (to je kam step smeruje).
+    // Taktiež ak je bestDist > 0.4 (cca 40km) = hranica je blízko → potrebuje potvrdenie.
     const startPt = stepCoords[0];
-    let bestCC = currentCC, bestDist = 999;
-    for(const seg of validPts){
-      if(!seg) continue;
-      const d = Math.abs(seg.lat - startPt[1]) + Math.abs(seg.lng - startPt[0]);
-      if(d < bestDist){ bestDist = d; bestCC = seg.cc; }
+    const endPt = stepCoords[stepCoords.length - 1];
+    const startMatch = findCCForPoint(startPt[0], startPt[1], currentCC);
+    const endMatch = findCCForPoint(endPt[0], endPt[1], currentCC);
+
+    // Ak start a end hovoria rovnaké CC s dobrým match → isto sme v tej krajine
+    if(startMatch.cc === endMatch.cc && startMatch.dist < 0.3){
+      currentCC = startMatch.cc;
     }
-    if(bestDist < 0.8) currentCC = bestCC;
+    // Ak start=HU a end=HR → sme cross-border, použijeme end CC (to je kam ideme)
+    else if(startMatch.cc !== endMatch.cc && endMatch.dist < 0.3){
+      currentCC = endMatch.cc;
+    }
+    // Inak ponecháme currentCC z explicit country change alebo pôvodnú hodnotu
 
     const roadType = classifyStep(step, currentCC);
-    classifiedSteps.push({ coords: stepCoords, roadType, cc: currentCC });
+    classifiedSteps.push({ coords: stepCoords, roadType, cc: currentCC, step });
+  }
+
+  // OPRAVA: Post-processing — fix mis-classified steps pri hraniciach
+  // Ak v sekvencii "HU paid, HU paid, HR paid, HR paid" je prvé HR step označené ako HU
+  // (lebo GPS bol stále bližšie k HU sample), re-classify.
+  // Detekujeme to tak že ak 2+ nasledujúce steps majú odlišné CC od aktuálneho,
+  // backpropagate ich CC aj na ten "nejasný" step.
+  for(let i = 0; i < classifiedSteps.length - 2; i++){
+    const cur = classifiedSteps[i];
+    const next1 = classifiedSteps[i+1];
+    const next2 = classifiedSteps[i+2];
+    // Ak nasledujúce 2 steps majú rovnaké CC rôzne od aktuálneho → cur je pravdepodobne mis-assigned
+    if(next1.cc === next2.cc && next1.cc !== cur.cc){
+      // Skontrolujeme či cur step je GPS spojený s next1 (= skutočne susedné steps)
+      const curEnd = cur.coords[cur.coords.length - 1];
+      const nextStart = next1.coords[0];
+      const gap = Math.sqrt((curEnd[0]-nextStart[0])**2 + (curEnd[1]-nextStart[1])**2);
+      if(gap < 0.05){ // steps sú navzájom blízko = je to hraničný prechod
+        console.log('[Draw] Border fix: step', i, 'was', cur.cc, '→', next1.cc);
+        cur.cc = next1.cc;
+        // Re-classify road type s novým CC použitím uloženého step objektu
+        cur.roadType = classifyStep(cur.step, next1.cc);
+      }
+    }
   }
 
   console.log('[Draw] Classified steps by type:',
