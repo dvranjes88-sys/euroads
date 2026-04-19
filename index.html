@@ -1690,7 +1690,7 @@ function combineLegRoutes(legResults){
       legIndices: indices,
     }));
 
-  // Vytvor skombinované routes
+  // Vytvor skombinované routes + uložíme aj _estimatedCost (ten istý čo použila Cheapest detekcia)
   return combinations.map(combo => {
     const legs = combo.legIndices.map((ri, legI) => legResults[legI].routes[ri]);
     // Spoj coordinates všetkých legs (bez duplikácie pri hraniciach)
@@ -1710,6 +1710,10 @@ function combineLegRoutes(legResults){
       if(leg._googleLegs) allGoogleLegs = allGoogleLegs.concat(leg._googleLegs);
     });
 
+    // Vypočítaj total cost pre túto konkrétnu kombináciu — KĽÚČOVÉ pre konzistentnosť
+    // UI panel a Cheapest detekcia musia používať rovnaký výpočet
+    const costEstimate = estimateCombinedRouteCost(legResults, combo.legIndices, tripDays, fuelPrice, fuelConsumption);
+
     return {
       geometry: { type: 'LineString', coordinates },
       distance: totalDist,
@@ -1718,6 +1722,7 @@ function combineLegRoutes(legResults){
       _googleLegs: allGoogleLegs,
       _decomposed: true,
       _labels: combo.labels, // viac labelov ak trasa spĺňa viacero kritérií
+      _estimatedCost: costEstimate.total, // rovnaký výpočet ako použila Cheapest detekcia
     };
   });
 }
@@ -2970,15 +2975,20 @@ function renderRouteOptionsPanel(routes, activeIdx){
   rightSub.textContent = `${routes.length} alternative${routes.length>1?'s':''} found`;
 
   // Vypočítaj savings pre Cheapest badge
+  // KĽÚČOVÉ: používame _estimatedCost (ten istý výpočet čo použila Cheapest detekcia v combineLegRoutes)
+  // — aby sa Est. Cost v UI vždy ZHODOVAL s tým čo určilo Cheapest label
+  const fuelCons = parseFloat(document.getElementById('mr-fuel-consumption')?.value) || 7;
+  const fuelPrice = parseFloat(document.getElementById('mr-fuel-price')?.value) || 1.55;
+
   let maxPrice = 0, minPrice = Infinity;
   const routePrices = routes.map(r => {
-    // Použij estimated total cost ak bol vypočítaný (z decomposition),
-    // inak rough estimate: distance * 0.04 eur/km + fuel
-    const fuelCons = parseFloat(document.getElementById('mr-fuel-consumption')?.value) || 7;
-    const fuelPrice = parseFloat(document.getElementById('mr-fuel-price')?.value) || 1.55;
+    if(typeof r._estimatedCost === 'number'){
+      return r._estimatedCost; // preferovaný — konzistentný s Cheapest detekciou
+    }
+    // Fallback: rough estimate ak trasa neprišla z combineLegRoutes
     const km = r.distance/1000;
     const fuelCost = km * fuelCons / 100 * fuelPrice;
-    const tollEst = km * 0.035; // rough proxy, len pre relative sort
+    const tollEst = km * 0.035;
     return fuelCost + tollEst;
   });
   routePrices.forEach(p => { if(p > maxPrice) maxPrice = p; if(p < minPrice) minPrice = p; });
