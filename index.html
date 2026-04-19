@@ -1820,6 +1820,66 @@ function updateRouteTabs(){
   });
 }
 
+
+async function selectRoute(idx, _unused){
+  if(!window.currentRouteData) return;
+  const routeData=window.currentRouteData;
+  const stopInputs=window.currentStopInputs||[];
+  
+  // Update tab styles
+  routeData.routes.forEach((_,i)=>{
+    const btn=document.getElementById(`rtab-${i}`);
+    if(!btn) return;
+    const isActive=i===idx;
+    btn.style.border=`2px solid ${isActive?'var(--accent)':'rgba(255,255,255,.1)'}`;
+    btn.style.background=isActive?'var(--accent)':'rgba(255,255,255,.05)';
+    btn.style.color=isActive?'#000':'var(--text)';
+  });
+
+  const route=routeData.routes[idx];
+  const rc=route.geometry.coordinates;
+  
+  // Clear old layers & markers
+  mrPolylines.forEach(id=>{try{if(mrMap.getLayer(id))mrMap.removeLayer(id);if(mrMap.getSource(id))mrMap.removeSource(id);}catch(e){}});
+  mrPolylines=[];
+  mrMarkers.forEach(m=>m.remove());
+  mrMarkers=[];
+
+  // Sample & detect countries
+  const sampleStep=Math.max(1,Math.floor(rc.length/25));
+  const samples=[];
+  for(let i=0;i<rc.length;i+=sampleStep) samples.push(i);
+  if(!samples.includes(rc.length-1)) samples.push(rc.length-1);
+  const countryResults=await Promise.all(samples.map(i=>
+    fetch(`https://api.mapbox.com/geocoding/v5/mapbox.places/${rc[i][0]},${rc[i][1]}.json?access_token=${_ta+_tb}&types=country&limit=1`)
+      .then(r=>r.json()).then(d=>({cc:d.features?.[0]?.properties?.short_code?.toUpperCase()||null,lat:rc[i][1],lng:rc[i][0]})).catch(()=>null)
+  ));
+  
+  // Build & draw segments
+  let segments=[],curCC=countryResults.filter(Boolean)[0]?.cc,segStart=0;
+  const validPts=countryResults.filter(Boolean);
+  for(let i=1;i<validPts.length;i++){
+    if(validPts[i].cc!==curCC){segments.push({cc:curCC,pts:validPts.slice(segStart,i)});curCC=validPts[i].cc;segStart=i;}
+  }
+  segments.push({cc:curCC,pts:validPts.slice(segStart)});
+  segments.forEach((seg,i)=>{
+    if(!seg.pts||seg.pts.length<2) return;
+    const id=`rseg-${i}`; mrPolylines.push(id);
+    mrMap.addSource(id,{type:'geojson',data:{type:'Feature',geometry:{type:'LineString',coordinates:seg.pts.map(p=>[p.lng,p.lat])}}});
+    mrMap.addLayer({id,type:'line',source:id,layout:{'line-join':'round','line-cap':'round'},paint:{'line-color':countryColor(seg.cc),'line-width':5,'line-opacity':.9}});
+  });
+  
+  const bounds=new mapboxgl.LngLatBounds();
+  rc.forEach(p=>bounds.extend(p));
+  mrMap.fitBounds(bounds,{padding:60});
+  
+  const labels=['A','B','C','D','E','F','G','H'];
+  stopInputs.forEach((s,i)=>{
+    const coord=rc[i===0?0:rc.length-1];
+    addMbMarker(coord,labels[i]||String(i+1),s);
+  });
+}
+
 async function calcMapRoute(){
   const stopInputs=mrStops.map(id=>document.getElementById(id)?.value?.trim()).filter(Boolean);
   if(stopInputs.length<2){
@@ -1843,9 +1903,32 @@ async function calcMapRoute(){
 
     // Get route via Mapbox Directions
     const coordStr=coords.map(c=>c.join(',')).join(';');
-    const routeResp=await fetch(`https://api.mapbox.com/directions/v5/mapbox/driving/${coordStr}?access_token=${_ta+_tb}&geometries=geojson&overview=full&steps=false`);
+    const routeResp=await fetch(`https://api.mapbox.com/directions/v5/mapbox/driving/${coordStr}?access_token=${_ta+_tb}&geometries=geojson&overview=full&steps=false&alternatives=true`);
     const routeData=await routeResp.json();
     if(!routeData.routes?.length) throw new Error('No route found');
+    
+    // Zobraz route tabs ak je viac trás
+    const routeTabs=document.getElementById('mr-route-tabs');
+    if(routeData.routes.length>1){
+      routeTabs.style.display='flex';
+      routeTabs.style.gap='.4rem';
+      routeTabs.style.flexWrap='wrap';
+      routeTabs.style.marginBottom='.75rem';
+      routeTabs.innerHTML=routeData.routes.map((r,i)=>{
+        const km=(r.distance/1000).toFixed(0);
+        const h=Math.floor(r.duration/3600),m=Math.floor((r.duration%3600)/60);
+        const isActive=i===0;
+        return `<button onclick="selectRoute(${i},routeData_)" id="rtab-${i}" style="padding:.4rem .8rem;border-radius:8px;border:2px solid ${isActive?'var(--accent)':'rgba(255,255,255,.1)'};background:${isActive?'var(--accent)':'rgba(255,255,255,.05)'};color:${isActive?'#000':'var(--text)'};font-size:.75rem;font-weight:700;cursor:pointer;font-family:'Geist',sans-serif;transition:all .15s;">Route ${i+1} · ${km}km · ${h}h${m}m</button>`;
+      }).join('');
+      // Ulož routeData globálne pre switchovanie
+      window.currentRouteData=routeData;
+      window.currentStopInputs=stopInputs;
+    } else {
+      routeTabs.style.display='none';
+      window.currentRouteData=routeData;
+      window.currentStopInputs=stopInputs;
+    }
+    
     const route=routeData.routes[0];
     const rc=route.geometry.coordinates; // [[lng,lat], ...]
 
