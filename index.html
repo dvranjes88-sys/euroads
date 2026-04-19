@@ -212,8 +212,39 @@ main { padding:2rem; max-width:1300px; margin:0 auto; }
 /* INPUT PANEL (hore) — kompaktný toolbar */
 .mr-input-panel { background: var(--surface); border: 1.5px solid var(--border); border-radius: var(--r); padding: 1.1rem 1.3rem; }
 .mr-input-head { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: .9rem; gap: 1rem; flex-wrap: wrap; }
-.mr-input-head h2 { font-weight: 800; font-size: 1.15rem; margin: 0 0 .2rem; }
-.mr-input-head .mr-sub { font-size: .72rem; color: var(--muted); margin: 0; }
+.mr-input-head-title { display: flex; align-items: center; gap: .65rem; }
+.mr-input-head-icon { width: 30px; height: 30px; border-radius: 8px; background: rgba(34,201,151,.12); border: 1px solid rgba(34,201,151,.25); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.mr-input-head-icon svg { width: 16px; height: 16px; stroke: #22c997; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.mr-input-head h2 { font-weight: 700; font-size: 1.1rem; margin: 0; letter-spacing: -.01em; }
+.mr-input-head .mr-sub { font-size: .72rem; color: var(--muted); margin: .25rem 0 0 calc(30px + .65rem); }
+
+/* Stops sekcia (hore, plná šírka) */
+.mr-stops-label { font-size: .62rem; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; margin-bottom: .5rem; }
+#mr-stops-wrap { margin-bottom: .5rem; }
+
+/* Input s inline ikonou — pekný dark look */
+.mr-input-wrap { position: relative; display: flex; align-items: center; background: rgba(255,255,255,.03); border: 1.5px solid rgba(255,255,255,.1); border-radius: 8px; transition: border-color .15s; }
+.mr-input-wrap:focus-within { border-color: #22c997; }
+.mr-input-icon { width: 14px; height: 14px; stroke: rgba(255,255,255,.45); fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; margin-left: .6rem; flex-shrink: 0; }
+.mr-input-wrap input,
+.mr-input-wrap select { background: transparent !important; border: none !important; outline: none !important; padding: .55rem .7rem .55rem .55rem !important; color: #E2E8F0 !important; font-family: 'Geist', sans-serif !important; font-size: .78rem !important; flex: 1; min-width: 0; }
+.mr-input-wrap select { cursor: pointer; appearance: none; padding-right: 1.8rem !important; background: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='rgba(255,255,255,0.45)' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'/></svg>") no-repeat right .7rem center !important; }
+
+/* Compact toolbar pre dates/vehicle/fuel */
+.mr-input-toolbar { display: flex; gap: .65rem; align-items: flex-end; flex-wrap: wrap; margin-top: .55rem; padding-top: .85rem; border-top: 1px solid rgba(255,255,255,.06); }
+.mr-toolbar-item { display: flex; flex-direction: column; gap: .3rem; flex: 1; min-width: 110px; }
+.mr-toolbar-item label { font-size: .6rem; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; }
+.mr-toolbar-item.narrow { flex: 0 0 85px; min-width: 75px; }
+.mr-toolbar-item.wide { flex: 2; min-width: 200px; }
+.mr-toolbar-calc { display: flex; flex-direction: column; justify-content: flex-end; }
+.mr-toolbar-calc .bcalc { padding: .55rem 1.1rem; white-space: nowrap; display: inline-flex; align-items: center; gap: .4rem; }
+
+@media(max-width: 900px){
+  .mr-input-toolbar { flex-direction: column; }
+  .mr-toolbar-item, .mr-toolbar-calc { width: 100%; }
+  .mr-toolbar-item.narrow, .mr-toolbar-item.wide { flex: 1; min-width: 0; }
+}
+
 .mr-input-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem; }
 .mr-input-col { display: flex; flex-direction: column; gap: .45rem; }
 .mr-input-col-label { font-size: .62rem; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; margin-bottom: .15rem; }
@@ -362,9 +393,9 @@ main { padding:2rem; max-width:1300px; margin:0 auto; }
 
 /* MULTI-STOP */
 .stop-row { display:flex; align-items:center; gap:.5rem; margin-bottom:.5rem; }
-.stop-label { font-size:.68rem; font-weight:800; color:var(--muted); width:1.5rem; text-align:center; flex-shrink:0; text-transform:uppercase; }
-.stop-row input { flex:1; padding:.55rem .75rem; border:1.5px solid var(--border); border-radius:8px; font-family:'Geist',sans-serif; font-size:.82rem; background:var(--surface); color:var(--text); outline:none; transition:border-color .15s; }
-.stop-row input:focus { border-color:var(--accent); }
+.stop-label { font-size:.72rem; font-weight:800; color:#D4820A; width:1.5rem; text-align:center; flex-shrink:0; text-transform:uppercase; }
+.stop-row .mr-input-wrap { flex:1; min-width: 0; }
+.stop-row input { flex:1; min-width: 0; }
 .stop-remove { background:none; border:none; cursor:pointer; color:var(--muted); font-size:1.1rem; padding:.2rem; line-height:1; transition:color .15s; flex-shrink:0; }
 .stop-remove:hover { color:var(--danger,#c00); }
 
@@ -712,53 +743,83 @@ main { padding:2rem; max-width:1300px; margin:0 auto; }
     <!-- ── INPUT PANEL (hore) ────────────────────────────────── -->
     <div class="mr-input-panel">
       <div class="mr-input-head">
-        <div>
-          <h2>🧮 Route Calculator</h2>
-          <p class="mr-sub">Enter cities, addresses or places — we'll detect roads, countries, motorways and estimate total costs.</p>
+        <div style="flex:1;">
+          <div class="mr-input-head-title">
+            <div class="mr-input-head-icon">
+              <svg viewBox="0 0 24 24">
+                <circle cx="5" cy="6" r="2"/>
+                <circle cx="19" cy="6" r="2"/>
+                <circle cx="12" cy="18" r="2"/>
+                <path d="M7 6h10M7 7l4 9M17 7l-4 9"/>
+              </svg>
+            </div>
+            <h2>Route calculator</h2>
+          </div>
+          <p class="mr-sub">Enter cities or places — we'll detect tolls, countries and estimate total costs.</p>
         </div>
       </div>
 
-      <div class="mr-input-grid">
+      <!-- STOPS sekcia -->
+      <div class="mr-stops-label">Stops</div>
+      <div id="mr-stops-wrap"></div>
+      <button class="broute" onclick="addStop()" style="margin-top:.1rem;display:inline-flex;align-items:center;gap:.4rem;padding:.5rem 1rem;">
+        <svg style="width:12px;height:12px;stroke:currentColor;fill:none;stroke-width:2.5;stroke-linecap:round;" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+        Add stop
+      </button>
 
-        <!-- Stops column -->
-        <div class="mr-input-col">
-          <div class="mr-input-col-label">Stops</div>
-          <div id="mr-stops-wrap"></div>
-          <button class="broute" onclick="addStop()" style="margin-top:.1rem;">+ Add stop</button>
+      <!-- TOOLBAR: dates / vehicle / fuel / Calculate -->
+      <div class="mr-input-toolbar">
+
+        <div class="mr-toolbar-item">
+          <label>Departure</label>
+          <div class="mr-input-wrap">
+            <svg class="mr-input-icon" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="15" rx="2"/><path d="M8 3v4M16 3v4M3 10h18"/></svg>
+            <input type="date" id="mr-date-from">
+          </div>
         </div>
 
-        <!-- Trip column -->
-        <div class="mr-input-col">
-          <div class="mr-input-col-label">Trip dates</div>
-          <div class="date-row" style="margin-bottom:.35rem;">
-            <div class="date-field"><label>Departure</label><input type="date" id="mr-date-from"></div>
-            <div class="date-field"><label>Return</label><input type="date" id="mr-date-to"></div>
+        <div class="mr-toolbar-item">
+          <label>Return</label>
+          <div class="mr-input-wrap">
+            <svg class="mr-input-icon" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="15" rx="2"/><path d="M8 3v4M16 3v4M3 10h18"/><path d="M9 14l2 2 4-4"/></svg>
+            <input type="date" id="mr-date-to">
           </div>
-          <div class="mr-field" style="margin-bottom:0;">
-            <label>Vehicle category</label>
-            <select id="mr-vehicle-cat" style="width:100%;padding:.5rem .7rem;border:1.5px solid rgba(255,255,255,.1);border-radius:8px;font-family:'Geist',sans-serif;font-size:.78rem;background:rgba(255,255,255,.05);color:#E2E8F0;outline:none;">
-              <option value="I">Category I — Passenger car (up to 1.9m height)</option>
+        </div>
+
+        <div class="mr-toolbar-item wide">
+          <label>Vehicle</label>
+          <div class="mr-input-wrap">
+            <svg class="mr-input-icon" viewBox="0 0 24 24"><path d="M14 17h4l-1-5h-5l-1 2h-4l-2 3v2h13z"/><circle cx="8" cy="19" r="2"/><circle cx="17" cy="19" r="2"/></svg>
+            <select id="mr-vehicle-cat">
+              <option value="I">Category I — Passenger car (up to 1.9m)</option>
               <option value="IA">Category IA — Motorcycle</option>
-              <option value="II">Category II — SUV/Van over 1.9m or car with trailer</option>
+              <option value="II">Category II — SUV/Van over 1.9m</option>
               <option value="III">Category III — 3-axle vehicle</option>
             </select>
           </div>
         </div>
 
-        <!-- Fuel + Calculate column -->
-        <div class="mr-input-col">
-          <div class="mr-input-col-label">Fuel</div>
-          <div style="display:flex;gap:.4rem;">
-            <div class="mr-field" style="flex:1;margin-bottom:0;">
-              <label>Price (€/L)</label>
-              <input type="number" id="mr-fuel-price" value="1.55" step="0.01" min="0.5" max="5">
-            </div>
-            <div class="mr-field" style="flex:1;margin-bottom:0;">
-              <label>L/100km</label>
-              <input type="number" id="mr-fuel-consumption" value="7" step="0.5" min="1" max="30">
-            </div>
+        <div class="mr-toolbar-item narrow">
+          <label>Fuel €/L</label>
+          <div class="mr-input-wrap">
+            <svg class="mr-input-icon" viewBox="0 0 24 24"><path d="M4 21V7l5-4 5 4v14"/><path d="M4 11h10"/><path d="M17 11l3 2v7"/><path d="M17 17h3"/></svg>
+            <input type="number" id="mr-fuel-price" value="1.55" step="0.01" min="0.5" max="5">
           </div>
-          <button class="bcalc pulse" onclick="calcMapRoute()" style="margin-top:.55rem;width:100%;">Calculate route →</button>
+        </div>
+
+        <div class="mr-toolbar-item narrow">
+          <label>L/100km</label>
+          <div class="mr-input-wrap">
+            <svg class="mr-input-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+            <input type="number" id="mr-fuel-consumption" value="7" step="0.5" min="1" max="30">
+          </div>
+        </div>
+
+        <div class="mr-toolbar-calc">
+          <button class="bcalc pulse" onclick="calcMapRoute()">
+            Calculate
+            <svg style="width:13px;height:13px;stroke:currentColor;fill:none;stroke-width:2.5;stroke-linecap:round;" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+          </button>
         </div>
 
       </div>
@@ -2077,13 +2138,20 @@ function addStop(placeholder){
   div.className='stop-row'; div.dataset.stopId=id;
   const label=labels[idx]||String(idx+1);
   const canRemove=idx>=2;
+  // Origin (A) = teal pin, destinations = orange flag
+  const isOrigin = idx === 0;
+  const iconSvg = isOrigin
+    ? `<svg class="mr-input-icon" viewBox="0 0 24 24" style="stroke:#22c997;"><circle cx="12" cy="10" r="3"/><path d="M12 2a8 8 0 018 8c0 6-8 12-8 12s-8-6-8-12a8 8 0 018-8z"/></svg>`
+    : `<svg class="mr-input-icon" viewBox="0 0 24 24" style="stroke:#D4820A;"><path d="M5 22V3M5 3l12 3-4 4 4 4-12 2"/></svg>`;
   div.innerHTML=`
     <span class="stop-label">${label}</span>
-    <input type="text" id="${id}" placeholder="${placeholder||`Stop ${label} — city or address`}" autocomplete="off">
+    <div class="mr-input-wrap">
+      ${iconSvg}
+      <input type="text" id="${id}" placeholder="${placeholder||`Stop ${label} — city or address`}" autocomplete="off">
+    </div>
     ${canRemove?`<button class="stop-remove" onclick="removeStop('${id}')" title="Remove stop">×</button>`:'<span style="width:1.6rem"></span>'}
   `;
   wrap.appendChild(div);
-  // Attach autocomplete vždy — funkcia si sama zvolí Google alebo Mapbox fallback
   attachAutocomplete(id);
   relabelStops();
 }
@@ -3360,8 +3428,11 @@ async function applyCustomRoute(){
     newDiv.className = 'stop-row';
     newDiv.dataset.stopId = newId;
     newDiv.innerHTML = `
-      <span class="stop-label">•</span>
-      <input type="text" id="${newId}" placeholder="Waypoint" autocomplete="off">
+      <span class="stop-label" style="color:rgba(192,132,252,.8);">•</span>
+      <div class="mr-input-wrap">
+        <svg class="mr-input-icon" viewBox="0 0 24 24" style="stroke:#c084fc;"><circle cx="12" cy="12" r="4"/></svg>
+        <input type="text" id="${newId}" placeholder="Waypoint" autocomplete="off">
+      </div>
       <button class="stop-remove" onclick="removeStop('${newId}')" title="Remove waypoint">×</button>
     `;
 
