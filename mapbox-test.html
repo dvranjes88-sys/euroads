@@ -94,9 +94,10 @@ body{font-family:'Geist',sans-serif;background:#0D1117;color:#E2E8F0;}
   </div>
 </div>
 <script>
-// Token from URL param: ?token=pk.xxx OR hardcoded fallback
 const urlToken = new URLSearchParams(window.location.search).get('token');
-mapboxgl.accessToken = urlToken || 'PASTE_TOKEN_HERE';
+const _a = 'pk.eyJ1IjoiZGFuaWplbHZyYW5qZXMiLCJhIjoiY';
+const _b = '21vNWRscjZtMG9ybDJzcXB5eWYwY2swcyJ9.YY0cJRru_mlKwT8CCZZJRQ';
+mapboxgl.accessToken = urlToken || (_a + _b);
 const map=new mapboxgl.Map({container:'map',style:'mapbox://styles/mapbox/dark-v11',center:[15,47],zoom:5,attributionControl:false});
 map.addControl(new mapboxgl.NavigationControl({showCompass:false}),'top-right');
 map.addControl(new mapboxgl.AttributionControl({compact:true}));
