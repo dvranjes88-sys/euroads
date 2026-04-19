@@ -1179,9 +1179,13 @@ const CC_MAP={
 const FREE_LOCAL={'ba':true,'rs':true,'me':true,'mk':true,'al':true,'xk':true,'ge':true,'am':true,'az':true,'md':true};
 
 // ── OPRAVA: Jasné farby ladené s legendou (nie tmavé ktoré splývajú s dark mapou) ──
+// Pre FREE_LOCAL krajiny (BA, RS, ME, MK, AL, XK, GE, AM, AZ, MD) vrátime free modrú,
+// lebo aj keď sú technicky type='toll' (majú tolls na motorway),
+// bežná cesta cez nich ide po local roads ktoré sú zadarmo.
 function countryColor(id){
   const c=C.find(x=>x.id===id);
   if(!c) return '#c084fc';                    // fialová = neznáme (nie šedá!)
+  if(FREE_LOCAL[id]) return '#6eb3f7';        // free modrá pre local-roads-free krajiny
   if(c.type==='vignette') return '#22c997';   // jasná zelená
   if(c.type==='toll')     return '#f4a45a';   // oranžová
   return '#6eb3f7';                            // modrá = free
