@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EuroRoads — Mapbox Preview</title>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<link href="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.css" rel="stylesheet">
+<script src="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Geist',sans-serif;background:#0D1117;color:#E2E8F0;}
+.header{background:#18160F;padding:.75rem 1.5rem;border-bottom:3px solid #D4820A;display:flex;align-items:center;gap:.75rem;}
+.logo{font-weight:900;font-size:1.1rem;letter-spacing:-.04em;color:#fff;}
+.logo span{color:#D4820A;}
+.layout{display:grid;grid-template-columns:360px 1fr;gap:1.5rem;padding:1.5rem;align-items:start;}
+.panel{background:#141922;border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:1.4rem;}
+.panel h2{font-weight:800;font-size:1rem;color:#fff;margin-bottom:.25rem;display:flex;align-items:center;gap:.5rem;}
+.panel p{font-size:.72rem;color:rgba(255,255,255,.35);margin-bottom:1rem;}
+.stop-row{display:flex;gap:.5rem;align-items:center;margin-bottom:.45rem;}
+.stop-label{font-size:.62rem;font-weight:800;color:rgba(255,255,255,.3);width:1.4rem;text-align:center;flex-shrink:0;}
+.stop-input{flex:1;padding:.52rem .75rem;border:1.5px solid rgba(255,255,255,.1);border-radius:8px;font-family:'Geist',sans-serif;font-size:.78rem;background:rgba(255,255,255,.05);color:#E2E8F0;outline:none;transition:border-color .15s;}
+.stop-input:focus{border-color:rgba(212,130,10,.5);}
+.stop-input::placeholder{color:rgba(255,255,255,.2);}
+.add-stop{width:100%;padding:.48rem;background:rgba(110,179,247,.08);border:1px solid rgba(110,179,247,.2);border-radius:7px;color:#6EB3F7;font-family:'Geist',sans-serif;font-size:.7rem;font-weight:600;cursor:pointer;margin-bottom:.85rem;transition:all .15s;}
+.add-stop:hover{background:rgba(110,179,247,.15);}
+.date-row{display:grid;grid-template-columns:1fr 1fr;gap:.5rem;margin-bottom:.75rem;}
+.field label{display:block;font-size:.62rem;font-weight:700;color:rgba(255,255,255,.35);text-transform:uppercase;letter-spacing:.08em;margin-bottom:.3rem;}
+.field input,.field select{width:100%;padding:.55rem .75rem;border:1.5px solid rgba(255,255,255,.1);border-radius:8px;font-family:'Geist',sans-serif;font-size:.78rem;background:rgba(255,255,255,.05);color:#E2E8F0;outline:none;}
+.calc-btn{width:100%;padding:.65rem;background:#D4820A;color:#000;border:none;border-radius:8px;font-family:'Geist',sans-serif;font-size:.82rem;font-weight:800;cursor:pointer;transition:background .15s;}
+.calc-btn:hover{background:#e8920b;}
+.calc-btn:disabled{background:rgba(212,130,10,.4);cursor:not-allowed;}
+.result{margin-top:.85rem;}
+.ci{display:flex;align-items:center;gap:.75rem;background:#1a2133;border:1px solid rgba(255,255,255,.06);border-radius:8px;padding:.75rem .9rem;margin-bottom:.4rem;border-left:3px solid #1B4D3E;}
+.ci-code{font-size:.65rem;font-weight:800;color:rgba(255,255,255,.35);width:2rem;text-align:center;flex-shrink:0;}
+.ci-name{font-weight:700;font-size:.82rem;color:#fff;}
+.ci-sub{font-size:.63rem;color:rgba(255,255,255,.35);margin-top:.1rem;}
+.ci-price{margin-left:auto;font-weight:800;font-size:.88rem;color:#5DCEA8;white-space:nowrap;}
+.total-box{background:rgba(27,77,62,.15);border:1px solid rgba(93,206,168,.2);border-radius:10px;padding:.9rem 1rem;margin-top:.75rem;}
+.total-label{font-size:.6rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:#5DCEA8;margin-bottom:.4rem;}
+.total-row{display:flex;justify-content:space-between;align-items:center;}
+.total-sub{font-size:.68rem;color:rgba(255,255,255,.35);}
+.total-amt{font-weight:900;font-size:1.4rem;color:#5DCEA8;}
+.map-wrap{border-radius:12px;overflow:hidden;border:1px solid rgba(255,255,255,.08);height:580px;position:sticky;top:1.5rem;position:relative;}
+#map{width:100%;height:100%;}
+.legend{position:absolute;bottom:1rem;left:1rem;background:rgba(13,17,23,.92);border:1px solid rgba(255,255,255,.1);border-radius:8px;padding:.6rem .9rem;z-index:10;}
+.li{display:flex;align-items:center;gap:.5rem;font-size:.65rem;color:rgba(255,255,255,.6);margin-bottom:.22rem;}
+.li:last-child{margin-bottom:0;}
+.ld{width:12px;height:4px;border-radius:2px;flex-shrink:0;}
+.loading{position:absolute;inset:0;background:#141922;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.75rem;z-index:20;border-radius:12px;}
+.spinner{width:32px;height:32px;border:3px solid rgba(212,130,10,.2);border-top-color:#D4820A;border-radius:50%;animation:spin .8s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg);}}
+@media(max-width:900px){.layout{grid-template-columns:1fr;}.map-wrap{height:320px;position:relative;top:0;}}
+</style>
+</head>
+<body>
+<div class="header">
+  <svg viewBox="0 0 24 24" fill="none" stroke="#D4820A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;flex-shrink:0"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20"/><path d="M2 12h20"/></svg>
+  <span class="logo">Euro<span>Roads</span></span>
+  <span style="margin-left:auto;font-size:.65rem;color:rgba(255,255,255,.3);letter-spacing:.1em;text-transform:uppercase;">Mapbox Dark Preview</span>
+</div>
+<div class="layout">
+  <div class="panel">
+    <h2>
+      <svg viewBox="0 0 24 24" fill="none" stroke="#D4820A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:15px;height:15px;flex-shrink:0"><circle cx="6" cy="19" r="3"/><path d="M9 19h8.5a3.5 3.5 0 0 0 0-7h-11a3.5 3.5 0 0 1 0-7H15"/><circle cx="18" cy="5" r="3"/></svg>
+      Route Calculator
+    </h2>
+    <p>Enter cities — we calculate vignettes and tolls.</p>
+    <div id="stops-wrap">
+      <div class="stop-row"><span class="stop-label">A</span><input class="stop-input" id="stop-0" type="text" placeholder="Origin, e.g. Bratislava"></div>
+      <div class="stop-row"><span class="stop-label">B</span><input class="stop-input" id="stop-1" type="text" placeholder="Destination, e.g. Zagreb"></div>
+    </div>
+    <button class="add-stop" onclick="addStop()">+ Add stop</button>
+    <div class="date-row">
+      <div class="field"><label>Departure</label><input type="date" id="date-from"></div>
+      <div class="field"><label>Return</label><input type="date" id="date-to"></div>
+    </div>
+    <div class="field" style="margin-bottom:.75rem;">
+      <label>Vehicle</label>
+      <select><option>Passenger car</option><option>SUV / Van</option><option>Motorcycle</option></select>
+    </div>
+    <button class="calc-btn" id="calc-btn" onclick="calcRoute()">Calculate route →</button>
+    <div class="result" id="result"></div>
+  </div>
+  <div class="map-wrap">
+    <div id="map"></div>
+    <div class="loading" id="loading"><div class="spinner"></div><p style="font-size:.72rem;color:rgba(255,255,255,.4);">Loading map...</p></div>
+    <div class="legend" id="legend" style="display:none;">
+      <div class="li"><div class="ld" style="background:#1B4D3E;"></div>Vignette motorway</div>
+      <div class="li"><div class="ld" style="background:#7A3200;"></div>Toll motorway</div>
+      <div class="li"><div class="ld" style="background:#0F3460;"></div>Free motorway</div>
+      <div class="li"><div class="ld" style="background:#7C3AED;"></div>Local road</div>
+    </div>
+  </div>
+</div>
+<script>
+mapboxgl.accessToken='pk.eyJ1IjoiZGFuaWplbHZyYW5qZXMiLCJhIjoiY21vNDRuOWl1MTVpdTJxcjAzZHkxZHhodCJ9.vH4Ci1iI6VeC8IoFQl8WBw';
+const map=new mapboxgl.Map({container:'map',style:'mapbox://styles/mapbox/dark-v11',center:[15,47],zoom:5,attributionControl:false});
+map.addControl(new mapboxgl.NavigationControl({showCompass:false}),'top-right');
+map.addControl(new mapboxgl.AttributionControl({compact:true}));
+map.on('load',()=>{document.getElementById('loading').style.display='none';document.getElementById('legend').style.display='block';initDemo();});
+map.on('error',(e)=>{document.getElementById('loading').innerHTML='<p style="color:#F87171;font-size:.75rem;padding:1rem;">Map error: '+e.error?.message+'</p>';});
+
+const VIGNETTE=new Set(['SK','CZ','AT','CH','HU','SI','RO','BG']);
+const TOLL=new Set(['HR','FR','IT','PL','GR','NO','RS','ME','BA','IE','PT']);
+const FREE=new Set(['DE','NL','BE','LU','DK','SE','FI','LT','LV','EE','GB']);
+function routeColor(cc){if(VIGNETTE.has(cc))return'#1B4D3E';if(TOLL.has(cc))return'#7A3200';if(FREE.has(cc))return'#0F3460';return'#7C3AED';}
+
+let stopCount=2,markers=[],layerIds=[];
+function addStop(){
+  stopCount++;
+  const labels=['A','B','C','D','E','F'];
+  const wrap=document.getElementById('stops-wrap');
+  const row=document.createElement('div');
+  row.className='stop-row';
+  row.innerHTML=`<span class="stop-label">${labels[stopCount-1]||stopCount}</span><input class="stop-input" id="stop-${stopCount-1}" type="text" placeholder="Stop ${labels[stopCount-1]||stopCount}"><button onclick="this.parentElement.remove();" style="background:none;border:none;color:rgba(255,255,255,.3);font-size:1.1rem;cursor:pointer;padding:.2rem;">×</button>`;
+  wrap.appendChild(row);
+}
+function clearMap(){layerIds.forEach(id=>{if(map.getLayer(id))map.removeLayer(id);if(map.getSource(id))map.removeSource(id);});layerIds=[];markers.forEach(m=>m.remove());markers=[];}
+function addMarker(coords,label,name){
+  const el=document.createElement('div');
+  el.style.cssText='width:28px;height:28px;border-radius:50%;background:#D4820A;color:#000;font-family:Geist,sans-serif;font-weight:900;font-size:12px;display:flex;align-items:center;justify-content:center;border:2px solid rgba(255,255,255,.8);box-shadow:0 2px 10px rgba(0,0,0,.5);cursor:pointer;';
+  el.textContent=label;
+  const m=new mapboxgl.Marker({element:el}).setLngLat(coords).setPopup(new mapboxgl.Popup({offset:20,closeButton:false}).setHTML(`<strong style="font-size:12px;">${name}</strong>`)).addTo(map);
+  markers.push(m);
+}
+function drawSegment(coords,cc,id){
+  layerIds.push(id);
+  map.addSource(id,{type:'geojson',data:{type:'Feature',geometry:{type:'LineString',coordinates:coords}}});
+  map.addLayer({id,type:'line',source:id,layout:{'line-join':'round','line-cap':'round'},paint:{'line-color':routeColor(cc),'line-width':5,'line-opacity':.9}});
+}
+async function geocode(q){
+  const r=await fetch(`https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(q)}.json?access_token=${mapboxgl.accessToken}&types=place,address&limit=1`);
+  const d=await r.json();
+  if(!d.features?.length)throw new Error('Could not find: '+q);
+  return d.features[0].center;
+}
+async function getRoute(coords){
+  const r=await fetch(`https://api.mapbox.com/directions/v5/mapbox/driving/${coords.map(c=>c.join(',')).join(';')}?access_token=${mapboxgl.accessToken}&geometries=geojson&overview=full`);
+  const d=await r.json();
+  if(!d.routes?.length)throw new Error('No route found');
+  return d.routes[0];
+}
+async function getCountry(lng,lat){
+  const r=await fetch(`https://api.mapbox.com/geocoding/v5/mapbox.places/${lng},${lat}.json?access_token=${mapboxgl.accessToken}&types=country&limit=1`);
+  const d=await r.json();
+  return d.features?.[0]?.properties?.short_code?.toUpperCase()||null;
+}
+async function calcRoute(){
+  const inputs=document.querySelectorAll('.stop-input');
+  const stops=Array.from(inputs).map(i=>i.value.trim()).filter(Boolean);
+  if(stops.length<2){document.getElementById('result').innerHTML='<div style="font-size:.75rem;color:#F87171;padding:.5rem;background:rgba(248,113,113,.1);border-radius:6px;margin-top:.5rem;">Please enter at least 2 stops.</div>';return;}
+  const btn=document.getElementById('calc-btn');
+  btn.disabled=true;btn.textContent='Calculating...';
+  document.getElementById('result').innerHTML='<div style="font-size:.72rem;color:rgba(255,255,255,.35);padding:.5rem 0;">⏳ Geocoding stops...</div>';
+  try{
+    const coords=await Promise.all(stops.map(s=>geocode(s)));
+    document.getElementById('result').innerHTML='<div style="font-size:.72rem;color:rgba(255,255,255,.35);padding:.5rem 0;">⏳ Getting route...</div>';
+    const route=await getRoute(coords);
+    const rc=route.geometry.coordinates;
+    document.getElementById('result').innerHTML='<div style="font-size:.72rem;color:rgba(255,255,255,.35);padding:.5rem 0;">⏳ Detecting countries...</div>';
+    clearMap();
+    const step=Math.max(1,Math.floor(rc.length/20));
+    const samples=[];for(let i=0;i<rc.length;i+=step)samples.push(i);if(!samples.includes(rc.length-1))samples.push(rc.length-1);
+    const countries=await Promise.all(samples.map(i=>getCountry(rc[i][0],rc[i][1])));
+    let segs=[],curCC=countries[0],segStart=0;
+    for(let i=1;i<samples.length;i++){if(countries[i]!==curCC){segs.push({cc:curCC,coords:rc.slice(samples[segStart],samples[i]+1)});curCC=countries[i];segStart=i;}}
+    segs.push({cc:curCC,coords:rc.slice(samples[segStart])});
+    segs.forEach((seg,idx)=>{if(seg.coords.length>=2)drawSegment(seg.coords,seg.cc,`seg-${idx}`);});
+    const bounds=new mapboxgl.LngLatBounds();rc.forEach(c=>bounds.extend(c));map.fitBounds(bounds,{padding:60});
+    const labels=['A','B','C','D','E','F'];
+    coords.forEach((c,i)=>addMarker(c,labels[i]||String(i+1),stops[i]));
+    const seen=new Set();const ccList=[];
+    segs.forEach(s=>{if(s.cc&&!seen.has(s.cc)){seen.add(s.cc);ccList.push(s.cc);}});
+    const distKm=(route.distance/1000).toFixed(0);
+    const durH=Math.floor(route.duration/3600);const durM=Math.floor((route.duration%3600)/60);
+    const vp={SK:'€10.80',CZ:'CZK 300',AT:'€12.80',CH:'CHF 40',HU:'HUF 6,900',SI:'€16.00',RO:'RON 31',BG:'BGN 15'};
+    const cn={SK:'Slovakia',CZ:'Czechia',AT:'Austria',CH:'Switzerland',HU:'Hungary',SI:'Slovenia',RO:'Romania',BG:'Bulgaria',HR:'Croatia',FR:'France',IT:'Italy',DE:'Germany',PL:'Poland',GR:'Greece',NO:'Norway',RS:'Serbia',ME:'Montenegro',BA:'Bosnia',NL:'Netherlands',BE:'Belgium',LU:'Luxembourg',SE:'Sweden',DK:'Denmark',FI:'Finland',LT:'Lithuania',LV:'Latvia',EE:'Estonia',GB:'UK',IE:'Ireland',PT:'Portugal'};
+    let html=`<div style="font-size:.62rem;background:rgba(255,255,255,.04);border-radius:6px;padding:.5rem .7rem;margin-bottom:.65rem;display:flex;gap:1.2rem;flex-wrap:wrap;"><span><strong style="color:#fff;">${distKm} km</strong> <span style="color:rgba(255,255,255,.35);">distance</span></span><span><strong style="color:#fff;">${durH}h ${durM}m</strong> <span style="color:rgba(255,255,255,.35);">drive</span></span><span><strong style="color:#fff;">${ccList.length}</strong> <span style="color:rgba(255,255,255,.35);">countries</span></span></div>`;
+    html+=`<div style="font-size:.6rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:rgba(255,255,255,.25);margin-bottom:.5rem;">Countries on route</div>`;
+    let total=0;
+    ccList.forEach(cc=>{
+      const name=cn[cc]||cc;const color=routeColor(cc);
+      let action='',price='',eur=0;
+      if(VIGNETTE.has(cc)&&vp[cc]){action='Buy vignette';price=vp[cc];if(price.startsWith('€'))eur=parseFloat(price.replace('€',''));}
+      else if(TOLL.has(cc)){action='Pay at toll gate';price=cc==='HR'?'~€18':'~€10+';eur=cc==='HR'?18:10;}
+      else if(FREE.has(cc)){action='Free';price='FREE';}
+      else{action='Check locally';price='?';}
+      if(price!=='FREE'&&price!=='?')total+=eur;
+      html+=`<div class="ci" style="border-left-color:${color};"><div class="ci-code">${cc}</div><div><div class="ci-name">${name}</div><div class="ci-sub">${action}</div></div><div class="ci-price" style="color:${price==='FREE'?'#6EB3F7':'#5DCEA8'}">${price}</div></div>`;
+    });
+    if(total>0)html+=`<div class="total-box"><div class="total-label">💰 Estimated road costs</div><div class="total-row"><div class="total-sub">Vignettes + tolls</div><div class="total-amt">€${total.toFixed(2)}</div></div></div>`;
+    document.getElementById('result').innerHTML=html;
+  }catch(err){document.getElementById('result').innerHTML=`<div style="font-size:.75rem;color:#F87171;padding:.6rem;background:rgba(248,113,113,.08);border-radius:6px;margin-top:.5rem;">Error: ${err.message}</div>`;}
+  btn.disabled=false;btn.textContent='Calculate route →';
+}
+function initDemo(){
+  const demo=[[[17.107,48.148],[16.8,48.0]],'SK'],[[[16.8,48.0],[16.4,48.2],[15.9,47.8],[15.44,47.07],[14.99,46.51],[14.5,46.06]],'AT'],[[[14.5,46.06],[15.1,45.9],[15.4,45.9]],'SI'],[[[15.4,45.9],[15.97,45.81]],'HR'];
+  demo.forEach(([coords,cc],i)=>drawSegment(coords,cc,`demo-${i}`));
+  addMarker([17.107,48.148],'A','Bratislava');
+  addMarker([15.97,45.81],'B','Zagreb');
+  const today=new Date();const nw=new Date(today);nw.setDate(today.getDate()+7);
+  document.getElementById('date-from').value=today.toISOString().split('T')[0];
+  document.getElementById('date-to').value=nw.toISOString().split('T')[0];
+  document.getElementById('stop-0').value='Bratislava';
+  document.getElementById('stop-1').value='Zagreb';
+  document.getElementById('result').innerHTML=`<div style="font-size:.62rem;background:rgba(255,255,255,.04);border-radius:6px;padding:.5rem .7rem;margin-bottom:.65rem;display:flex;gap:1.2rem;"><span><strong style="color:#fff;">648 km</strong> <span style="color:rgba(255,255,255,.35);">distance</span></span><span><strong style="color:#fff;">5h 42m</strong> <span style="color:rgba(255,255,255,.35);">drive</span></span><span><strong style="color:#fff;">4</strong> <span style="color:rgba(255,255,255,.35);">countries</span></span></div><div style="font-size:.6rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:rgba(255,255,255,.25);margin-bottom:.5rem;">Countries on route</div><div class="ci" style="border-left-color:#1B4D3E;"><div class="ci-code">SK</div><div><div class="ci-name">Slovakia</div><div class="ci-sub">Buy vignette · 10 days</div></div><div class="ci-price">€10.80</div></div><div class="ci" style="border-left-color:#1B4D3E;"><div class="ci-code">AT</div><div><div class="ci-name">Austria</div><div class="ci-sub">Buy vignette · 10 days</div></div><div class="ci-price">€12.80</div></div><div class="ci" style="border-left-color:#1B4D3E;"><div class="ci-code">SI</div><div><div class="ci-name">Slovenia</div><div class="ci-sub">Buy vignette · 7 days</div></div><div class="ci-price">€16.00</div></div><div class="ci" style="border-left-color:#7A3200;"><div class="ci-code">HR</div><div><div class="ci-name">Croatia</div><div class="ci-sub">Toll gates · HAC</div></div><div class="ci-price">~€18</div></div><div class="total-box"><div class="total-label">💰 Estimated road costs</div><div class="total-row"><div class="total-sub">Vignettes + tolls</div><div class="total-amt">€57.60</div></div></div>`;
+}
+</script>
+</body>
+</html>
