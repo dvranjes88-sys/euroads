@@ -220,17 +220,69 @@ main { padding:2rem; max-width:1300px; margin:0 auto; }
 @media(max-width: 900px){ .mr-input-grid { grid-template-columns: 1fr; } }
 
 /* DASHBOARD — 3-column grid */
-.mr-layout { display: grid; grid-template-columns: 1fr 2fr 1fr; gap: 1rem; align-items: stretch; min-height: 580px; }
-@media(max-width: 900px){ .mr-layout { grid-template-columns: 1fr; min-height: 0; } }
+.mr-layout { display: grid; grid-template-columns: 1fr 2fr 1fr; gap: 1rem; align-items: stretch; min-height: 580px; transition: grid-template-columns .25s ease; }
+.mr-layout.left-collapsed { grid-template-columns: 44px 2fr 1fr; }
+.mr-layout.right-collapsed { grid-template-columns: 1fr 2fr 44px; }
+.mr-layout.left-collapsed.right-collapsed { grid-template-columns: 44px 1fr 44px; }
+@media(max-width: 900px){
+  .mr-layout,
+  .mr-layout.left-collapsed,
+  .mr-layout.right-collapsed,
+  .mr-layout.left-collapsed.right-collapsed { grid-template-columns: 1fr; min-height: 0; }
+}
 
 /* Všetky 3 panely majú rovnakú vizuálnu bázu */
-.mr-col { background: var(--surface); border: 1.5px solid var(--border); border-radius: var(--r); overflow: hidden; display: flex; flex-direction: column; }
+.mr-col { background: var(--surface); border: 1.5px solid var(--border); border-radius: var(--r); overflow: hidden; display: flex; flex-direction: column; position: relative; }
 .mr-col-head { padding: .85rem 1rem; border-bottom: 1px solid rgba(255,255,255,.06); display: flex; justify-content: space-between; align-items: flex-start; gap: .5rem; }
 .mr-col-head-title { font-weight: 700; font-size: .85rem; color: var(--text); margin: 0; }
 .mr-col-head-sub { font-size: .65rem; color: var(--muted); margin-top: .15rem; }
 .mr-col-body { padding: .9rem 1rem; overflow-y: auto; flex: 1; }
 
-/* Collapse button pre bočné panely — len na mobile (<900px) */
+/* Desktop edge collapse — malé tlačidlo na hrane panelu smerom k mape */
+.mr-edge-toggle {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 20px;
+  height: 44px;
+  background: rgba(13,17,23,.92);
+  border: 1px solid rgba(255,255,255,.12);
+  color: rgba(255,255,255,.7);
+  font-size: .85rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 15;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  transition: all .15s;
+  font-family: monospace;
+  line-height: 1;
+  padding: 0;
+}
+.mr-edge-toggle:hover { background: rgba(13,17,23,.98); color: #fff; border-color: rgba(255,255,255,.25); }
+.mr-edge-toggle-left { right: -10px; border-radius: 0 6px 6px 0; border-left: none; }
+.mr-edge-toggle-right { left: -10px; border-radius: 6px 0 0 6px; border-right: none; }
+@media(max-width: 900px){ .mr-edge-toggle { display: none; } }
+
+/* Collapsed state — panel zmenší sa na 44px šírky, hide všetko okrem toggle */
+.mr-col.collapsed { border-radius: var(--r); overflow: visible; }
+.mr-col.collapsed .mr-col-head,
+.mr-col.collapsed .mr-col-body { display: none; }
+.mr-col.collapsed .mr-edge-toggle-left,
+.mr-col.collapsed .mr-edge-toggle-right {
+  top: 1rem;
+  transform: none;
+  height: 44px;
+}
+/* Keď je panel collapsed, zmeň smer šípky */
+.mr-col.collapsed .mr-edge-toggle-left::before { content: '›'; }
+.mr-col:not(.collapsed) .mr-edge-toggle-left::before { content: '‹'; }
+.mr-col.collapsed .mr-edge-toggle-right::before { content: '‹'; }
+.mr-col:not(.collapsed) .mr-edge-toggle-right::before { content: '›'; }
+
+/* Mobile-only legacy collapse button — zostáva pre mobilé */
 .mr-col-collapse { display: none; }
 @media(max-width: 900px){
   .mr-col-collapse { display: flex; width: 22px; height: 22px; border-radius: 5px; background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.08); color: rgba(255,255,255,.45); font-size: .7rem; cursor: pointer; align-items: center; justify-content: center; flex-shrink: 0; transition: all .15s; }
@@ -717,6 +769,7 @@ main { padding:2rem; max-width:1300px; margin:0 auto; }
 
       <!-- LEFT: Cost breakdown -->
       <div class="mr-col open" id="mr-col-left">
+        <button class="mr-edge-toggle mr-edge-toggle-left" onclick="toggleSidePanel('left')" title="Collapse/expand"></button>
         <div class="mr-col-head">
           <div>
             <div class="mr-col-head-title">Cost breakdown</div>
@@ -760,6 +813,7 @@ main { padding:2rem; max-width:1300px; margin:0 auto; }
 
       <!-- RIGHT: Route options -->
       <div class="mr-col open" id="mr-col-right">
+        <button class="mr-edge-toggle mr-edge-toggle-right" onclick="toggleSidePanel('right')" title="Collapse/expand"></button>
         <div class="mr-col-head">
           <div>
             <div class="mr-col-head-title">Route options</div>
@@ -3427,6 +3481,22 @@ function toggleGmapNavButton(show){
   } else {
     wrap.classList.remove('visible');
   }
+}
+
+// ── COLLAPSE SIDE PANELS ──
+// Toggle zbalenie ľavého alebo pravého panelu aby sa mapa roztiahla
+function toggleSidePanel(side){
+  const layout = document.querySelector('.mr-layout');
+  const panel = document.getElementById(side === 'left' ? 'mr-col-left' : 'mr-col-right');
+  if(!layout || !panel) return;
+
+  panel.classList.toggle('collapsed');
+  layout.classList.toggle(side + '-collapsed');
+
+  // Po skončení CSS transition resize mapy aby ju Mapbox správne prekreslil
+  setTimeout(() => {
+    if(mrMap) mrMap.resize();
+  }, 280); // musí byť > 250ms CSS transition
 }
 
 
