@@ -5,8 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>EuroRoads — Complete European Highway Guide</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.css" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flag-icons@7.2.3/css/flag-icons.min.css"/>
+<link href="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.css" rel="stylesheet">
 <link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700;800;900&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -24,16 +24,17 @@ header { background:#18160F; color:#fff; height:58px; display:flex; align-items:
 .logo span { color:var(--accent); }
 .hm { font-size:.7rem; color:rgba(255,255,255,.4); letter-spacing:.1em; text-transform:uppercase; }
 
-.hero { background:#18160F; color:#fff; padding:2.5rem 2rem 2rem; position:relative; overflow:hidden; }
+#heroCanvas { position:absolute; inset:0; width:100%; height:100%; pointer-events:none; z-index:0; opacity:.6; }
+.hero { background:#18160F; position:relative; overflow:hidden; color:#fff; padding:2.5rem 2rem 2rem; position:relative; overflow:hidden; }
 .hero::after { content:'🛣️'; position:absolute; font-size:14rem; right:-1rem; top:-2rem; opacity:.04; pointer-events:none; }
-.hero h1 { font-family:'Geist',sans-serif; font-weight:800; font-size:clamp(1.6rem,4vw,2.8rem); letter-spacing:-0.03em; line-height:1.05; margin-bottom:.6rem; }
+.hero h1 { position:relative; z-index:1; font-family:'Geist',sans-serif; font-weight:800; font-size:clamp(1.6rem,4vw,2.8rem); letter-spacing:-0.03em; line-height:1.05; margin-bottom:.6rem; }
 .hero h1 em { color:var(--accent); font-style:normal; }
-.hero p { color:rgba(255,255,255,.5); font-size:.82rem; max-width:500px; margin-bottom:1.5rem; }
-.hstats { display:flex; gap:2rem; flex-wrap:wrap; }
+.hero p { position:relative; z-index:1; color:rgba(255,255,255,.5); font-size:.82rem; max-width:500px; margin-bottom:1.5rem; }
+.hstats { position:relative; z-index:1; display:flex; gap:2rem; flex-wrap:wrap; }
 .hstat-n { font-family:'Geist',sans-serif; font-weight:800; font-size:1.4rem; color:var(--accent); }
 .hstat-l { font-size:.65rem; color:rgba(255,255,255,.4); letter-spacing:.08em; text-transform:uppercase; }
 
-.tab-bar { display:flex; background:#18160F; border-bottom:2px solid var(--border); padding:0 2rem; position:sticky; top:58px; z-index:190; overflow-x:auto; gap:.25rem; }
+.tab-bar { display:flex; background:var(--surface); border-bottom:2px solid var(--border); padding:0 2rem; position:sticky; top:58px; z-index:190; overflow-x:auto; gap:.25rem; }
 .tab { padding:.75rem 1.3rem; font-family:'Geist',sans-serif; font-weight:700; font-size:.72rem; letter-spacing:.04em; text-transform:uppercase; border:none; background:none; cursor:pointer; color:var(--muted); border-bottom:3px solid transparent; margin-bottom:-2px; white-space:nowrap; transition:all .18s; border-radius:6px 6px 0 0; display:flex; align-items:center; gap:.4rem; }
 .tab.active { color:var(--text); border-bottom-color:var(--accent); background:rgba(212,130,10,0.06); }
 .tab:hover:not(.active) { color:var(--text); background:var(--bg); }
@@ -53,23 +54,23 @@ main { padding:2rem; max-width:1300px; margin:0 auto; }
 
 .cc-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(300px,1fr)); gap:.85rem; }
 .cc { background:#141922; border:1px solid rgba(255,255,255,.07); border-radius:var(--r); overflow:hidden; transition:all .2s; display:flex; flex-direction:column; }
-.cc:hover { transform:translateY(-3px); box-shadow:0 10px 28px rgba(0,0,0,.09); }
-.cc-top { padding:1rem 1.2rem .8rem; border-bottom:1px solid var(--border); display:flex; align-items:flex-start; gap:.8rem; }
-.cc-fl { width:2.8rem; height:1.85rem; flex-shrink:0; border-radius:4px; overflow:hidden; box-shadow:0 1px 4px rgba(0,0,0,.3); }
-.cc-nm { font-family:'Geist',sans-serif; font-weight:800; font-size:.95rem; letter-spacing:-.01em; }
+.cc:hover { transform:translateY(-2px); box-shadow:0 8px 28px rgba(0,0,0,.3); border-color:rgba(212,130,10,.25); }
+.cc-top { padding:.85rem 1rem .7rem; border-bottom:1px solid rgba(255,255,255,.05); display:flex; align-items:flex-start; gap:.8rem; }
 .cc-code { font-size:.55rem; font-weight:700; color:rgba(255,255,255,.25); background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.09); border-radius:3px; padding:.08rem .3rem; letter-spacing:.06em; }
-.cc-rg { font-size:.58rem; color:var(--muted); letter-spacing:.08em; text-transform:uppercase; margin-top:.1rem; }
+.cc-fl { width:2.8rem; height:1.85rem; flex-shrink:0; border-radius:4px; overflow:hidden; box-shadow:0 1px 4px rgba(0,0,0,.3); }
+.cc-nm { font-family:'Geist',sans-serif; font-weight:800; font-size:.9rem; color:#fff; letter-spacing:-.01em; }
+.cc-rg { font-size:.55rem; color:rgba(255,255,255,.25); letter-spacing:.08em; text-transform:uppercase; margin-top:.1rem; }
 .tbadge { font-size:.57rem; font-weight:500; letter-spacing:.1em; text-transform:uppercase; padding:.16rem .5rem; border-radius:100px; margin-top:.28rem; display:inline-block; }
 .tbv { background:rgba(27,77,62,.2); color:#5DCEA8; border:1px solid rgba(93,206,168,.15); }
 .tbt { background:rgba(122,50,0,.2); color:#F4A45A; border:1px solid rgba(244,164,90,.15); }
 .tbf { background:rgba(15,52,96,.2); color:#6EB3F7; border:1px solid rgba(110,179,247,.15); }
 
 .cc-body { padding:.9rem 1.2rem; flex:1; }
-.cc-info { font-size:.75rem; color:var(--muted); line-height:1.7; margin-bottom:.75rem; }
+.cc-info { font-size:.72rem; color:rgba(255,255,255,.35); line-height:1.7; margin-bottom:.75rem; }
 .prices { display:flex; flex-direction:column; gap:.28rem; margin-bottom:.75rem; }
 .pr { display:flex; justify-content:space-between; font-size:.73rem; }
-.pr-p { color:var(--muted); }
-.pr-v { font-family:'Geist',sans-serif; font-weight:700; }
+.pr-p { color:rgba(255,255,255,.35); }
+.pr-v { font-family:'Geist',sans-serif; font-weight:800; color:#fff; }
 .epill { display:inline-flex; align-items:center; gap:.3rem; font-size:.65rem; color:var(--enc); background:var(--encl); padding:.22rem .6rem; border-radius:100px; margin-bottom:.75rem; font-weight:500; }
 .rules { display:flex; flex-wrap:wrap; gap:.3rem; margin-bottom:.6rem; }
 .rp { font-size:.62rem; padding:.18rem .48rem; border-radius:4px; display:flex; align-items:center; gap:.2rem; }
@@ -78,9 +79,9 @@ main { padding:2rem; max-width:1300px; margin:0 auto; }
 .rp-bad { background:rgba(153,60,50,.2); color:#F87171; }
 
 .cc-foot { padding:0 1.2rem 1rem; }
-.bbuy { width:100%; padding:.52rem; background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.09); color:rgba(255,255,255,.5); border:none; border-radius:7px; font-family:'Geist',sans-serif; font-size:.73rem; font-weight:500; cursor:pointer; text-decoration:none; display:flex; align-items:center; justify-content:center; gap:.3rem; transition:all .15s; }
+.bbuy { width:100%; padding:.52rem; background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.09); border-radius:8px; color:rgba(255,255,255,.5); font-family:'Geist',sans-serif; font-size:.73rem; font-weight:500; cursor:pointer; text-decoration:none; display:flex; align-items:center; justify-content:center; gap:.3rem; transition:all .15s; }
 .bbuy:hover { background:var(--accent); border-color:var(--accent); color:#000; }
-.bbuy.na { background:var(--border); color:var(--muted); cursor:default; pointer-events:none; }
+.bbuy.na { background:rgba(255,255,255,.03); color:rgba(255,255,255,.18); cursor:default; pointer-events:none; }
 
 /* SPEED TABLE */
 .speed-table-wrap { overflow-x:auto; }
@@ -393,19 +394,19 @@ main { padding:2rem; max-width:1300px; margin:0 auto; }
     </div>
 
     <div class="land-features">
-      <div class="land-feat" onclick="dismissLanding('countries')">
+      <div class="land-feat">
         <div class="land-feat-icon">🏷️</div>
         <div class="land-feat-title">Vignettes & Tolls</div>
         <div class="land-feat-desc">Prices for every country, updated 2026</div>
         <div class="land-feat-arrow">Explore →</div>
       </div>
-      <div class="land-feat" onclick="dismissLanding('countries')">
+      <div class="land-feat">
         <div class="land-feat-icon">🗺️</div>
         <div class="land-feat-title">Route Calculator</div>
         <div class="land-feat-desc">Total road costs for your exact trip</div>
         <div class="land-feat-arrow">Calculate →</div>
       </div>
-      <div class="land-feat" onclick="dismissLanding('countries')">
+      <div class="land-feat">
         <div class="land-feat-icon">⚡</div>
         <div class="land-feat-title">Speed Limits</div>
         <div class="land-feat-desc">Urban, rural & motorway — every country</div>
@@ -431,6 +432,7 @@ main { padding:2rem; max-width:1300px; margin:0 auto; }
 </header>
 
 <div class="hero">
+  <canvas id="heroCanvas"></canvas>
   <h1>Every road in <em>Europe</em>,<br>one place.</h1>
   <p>Vignettes, tolls, speed limits and driving rules for every European country — from Portugal to Greece, from Norway to Turkey.</p>
   <div class="hstats">
@@ -573,7 +575,7 @@ const C = [
     enc:null,buy:'https://edalnice.cz',bl:'edalnice.cz',
     rules:[{i:'🚭',t:'Alcohol 0.0‰',c:'bad'},{i:'❄️',t:'Winter tyres req.',c:'warn'},{i:'💡',t:'Lights always on',c:'ok'}]},
   { id:'at',flag:'🇦🇹',name:'Austria',region:'EU',type:'vignette',
-    info:'Physical or digital vignette. Some mountain tunnels (Brenner, Arlberg, Tauern) charge extra. 2026 is last year for sticker vignettes.',
+    info:'Physical or digital vignette. Some mountain tunnels (Brenner, Arlberg, Tauern) charge extra.',
     prices:[{p:'1 day',v:'€9.60'},{p:'10 days',v:'€12.80'},{p:'2 months',v:'€32.00'},{p:'1 year',v:'€106.80'}],
     enc:null,buy:'https://www.asfinag.at/toll/vignette/',bl:'asfinag.at',
     rules:[{i:'🍺',t:'Alcohol 0.5‰',c:'warn'},{i:'❄️',t:'Winter tyres req.',c:'warn'},{i:'💡',t:'Lights always on',c:'ok'},{i:'🦺',t:'Vest in car',c:'ok'}]},
@@ -593,7 +595,7 @@ const C = [
     enc:null,buy:'https://www.dars.si',bl:'dars.si',
     rules:[{i:'🍺',t:'Alcohol 0.5‰',c:'warn'},{i:'❄️',t:'Winter tyres req.',c:'warn'},{i:'💡',t:'Lights always on',c:'ok'}]},
   { id:'ro',flag:'🇷🇴',name:'Romania',region:'EU',type:'vignette',
-    info:'Rovinieta — required on ALL national roads. Camera enforced. Updated Sep 2025 (OG 23/2025).',
+    info:'Rovinieta — required on ALL national roads. Camera enforced. Updated Sep 2025.',
     prices:[{p:'1 day',v:'RON 18'},{p:'10 days',v:'RON 31'},{p:'30 days',v:'RON 48'},{p:'1 year',v:'RON 254'}],
     enc:null,buy:'https://www.roviniete.ro',bl:'roviniete.ro',
     rules:[{i:'🚭',t:'Alcohol 0.0‰',c:'bad'},{i:'💡',t:'Lights always on',c:'ok'},{i:'🦺',t:'Vest required',c:'ok'}]},
@@ -1309,87 +1311,46 @@ function switchTab(id,btn){
   document.getElementById('view-'+id).classList.add('active');
 }
 
-// ── MAP ROUTE — MAPBOX ──────────────────────────────────────
+
+// ── MAPBOX HELPERS ──
+const CC_MAP={'SK':'sk','CZ':'cz','AT':'at','CH':'ch','HU':'hu','SI':'si','RO':'ro','BG':'bg','HR':'hr','FR':'fr','IT':'it','ES':'es','PT':'pt','PL':'pl','GR':'gr','IE':'ie','DE':'de','NL':'nl','BE':'be','LU':'lu','DK':'dk','SE':'se','FI':'fi','GB':'gb','LT':'lt','LV':'lv','EE':'ee','CY':'cy','MT':'mt','IS':'is','NO':'no','RS':'rs','ME':'me','BA':'ba','MK':'mk','AL':'al','XK':'xk','TR':'tr','UA':'ua','BY':'by','GE':'ge','AM':'am','AZ':'az','MD':'md','AD':'ad','MC':'mc','SM':'sm','LI':'li'};
+const FREE_LOCAL={'ba':true,'rs':true,'me':true,'mk':true,'al':true,'xk':true,'ge':true,'am':true,'az':true,'md':true};
+
+function countryColor(cc){
+  const id=CC_MAP[cc]; const country=C.find(c=>c.id===id);
+  if(!country) return '#888';
+  if(country.type==='vignette') return '#1B4D3E';
+  if(country.type==='toll') return '#7A3200';
+  return '#0F3460';
+}
+
+function addMbMarker(coords,label,name){
+  const el=document.createElement('div');
+  el.style.cssText='width:28px;height:28px;border-radius:50%;background:#D4820A;color:#000;font-family:Geist,sans-serif;font-weight:900;font-size:12px;display:flex;align-items:center;justify-content:center;border:2px solid rgba(255,255,255,.8);box-shadow:0 2px 10px rgba(0,0,0,.5);cursor:pointer;z-index:10;';
+  el.textContent=label;
+  const marker=new mapboxgl.Marker({element:el}).setLngLat(coords).setPopup(new mapboxgl.Popup({offset:20,closeButton:false}).setHTML(`<strong style="font-size:12px;">${name}</strong>`)).addTo(mrMap);
+  mrMarkers.push(marker);
+}
+
+// ── MAP ROUTE ──────────────────────────────────────────────
 const _ta='pk.eyJ1IjoiZGFuaWplbHZyYW5qZXMiLCJhIjoiY21vNWRscjZtMG9ybDJzcXB5';
 const _tb='eWYwY2swcyJ9.YY0cJRru_mlKwT8CCZZJRQ';
+let mrMap=null, mrRenderers=[], mrPolylines=[], mrMarkers=[];
+let mrStops=[]; // array of stop values
 
-let mrMap=null, mrMarkers=[], mrLayerIds=[];
-let mrStops=[];
+const CC_MAP={
+  'SK':'sk','CZ':'cz','AT':'at','CH':'ch','HU':'hu','SI':'si','RO':'ro','BG':'bg',
+  'HR':'hr','FR':'fr','IT':'it','ES':'es','PT':'pt','PL':'pl','GR':'gr','IE':'ie',
+  'DE':'de','NL':'nl','BE':'be','LU':'lu','DK':'dk','SE':'se','FI':'fi',
+  'GB':'gb','LT':'lt','LV':'lv','EE':'ee','CY':'cy','MT':'mt','IS':'is',
+  'NO':'no','RS':'rs','ME':'me','BA':'ba','MK':'mk','AL':'al','XK':'xk',
+  'TR':'tr','UA':'ua','BY':'by','GE':'ge','AM':'am','AZ':'az','MD':'md',
+  'AD':'ad','MC':'mc','SM':'sm','LI':'li',
+};
 
-const CC_MAP={'SK':'sk','CZ':'cz','AT':'at','CH':'ch','HU':'hu','SI':'si','RO':'ro','BG':'bg','HR':'hr','FR':'fr','IT':'it','ES':'es','PT':'pt','PL':'pl','GR':'gr','IE':'ie','DE':'de','NL':'nl','BE':'be','LU':'lu','DK':'dk','SE':'se','FI':'fi','GB':'gb','LT':'lt','LV':'lv','EE':'ee','CY':'cy','MT':'mt','IS':'is','NO':'no','RS':'rs','ME':'me','BA':'ba','MK':'mk','AL':'al','XK':'xk','TR':'tr','UA':'ua','BY':'by','GE':'ge','AM':'am','AZ':'az','MD':'md','AD':'ad','MC':'mc','SM':'sm','LI':'li'};
-const VIGNETTE_CC=new Set(['SK','CZ','AT','CH','HU','SI','RO','BG','MD','LI']);
-const TOLL_CC=new Set(['HR','FR','IT','ES','PT','PL','GR','IE','NO','RS','ME','BA','MK','AL','XK','TR','UA','BY','GE']);
-const FREE_CC=new Set(['DE','NL','BE','LU','DK','SE','FI','LT','LV','EE','GB','CY','MT','IS','AD','MC','SM','AM','AZ']);
-
-function routeColor(cc){
-  if(VIGNETTE_CC.has(cc)) return '#1B4D3E';
-  if(TOLL_CC.has(cc)) return '#7A3200';
-  if(FREE_CC.has(cc)) return '#0F3460';
-  return '#7C3AED';
-}
-
-function clearMapLayers(){
-  if(!mrMap||!mrMap.isStyleLoaded()) return;
-  mrLayerIds.forEach(id=>{try{if(mrMap.getLayer(id))mrMap.removeLayer(id);if(mrMap.getSource(id))mrMap.removeSource(id);}catch(e){}});
-  mrLayerIds=[];
-  mrMarkers.forEach(m=>m.remove());
-  mrMarkers=[];
-}
-
-async function mbGeocode(q){
-  const r=await fetch(`https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(q)}.json?access_token=${_ta+_tb}&types=place,address&limit=1`);
-  const d=await r.json();
-  if(!d.features?.length) throw new Error('Not found: '+q);
-  return d.features[0].center;
-}
-
-async function mbRoute(coords){
-  const coordStr=coords.map(c=>c.join(',')).join(';');
-  const r=await fetch(`https://api.mapbox.com/directions/v5/mapbox/driving/${coordStr}?access_token=${_ta+_tb}&geometries=geojson&overview=full&steps=false`);
-  const d=await r.json();
-  if(!d.routes?.length) throw new Error('No route found');
-  return d.routes[0];
-}
-
-async function mbCountry(lng,lat){
-  const r=await fetch(`https://api.mapbox.com/geocoding/v5/mapbox.places/${lng},${lat}.json?access_token=${_ta+_tb}&types=country&limit=1`);
-  const d=await r.json();
-  return d.features?.[0]?.properties?.short_code?.toUpperCase()||null;
-}
-
-async function mbAutocomplete(query, inputId){
-  if(query.length < 2) return;
-  const r=await fetch(`https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(query)}.json?access_token=${_ta+_tb}&types=place&limit=5&language=en`);
-  const d=await r.json();
-  showAutocomplete(inputId, d.features||[]);
-}
-
-function showAutocomplete(inputId, features){
-  const existing = document.getElementById(`ac-${inputId}`);
-  if(existing) existing.remove();
-  if(!features.length) return;
-  const input = document.getElementById(inputId);
-  if(!input) return;
-  const div = document.createElement('div');
-  div.id = `ac-${inputId}`;
-  div.style.cssText = 'position:absolute;background:#141922;border:1px solid rgba(255,255,255,.15);border-radius:8px;z-index:1000;width:100%;max-height:200px;overflow-y:auto;box-shadow:0 8px 24px rgba(0,0,0,.4);';
-  features.forEach(f=>{
-    const item = document.createElement('div');
-    item.style.cssText = 'padding:.6rem .85rem;cursor:pointer;font-size:.82rem;color:#E2E8F0;border-bottom:1px solid rgba(255,255,255,.05);';
-    item.textContent = f.place_name;
-    item.onmousedown = ()=>{
-      input.value = f.text || f.place_name.split(',')[0];
-      div.remove();
-    };
-    item.onmouseover = ()=>item.style.background='rgba(255,255,255,.06)';
-    item.onmouseout = ()=>item.style.background='';
-    div.appendChild(item);
-  });
-  const wrap = input.parentElement;
-  wrap.style.position = 'relative';
-  wrap.appendChild(div);
-  input.onblur = ()=>setTimeout(()=>div.remove(), 200);
-}
+// Countries where local/non-motorway roads are FREE even if route passes through
+// BUT note: HU vignette is needed even for short motorway sections
+const FREE_LOCAL={'ba':true,'rs':true,'me':true,'mk':true,'al':true,'xk':true,'ge':true,'am':true,'az':true,'md':true};
 
 // ── HAC CROATIA LIVE API ──────────────────────────────────
 // API: https://cro3-tmp.hac.hr/tollcalculator/price/{ENTRY}/{EXIT}
@@ -1702,7 +1663,7 @@ function findHRExitFromSteps(steps){
   return null;
 }
 
-
+// Multi-stop UI
 function initStops(){
   mrStops=[];
   const wrap=document.getElementById('mr-stops-wrap');
@@ -1722,9 +1683,16 @@ function addStop(placeholder){
   const div=document.createElement('div');
   div.className='stop-row'; div.dataset.stopId=id;
   const label=labels[idx]||String(idx+1);
-  const canRemove=idx>=2;
-  div.innerHTML=`<span class="stop-label">${label}</span><input type="text" id="${id}" placeholder="${placeholder||`Stop ${label} — city`}" autocomplete="off" oninput="mbAutocomplete(this.value,'${id}')"><span style="width:1.6rem">${canRemove?`<button class="stop-remove" onclick="removeStop('${id}')" title="Remove">×</button>`:''}</span>`;
+  const canRemove=idx>=2; // can only remove extra stops
+  div.innerHTML=`
+    <span class="stop-label">${label}</span>
+    <input type="text" id="${id}" placeholder="${placeholder||`Stop ${label} — city`}" autocomplete="off">
+    ${canRemove?`<button class="stop-remove" onclick="removeStop('${id}')" title="Remove stop">×</button>`:'<span style="width:1.6rem"></span>'}
+  `;
   wrap.appendChild(div);
+  // Attach Google Places autocomplete if Maps is loaded
+  if(window.google?.maps?.places) attachAutocomplete(id);
+  // re-label all
   relabelStops();
 }
 
@@ -1736,7 +1704,9 @@ function removeStop(id){
 
 function relabelStops(){
   const labels=['A','B','C','D','E','F','G','H'];
-  document.querySelectorAll('.stop-row').forEach((row,i)=>{row.querySelector('.stop-label').textContent=labels[i]||String(i+1);});
+  document.querySelectorAll('.stop-row').forEach((row,i)=>{
+    row.querySelector('.stop-label').textContent=labels[i]||String(i+1);
+  });
 }
 
 function initMrMap(){
@@ -1754,20 +1724,91 @@ function initMrMap(){
   } else { createMrMap(); }
 }
 
-function createMrMap(){
-  mapboxgl.accessToken=_ta+_tb;
-  mrMap=new mapboxgl.Map({container:'mr-map',style:'mapbox://styles/mapbox/dark-v11',center:[15,47],zoom:4.5,attributionControl:false});
-  mrMap.addControl(new mapboxgl.NavigationControl({showCompass:false}),'top-right');
-  mrMap.addControl(new mapboxgl.AttributionControl({compact:true}));
-  mrMap.on('load',()=>{document.getElementById('mr-legend').style.display='block';});
+function attachAutocomplete(inputId){
+  const input=document.getElementById(inputId);
+  if(!input||input.dataset.ac) return;
+  input.dataset.ac='1';
+  input.addEventListener('input', async function(){
+    const q=this.value.trim();
+    if(q.length<2){ removeAcDropdown(inputId); return; }
+    try {
+      const r=await fetch(`https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(q)}.json?access_token=${_ta+_tb}&types=place&limit=5&language=en`);
+      const d=await r.json();
+      showAcDropdown(inputId, d.features||[]);
+    } catch(e){}
+  });
+  input.addEventListener('blur', ()=>setTimeout(()=>removeAcDropdown(inputId),200));
 }
 
-function addMapMarker(coords,label,name){
-  const el=document.createElement('div');
-  el.style.cssText='width:28px;height:28px;border-radius:50%;background:#D4820A;color:#000;font-family:Geist,sans-serif;font-weight:900;font-size:12px;display:flex;align-items:center;justify-content:center;border:2px solid rgba(255,255,255,.8);box-shadow:0 2px 10px rgba(0,0,0,.5);cursor:pointer;z-index:10;';
-  el.textContent=label;
-  const marker=new mapboxgl.Marker({element:el}).setLngLat(coords).setPopup(new mapboxgl.Popup({offset:20,closeButton:false}).setHTML(`<strong style="font-size:12px;">${name}</strong>`)).addTo(mrMap);
-  mrMarkers.push(marker);
+function showAcDropdown(inputId, features){
+  removeAcDropdown(inputId);
+  if(!features.length) return;
+  const input=document.getElementById(inputId);
+  if(!input) return;
+  const div=document.createElement('div');
+  div.id=`ac-drop-${inputId}`;
+  div.style.cssText='position:absolute;background:#141922;border:1px solid rgba(255,255,255,.15);border-radius:8px;z-index:9999;width:100%;max-height:200px;overflow-y:auto;box-shadow:0 8px 24px rgba(0,0,0,.5);top:100%;left:0;';
+  features.forEach(f=>{
+    const item=document.createElement('div');
+    item.style.cssText='padding:.55rem .85rem;cursor:pointer;font-size:.82rem;color:#E2E8F0;border-bottom:1px solid rgba(255,255,255,.05);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;';
+    item.textContent=f.place_name;
+    item.onmousedown=()=>{input.value=f.text||f.place_name.split(',')[0];removeAcDropdown(inputId);};
+    item.onmouseover=()=>item.style.background='rgba(212,130,10,.15)';
+    item.onmouseout=()=>item.style.background='';
+    div.appendChild(item);
+  });
+  const wrap=input.parentElement;
+  wrap.style.position='relative';
+  wrap.appendChild(div);
+}
+
+function removeAcDropdown(inputId){
+  document.getElementById(`ac-drop-${inputId}`)?.remove();
+}
+
+function createMrMap(){
+  mapboxgl.accessToken=_ta+_tb;
+  mrMap=new mapboxgl.Map({
+    container:'mr-map',
+    style:'mapbox://styles/mapbox/dark-v11',
+    center:[15,47],zoom:4.5,
+    attributionControl:false,
+  });
+  mrMap.addControl(new mapboxgl.NavigationControl({showCompass:false}),'top-right');
+  mrMap.addControl(new mapboxgl.AttributionControl({compact:true}));
+  mrMap.on('load',()=>{ document.getElementById('mr-legend').style.display='block'; });
+  mrStops.forEach(id=>attachAutocomplete(id));
+}
+
+// Color per country type
+function countryColor(id){
+  const c=C.find(x=>x.id===id);
+  if(!c) return '#888';
+  if(c.type==='vignette') return '#1B4D3E';
+  if(c.type==='toll') return '#7A3200';
+  return '#0F3460';
+}
+
+// Store last directions result for route switching
+let lastDirectionsResult = null;
+let activeRouteIdx = 0;
+
+function switchRoute(idx){
+  if(!lastDirectionsResult) return;
+  activeRouteIdx = idx;
+  updateRouteTabs();
+  renderRoute(lastDirectionsResult);
+}
+
+function updateRouteTabs(){
+  if(!lastDirectionsResult) return;
+  lastDirectionsResult.routes.forEach((_,i)=>{
+    const btn=document.getElementById(`rtab-${i}`);
+    if(!btn) return;
+    btn.style.border=`2px solid ${i===activeRouteIdx?'var(--accent)':'var(--border)'}`;
+    btn.style.background=i===activeRouteIdx?'var(--accent)':'var(--surface)';
+    btn.style.color=i===activeRouteIdx?'#000':'var(--text)';
+  });
 }
 
 async function calcMapRoute(){
@@ -1776,135 +1817,677 @@ async function calcMapRoute(){
     document.getElementById('mr-result').innerHTML='<div style="font-size:.8rem;color:#c00;padding:.75rem;background:#fde8e6;border-radius:8px;">Please enter at least an origin and destination.</div>';
     return;
   }
+
   const resultEl=document.getElementById('mr-result');
-  resultEl.innerHTML='<div style="font-size:.8rem;color:var(--muted);padding:.5rem 0;">⏳ Geocoding stops...</div>';
-  if(!mrMap){initMrMap();await new Promise(r=>setTimeout(r,3000));}
+  resultEl.innerHTML='<div style="font-size:.8rem;color:var(--muted);padding:.5rem 0;">⏳ Calculating route...</div>';
+
+  if(!window.google||!mrMap){ initMrMap(); await new Promise(r=>setTimeout(r,2500)); }
   if(!Object.keys(FX).length) await loadFX();
-  try{
-    const coords=await Promise.all(stopInputs.map(s=>mbGeocode(s)));
-    resultEl.innerHTML='<div style="font-size:.8rem;color:var(--muted);padding:.5rem 0;">⏳ Getting route...</div>';
-    const route=await mbRoute(coords);
-    const rc=route.geometry.coordinates;
-    resultEl.innerHTML='<div style="font-size:.8rem;color:var(--muted);padding:.5rem 0;">⏳ Detecting countries...</div>';
-    clearMapLayers();
-    const sampleStep=Math.max(1,Math.floor(rc.length/25));
-    const samples=[];
-    for(let i=0;i<rc.length;i+=sampleStep) samples.push(i);
-    if(!samples.includes(rc.length-1)) samples.push(rc.length-1);
-    const countries=await Promise.all(samples.map(i=>mbCountry(rc[i][0],rc[i][1])));
-    let segments=[],curCC=countries[0],segStart=0;
-    for(let i=1;i<samples.length;i++){
-      if(countries[i]!==curCC){segments.push({cc:curCC,coords:rc.slice(samples[segStart],samples[i]+1)});curCC=countries[i];segStart=i;}
-    }
-    segments.push({cc:curCC,coords:rc.slice(samples[segStart])});
-    segments.forEach((seg,idx)=>{
-      if(!seg.coords||seg.coords.length<2) return;
-      const id=`route-seg-${idx}`; mrLayerIds.push(id);
-      mrMap.addSource(id,{type:'geojson',data:{type:'Feature',geometry:{type:'LineString',coordinates:seg.coords}}});
-      mrMap.addLayer({id,type:'line',source:id,layout:{'line-join':'round','line-cap':'round'},paint:{'line-color':routeColor(seg.cc),'line-width':5,'line-opacity':.9}});
-    });
-    const bounds=new mapboxgl.LngLatBounds();
-    rc.forEach(c=>bounds.extend(c));
-    mrMap.fitBounds(bounds,{padding:60});
-    const labels=['A','B','C','D','E','F','G','H'];
-    coords.forEach((c,i)=>addMapMarker(c,labels[i]||String(i+1),stopInputs[i]));
-    const seen=new Set();const ccList=[];
-    segments.forEach(s=>{if(s.cc&&!seen.has(s.cc)){seen.add(s.cc);ccList.push(s.cc);}});
 
-    // Detekuj HR entry/exit pre HAC live ceny
-    let hrEntryCC=null, hrExitCC=null, hrDistKm=0;
-    const segsFlat=segments.filter(Boolean);
-    for(let i=0;i<segsFlat.length;i++){
-      if(segsFlat[i]?.cc==='HR'){
-        if(!hrEntryCC&&i>0) hrEntryCC=segsFlat[i-1]?.cc;
-        if(i<segsFlat.length-1) hrExitCC=segsFlat[i+1]?.cc||hrExitCC;
-      }
-    }
-    if(ccList.includes('HR')){
-      const hrCount=segsFlat.filter(s=>s?.cc==='HR').length;
-      hrDistKm=(hrCount/Math.max(segsFlat.length,1))*(route.distance/1000);
-    }
+  const directionsService=new google.maps.DirectionsService();
 
-    const dateFrom=document.getElementById('mr-date-from').value;
-    const dateTo=document.getElementById('mr-date-to').value;
-    let tripDays=7;
-    if(dateFrom&&dateTo){const d1=new Date(dateFrom),d2=new Date(dateTo);tripDays=Math.max(1,Math.ceil((d2-d1)/(1000*60*60*24)));}
-    const distKm=(route.distance/1000).toFixed(0);
-    const durH=Math.floor(route.duration/3600);
-    const durM=Math.floor((route.duration%3600)/60);
-    let html=`<div class="mr-route-info"><div class="mr-route-stat"><strong>${distKm} km</strong>distance</div><div class="mr-route-stat"><strong>${durH}h ${durM}m</strong>drive time</div><div class="mr-route-stat"><strong>${ccList.length}</strong>countries</div><div class="mr-route-stat"><strong>${tripDays}d</strong>trip</div></div>`;
-    html+='<div style="font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);margin-bottom:.6rem;">Countries on route</div>';
-    let totalEur=0;
-    ccList.forEach(cc=>{
-      const id=CC_MAP[cc];const country=C.find(c=>c.id===id);if(!country) return;
-      const color=routeColor(cc);let action='',priceStr='',priceEur=0,needsPay=false;
-      if(country.type==='vignette'&&country.prices.length){
-        const rec=getBestVignette(country.prices,tripDays);
-        priceStr=rec.v;priceEur=parseEuro(rec.v);
-        const eurNote=priceStr.startsWith('€')?'':` ≈ ${toEurStr(priceEur)}`;
-        action=`Buy vignette · ${rec.p}${eurNote}`;needsPay=true;totalEur+=priceEur;
-      } else if(country.type==='toll'){
-        if(id==='hr'){
-          // HAC live - async výpočet prebehne neskôr, teraz odhad
-          const vehicleCat=document.getElementById('mr-vehicle-cat')?.value||'I';
-          try {
-            const hacRes=await calcHRToll(hrEntryCC,hrExitCC,hrDistKm,[],vehicleCat,segsFlat);
-            priceEur=hacRes.amount; 
-            const liveIcon=hacRes.live?(hacRes.precise?'🟢 Live HAC':'🟡 Live HAC estimate'):'🟠 Distance estimate';
-            priceStr=`€${priceEur.toFixed(2)}`;
-            action=`Toll gates · ${liveIcon} · <a href="https://karta.hac.hr" target="_blank" style="color:var(--accent)">karta.hac.hr ↗</a>`;
-            if(hacRes.segments?.length){
-              const segTxt=hacRes.segments.map(s=>`${s.entry}→${s.exit}: €${s.amount.toFixed(2)}`).join(' + ');
-              action+=`<br><span style="font-size:.62rem;color:rgba(255,255,255,.4);">${segTxt}</span>`;
-            }
-          } catch(e) {
-            priceEur=18; priceStr='~€18 (est.)';
-            action=`Pay at toll gate · HAC · <a href="https://karta.hac.hr" target="_blank" style="color:var(--accent)">karta.hac.hr ↗</a>`;
-          }
-          needsPay=true; totalEur+=priceEur;
-        } else {
-          const est=country.prices[0];priceEur=est?parseEuro(est.v):0;
-          priceStr=est?`~${est.v}`:'varies';
-          action='Pay at toll gate'+(country.enc?` · ENC: ${country.enc}`:'');
-          needsPay=!!priceEur;if(needsPay)totalEur+=priceEur;
-        }
-      } else {action='Free — no payment needed';priceStr='FREE';}
-      html+=`<div class="mr-country-item" style="border-left:4px solid ${color};"><div class="mr-ci-code">${cc}</div><div class="mr-ci-info"><div class="mr-ci-name">${country.name}</div><div class="mr-ci-sub">${action}${country.buy&&needsPay?` · <a href="${country.buy}" target="_blank" style="color:var(--accent);text-decoration:none;">${country.bl} ↗</a>`:''}</div></div>${needsPay?`<div class="mr-ci-price">${priceStr}</div>`:`<div style="color:var(--f);font-weight:800;font-size:.8rem;">FREE</div>`}</div>`;
+  try {
+    const origin=stopInputs[0];
+    const destination=stopInputs[stopInputs.length-1];
+    const waypoints=stopInputs.slice(1,-1).map(v=>({location:v,stopover:true}));
+
+    const result=await new Promise((res,rej)=>{
+      directionsService.route({
+        origin,destination,waypoints,
+        travelMode:google.maps.TravelMode.DRIVING,
+        provideRouteAlternatives: waypoints.length===0,
+        region:'eu',
+      },(r,s)=>{ if(s==='OK') res(r); else rej(s); });
     });
-    const fuelPrice=parseFloat(document.getElementById('mr-fuel-price')?.value)||1.55;
-    const fuelCons=parseFloat(document.getElementById('mr-fuel-consumption')?.value)||7;
-    const fuelCost=parseFloat(((route.distance/1000)*fuelCons/100*fuelPrice).toFixed(2));
-    const grandTotal=parseFloat((totalEur+fuelCost).toFixed(2));
-    if(totalEur>0||fuelCost>0){
-      html+=`<div class="mr-total-box"><div class="mr-total-label">💰 Estimated total trip costs</div>${totalEur>0?`<div class="mr-total-row"><div style="font-size:.75rem;color:var(--muted);">🛣️ Vignettes + tolls</div><div style="font-weight:800;">${toEurStr(totalEur)}</div></div>`:''}<div class="mr-total-row"><div style="font-size:.75rem;color:var(--muted);">⛽ Fuel · ${distKm}km × ${fuelCons}L/100km × €${fuelPrice}/L</div><div style="font-weight:800;">${toEurStr(fuelCost)}</div></div><div class="mr-total-row" style="border-top:1px solid var(--border);margin-top:.4rem;padding-top:.4rem;"><div style="font-size:.8rem;font-weight:700;">Total estimated trip cost</div><div class="mr-total-amt">${toEurStr(grandTotal)}</div></div></div>`;
-    }
-    html+='<div class="rnote" style="margin-top:.75rem;">⚠️ Estimates are approximate. Buy vignettes online before your trip.</div>';
-    resultEl.innerHTML=html;
-  }catch(err){
-    resultEl.innerHTML=`<div style="font-size:.8rem;color:#c00;padding:.75rem;background:#fde8e6;border-radius:8px;">Error: ${err.message}</div>`;
-    console.error(err);
+
+    lastDirectionsResult=result;
+    activeRouteIdx=0;
+    await renderRoute(result);
+
+  } catch(err){
+    document.getElementById('mr-result').innerHTML=`<div style="font-size:.8rem;color:#c00;padding:.75rem;background:#fde8e6;border-radius:8px;">Could not calculate route: ${err}</div>`;
   }
 }
 
-// Legacy stubs pre staré funkcie
-function suggestRoute(){}
-function filterRouteDropdown(){}
-function selectRoute(){}
-function hideDropdown(){}
-function filterCalcSearch(){}
-function hideCalcDrop(){}
-function addCalcCountry(){}
-function removeCalcCountry(){}
-function renderTags(){}
-function doCalc(){}
-function renderCalcChecks(){
-  const today=new Date();const nextWeek=new Date(today);nextWeek.setDate(today.getDate()+7);
-  const f=document.getElementById('calc-date-from');const t=document.getElementById('calc-date-to');
-  if(f)f.value=today.toISOString().split('T')[0];if(t)t.value=nextWeek.toISOString().split('T')[0];
+async function renderRoute(result){
+  const dateFrom=document.getElementById('mr-date-from').value;
+  const dateTo=document.getElementById('mr-date-to').value;
+  let tripDays=7;
+  if(dateFrom&&dateTo){
+    const d1=new Date(dateFrom),d2=new Date(dateTo);
+    tripDays=Math.max(1,Math.ceil((d2-d1)/(1000*60*60*24)));
+  }
+  const resultEl=document.getElementById('mr-result');
+
+  // Clear old layers/markers
+  mrPolylines.forEach(id=>{try{if(mrMap.getLayer(id))mrMap.removeLayer(id);if(mrMap.getSource(id))mrMap.removeSource(id);}catch(e){}});
+  mrPolylines=[];
+  mrMarkers.forEach(m=>m.remove());
+  mrMarkers=[];
+
+  try {
+    const allLegs=result.routes[activeRouteIdx].legs;
+    const totalDist=allLegs.reduce((s,l)=>s+l.distance.value,0);
+    const totalDur=allLegs.reduce((s,l)=>s+l.duration.value,0);
+
+    // Mapbox geocoding na detekciu krajín cez sample pointy
+    // Použijeme encoded polyline z Google - dekódujeme a sample-ujeme
+    const path=result.routes[activeRouteIdx].overview_path;
+    const sampleStep=Math.max(1,Math.floor(path.length/25));
+    const samplePoints=[];
+    for(let i=0;i<path.length;i+=sampleStep) samplePoints.push(path[i]);
+    if(samplePoints[samplePoints.length-1]!==path[path.length-1])
+      samplePoints.push(path[path.length-1]);
+
+    // Reverse geocode cez Mapbox
+    const countryResults_raw=await Promise.all(samplePoints.map(pt=>
+      fetch(`https://api.mapbox.com/geocoding/v5/mapbox.places/${pt.lng()},${pt.lat()}.json?access_token=${TOKEN_A+TOKEN_B}&types=country&limit=1`)
+        .then(r=>r.json())
+        .then(d=>({cc:d.features?.[0]?.properties?.short_code?.toUpperCase()||null, lat:pt.lat(), lng:pt.lng()}))
+        .catch(()=>null)
+    ));
+
+    const countryOrder=[]; const countryCodes=new Set(); const countrySegments=[];
+    for(let i=0;i<countryResults_raw.length;i++){
+      const r=countryResults_raw[i]; if(!r) continue;
+      if(!countryCodes.has(r.cc)){countryCodes.add(r.cc);countryOrder.push(r.cc);}
+      countrySegments[i]=r;
+    }
+
+    // HR entry/exit
+    let hrEntryCC=null,hrExitCC=null,hrDistKm=0;
+    const segs=countrySegments.filter(Boolean);
+    for(let i=0;i<segs.length;i++){
+      if(segs[i]?.cc==='HR'){
+        if(!hrEntryCC&&i>0) hrEntryCC=segs[i-1]?.cc;
+        if(i<segs.length-1) hrExitCC=segs[i+1]?.cc||hrExitCC;
+      }
+    }
+    if(countryCodes.has('HR')){
+      const hrCount=segs.filter(s=>s?.cc==='HR').length;
+      hrDistKm=(hrCount/Math.max(segs.length,1))*(totalDist/1000);
+    }
+
+    const vehicleCat=document.getElementById('mr-vehicle-cat')?.value||'I';
+
+    // Draw colored polylines on Mapbox map
+    // Build segments from sample points
+    let mbSegs=[],curCC=countryResults_raw.filter(Boolean)[0]?.cc,segStart=0;
+    const validSamples=countryResults_raw.filter(Boolean);
+    for(let i=1;i<validSamples.length;i++){
+      if(validSamples[i].cc!==curCC){
+        mbSegs.push({cc:curCC,pts:validSamples.slice(segStart,i)});
+        curCC=validSamples[i].cc; segStart=i;
+      }
+    }
+    mbSegs.push({cc:curCC,pts:validSamples.slice(segStart)});
+
+    mbSegs.forEach((seg,idx)=>{
+      if(!seg.pts||seg.pts.length<2) return;
+      const coords=seg.pts.map(p=>[p.lng,p.lat]);
+      const id=`rseg-${idx}`; mrPolylines.push(id);
+      const color=countryColor(seg.cc);
+      mrMap.addSource(id,{type:'geojson',data:{type:'Feature',geometry:{type:'LineString',coordinates:coords}}});
+      mrMap.addLayer({id,type:'line',source:id,layout:{'line-join':'round','line-cap':'round'},paint:{'line-color':color,'line-width':5,'line-opacity':.9}});
+    });
+
+    // Fit bounds
+    const bounds=new mapboxgl.LngLatBounds();
+    path.forEach(p=>bounds.extend([p.lng(),p.lat()]));
+    mrMap.fitBounds(bounds,{padding:60});
+
+    // Add markers for stops
+    const stopInputs=mrStops.map(id=>document.getElementById(id)?.value?.trim()).filter(Boolean);
+    const labels=['A','B','C','D','E','F','G','H'];
+    allLegs.forEach((leg,i)=>{
+      if(i===0) addMbMarker([leg.start_location.lng(),leg.start_location.lat()],labels[i]||String(i+1),stopInputs[i]||'');
+      addMbMarker([leg.end_location.lng(),leg.end_location.lat()],labels[i+1]||String(i+2),stopInputs[i+1]||'');
+    });
+
+    // Build country cost results
+    const seen=new Set(); const cResults=[];
+    let totalEur=0;
+
+    for(const cc of countryOrder){
+      if(seen.has(cc)) continue; seen.add(cc);
+      const id=CC_MAP[cc]; const country=C.find(x=>x.id===id);
+      if(!country) continue;
+      const color=countryColor(cc);
+      let action='',priceStr='',priceEur=0,needsPay=false,note='';
+
+      if(country.type==='vignette'&&country.prices.length){
+        const rec=getBestVignette(country.prices,tripDays);
+        priceStr=rec.v; priceEur=parseEuro(rec.v);
+        const eurNote=priceStr.startsWith('€')?'':` ≈ ${toEurStr(priceEur)}`;
+        action=`Buy vignette · ${rec.p}${eurNote}`;
+        needsPay=true; totalEur+=priceEur;
+      } else if(country.type==='toll'){
+        if(id==='hr'){
+          const allSteps=allLegs.flatMap(l=>l.steps);
+          const hacRes=await calcHRToll(hrEntryCC,hrExitCC,hrDistKm,allSteps,vehicleCat,countrySegments);
+          priceEur=hacRes.amount; priceStr=`€${priceEur.toFixed(2)}`;
+          const icon=hacRes.live?(hacRes.precise?'🟢 Live HAC':'🟡 Live HAC est.'):'🟠 Distance est.';
+          action=`Toll gates · ${icon} · <a href="https://karta.hac.hr" target="_blank" style="color:var(--accent)">karta.hac.hr ↗</a>`;
+          if(hacRes.segments?.length){
+            note=hacRes.segments.map(s=>`${s.entry}→${s.exit}: €${s.amount.toFixed(2)}`).join(' + ');
+          }
+          needsPay=true; totalEur+=priceEur;
+        } else if(FREE_LOCAL[id]){
+          action='Local roads — free'; priceStr='FREE'; needsPay=false;
+        } else {
+          const est=country.prices[0]; priceEur=est?parseEuro(est.v):0;
+          priceStr=est?`~${est.v}`:'varies';
+          action='Pay at toll gate'+(country.enc?` · ENC: ${country.enc}`:'');
+          needsPay=!!priceEur; if(needsPay) totalEur+=priceEur;
+        }
+      } else {
+        action='Free — no payment needed'; priceStr='FREE';
+      }
+      cResults.push({cc,country,action,priceStr,priceEur,color,needsPay,note});
+    }
+
+    // HTML output
+    const distKm=(totalDist/1000).toFixed(0);
+    const durH=Math.floor(totalDur/3600), durM=Math.floor((totalDur%3600)/60);
+    let html=`<div class="mr-route-info">
+      <div class="mr-route-stat"><strong>${distKm} km</strong>distance</div>
+      <div class="mr-route-stat"><strong>${durH}h ${durM}m</strong>drive time</div>
+      <div class="mr-route-stat"><strong>${cResults.length}</strong>countries</div>
+      <div class="mr-route-stat"><strong>${tripDays}d</strong>trip</div>
+    </div>`;
+    html+='<div style="font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);margin-bottom:.6rem;">Countries on route</div>';
+
+    cResults.forEach(r=>{
+      html+=`<div class="mr-country-item" style="border-left:4px solid ${r.color};">
+        <div class="mr-ci-code">${r.cc}</div>
+        <div class="mr-ci-info">
+          <div class="mr-ci-name">${r.country.name}</div>
+          <div class="mr-ci-sub">${r.action}${r.country.buy&&r.needsPay&&r.country.id!=='hr'?` · <a href="${r.country.buy}" target="_blank" style="color:var(--accent);text-decoration:none;">${r.country.bl} ↗</a>`:''}</div>
+          ${r.note?`<div style="font-size:.65rem;color:var(--enc);margin-top:.2rem;">ℹ️ ${r.note}</div>`:''}
+        </div>
+        ${r.needsPay?`<div class="mr-ci-price">${r.priceStr}</div>`:`<div style="color:var(--f);font-weight:800;font-size:.8rem;">FREE</div>`}
+      </div>`;
+    });
+
+    // Fuel
+    const fuelPrice=parseFloat(document.getElementById('mr-fuel-price')?.value)||1.55;
+    const fuelCons=parseFloat(document.getElementById('mr-fuel-consumption')?.value)||7;
+    const fuelCost=parseFloat(((totalDist/1000)*fuelCons/100*fuelPrice).toFixed(2));
+    const grandTotal=parseFloat((totalEur+fuelCost).toFixed(2));
+
+    if(totalEur>0||fuelCost>0){
+      html+=`<div class="mr-total-box">
+        <div class="mr-total-label">💰 Estimated total trip costs</div>
+        ${totalEur>0?`<div class="mr-total-row"><div style="font-size:.75rem;color:var(--muted);">🛣️ Vignettes + tolls</div><div style="font-weight:800;">${toEurStr(totalEur)}</div></div>`:''}
+        <div class="mr-total-row"><div style="font-size:.75rem;color:var(--muted);">⛽ Fuel · ${distKm}km × ${fuelCons}L/100km × €${fuelPrice}/L</div><div style="font-weight:800;">${toEurStr(fuelCost)}</div></div>
+        <div class="mr-total-row" style="border-top:1px solid var(--border);margin-top:.4rem;padding-top:.4rem;">
+          <div style="font-size:.8rem;font-weight:700;">Total estimated trip cost</div>
+          <div class="mr-total-amt">${toEurStr(grandTotal)}</div>
+        </div>
+      </div>`;
+    }
+
+    html+='<div class="rnote" style="margin-top:.75rem;">⚠️ Toll estimates are approximate. Buy vignettes before your trip.</div>';
+    resultEl.innerHTML=html;
+    document.getElementById('mr-legend').style.display='block';
+
+    // Route tabs
+    const routeTabs=document.getElementById('mr-route-tabs');
+    if(result.routes.length>1){
+      routeTabs.style.display='flex'; routeTabs.style.gap='.4rem'; routeTabs.style.flexWrap='wrap';
+      routeTabs.innerHTML=result.routes.map((r,i)=>{
+        const km=(r.legs.reduce((s,l)=>s+l.distance.value,0)/1000).toFixed(0);
+        const dur=r.legs.reduce((s,l)=>s+l.duration.value,0);
+        const h=Math.floor(dur/3600),m=Math.floor((dur%3600)/60);
+        const isActive=i===activeRouteIdx;
+        return `<button onclick="switchRoute(${i})" id="rtab-${i}" style="padding:.4rem .8rem;border-radius:8px;border:2px solid ${isActive?'var(--accent)':'var(--border)'};background:${isActive?'var(--accent)':'var(--surface)'};color:${isActive?'#000':'var(--text)'};font-size:.75rem;font-weight:700;cursor:pointer;font-family:'Geist',sans-serif;">Route ${i+1} · ${km}km · ${h}h${m}m</button>`;
+      }).join('');
+    } else { routeTabs.style.display='none'; }
+
+  } catch(err){
+    resultEl.innerHTML=`<div style="font-size:.8rem;color:#c00;padding:.75rem;background:#fde8e6;border-radius:8px;">Error: ${err.message}</div>`;
+    console.error('renderRoute error:', err);
+  }
+}
+
+
+async function calcMapRoute(){
+  const stopInputs=mrStops.map(id=>document.getElementById(id)?.value?.trim()).filter(Boolean);
+  if(stopInputs.length<2){
+    document.getElementById('mr-result').innerHTML='<div style="font-size:.8rem;color:#c00;padding:.75rem;background:#fde8e6;border-radius:8px;">Please enter at least an origin and destination.</div>';
+    return;
+  }
+
+  const resultEl=document.getElementById('mr-result');
+  resultEl.innerHTML='<div style="font-size:.8rem;color:var(--muted);padding:.5rem 0;">⏳ Calculating route...</div>';
+
+  if(!window.google||!mrMap){ initMrMap(); await new Promise(r=>setTimeout(r,2500)); }
+  if(!Object.keys(FX).length) await loadFX();
+
+  const directionsService=new google.maps.DirectionsService();
+
+  try {
+    const origin=stopInputs[0];
+    const destination=stopInputs[stopInputs.length-1];
+    const waypoints=stopInputs.slice(1,-1).map(v=>({location:v,stopover:true}));
+
+    const result=await new Promise((res,rej)=>{
+      directionsService.route({
+        origin,destination,waypoints,
+        travelMode:google.maps.TravelMode.DRIVING,
+        provideRouteAlternatives: waypoints.length===0,
+        region:'eu',
+      },(r,s)=>{ if(s==='OK') res(r); else rej(s); });
+    });
+
+    lastDirectionsResult=result;
+    activeRouteIdx=0;
+    await renderRoute(result);
+
+  } catch(err){
+    document.getElementById('mr-result').innerHTML=`<div style="font-size:.8rem;color:#c00;padding:.75rem;background:#fde8e6;border-radius:8px;">Could not calculate route: ${err}</div>`;
+  }
+}
+
+async function renderRoute(result){
+  const dateFrom=document.getElementById('mr-date-from').value;
+  const dateTo=document.getElementById('mr-date-to').value;
+  let tripDays=7;
+  if(dateFrom&&dateTo){
+    const d1=new Date(dateFrom),d2=new Date(dateTo);
+    tripDays=Math.max(1,Math.ceil((d2-d1)/(1000*60*60*24)));
+  }
+
+  const resultEl=document.getElementById('mr-result');
+  const geocoder=new google.maps.Geocoder();
+
+  // Clear old renderers & polylines & markers
+  mrRenderers.forEach(r=>r.setMap(null)); mrRenderers=[];
+  mrPolylines.forEach(p=>p.setMap(null)); mrPolylines=[];
+  mrMarkers.forEach(m=>m.setMap(null)); mrMarkers=[];
+
+  try {
+
+    // Gather all legs data
+    const allLegs=result.routes[activeRouteIdx].legs;
+    const totalDist=allLegs.reduce((s,l)=>s+l.distance.value,0);
+    const totalDur=allLegs.reduce((s,l)=>s+l.duration.value,0);
+    const path=result.routes[activeRouteIdx].overview_path;
+
+    // Sample more points for better country detection (~25 points along route)
+    const samplePoints=[];
+    const step=Math.max(1,Math.floor(path.length/25));
+    for(let i=0;i<path.length;i+=step) samplePoints.push(path[i]);
+    // Always include first and last point
+    if(samplePoints[samplePoints.length-1]!==path[path.length-1])
+      samplePoints.push(path[path.length-1]);
+
+    // Reverse geocode — detect countries in order
+    const countryOrder=[];
+    const countryCodes=new Set();
+    // Also track entry/exit countries for HR toll calc
+    const countrySegments=[]; // [{cc, lat, lng, distShare}]
+
+    // Geocode sample points — maintain order by index
+    const geocodeResults = new Array(samplePoints.length).fill(null);
+    await Promise.all(samplePoints.map((pt,i)=>new Promise(res=>{
+      geocoder.geocode({location:pt},(results,status)=>{
+        if(status==='OK'&&results[0]){
+          const cc=results[0].address_components.find(c=>c.types.includes('country'))?.short_name;
+          if(cc){
+            geocodeResults[i]={cc, lat:pt.lat(), lng:pt.lng()};
+          }
+        }
+        res();
+      });
+    })));
+
+    // Build ordered country list from geocode results (preserving route order)
+    for(let i=0;i<geocodeResults.length;i++){
+      const r=geocodeResults[i];
+      if(!r) continue;
+      if(!countryCodes.has(r.cc)){ countryCodes.add(r.cc); countryOrder.push(r.cc); }
+      countrySegments[i]=r;
+    }
+
+    // Detect HR entry/exit countries for precise toll
+    let hrEntryCC=null, hrExitCC=null, hrDistKm=0;
+    const segs=countrySegments.filter(Boolean);
+    for(let i=0;i<segs.length;i++){
+      if(segs[i]?.cc==='HR'){
+        if(!hrEntryCC&&i>0) hrEntryCC=segs[i-1]?.cc;
+        hrExitCC=segs[i+1]?.cc||hrExitCC;
+      }
+    }
+    if(countryCodes.has('HR')){
+      const hrCount=segs.filter(s=>s?.cc==='HR').length;
+      hrDistKm=(hrCount/segs.length)*(totalDist/1000);
+    }
+
+    // Get vehicle category
+    const vehicleCat=document.getElementById('mr-vehicle-cat')?.value||'I';
+    const catLabel={'I':'Cat. I (car)','IA':'Cat. IA (moto)','II':'Cat. II (van/trailer)','III':'Cat. III (3-axle)'}[vehicleCat];
+
+    // Build country results
+    const countryResults=[];
+    let totalEur=0;
+    const seen=new Set();
+
+    for(const cc of countryOrder){
+      if(seen.has(cc)) continue; seen.add(cc);
+      const id=CC_MAP[cc];
+      const country=C.find(c=>c.id===id);
+      if(!country) continue;
+
+      let action='',priceStr='',priceEur=0,color=countryColor(id),needsPay=false;
+      let note='', hacInfo=null;
+
+      if(country.type==='vignette'&&country.prices.length){
+        const rec=getBestVignette(country.prices,tripDays);
+        priceStr=rec.v; priceEur=parseEuro(rec.v);
+        const eurNote=priceStr.startsWith('€')?'':` ≈ ${toEurStr(priceEur)}`;
+        // Check if route goes through local roads (no motorway segments detected)
+        const countryKm=(countrySegments.filter(s=>s?.cc===cc).length/countrySegments.filter(Boolean).length)*(totalDist/1000);
+        action=`Buy vignette · ${rec.p}${eurNote}`;
+        if(id==='hu'&&countryKm<30){
+          // Short HU section — might be local roads
+          note='⚠️ Route may use local roads. If you enter any HU motorway, vignette is required.';
+          needsPay=true; totalEur+=priceEur;
+        } else {
+          needsPay=true; totalEur+=priceEur;
+        }
+
+      } else if(country.type==='toll'){
+        if(id==='hr'){
+          const allSteps=result.routes[activeRouteIdx].legs.flatMap(l=>l.steps);
+          const hacResult=await calcHRToll(hrEntryCC,hrExitCC,hrDistKm,allSteps,vehicleCat,countrySegments);
+          priceEur=hacResult.amount;
+          priceStr=toEurStr(priceEur);
+          const srcIcon=hacResult.live
+            ? (hacResult.precise ? '🟢 Live HAC · route detected' : '🟡 Live HAC · border estimate')
+            : '🟠 Distance estimate';
+          action=`Distance-based toll · ${catLabel} · ${srcIcon}`;
+          const debugInfo=hacResult.debugDetected?.length
+            ? `<br><span style="font-size:.6rem;color:#aaa;">Detected: [${hacResult.debugDetected.join(', ')}]</span>`
+            : '';
+          if(hacResult.segments?.length){
+            const segText=hacResult.segments.map(s=>{
+              const label = s.entry===s.exit
+                ? `<strong>${s.entry}</strong> (border toll)`
+                : `<strong>${s.entry}</strong>→<strong>${s.exit}</strong>`;
+              return `${label}: €${s.amount.toFixed(2)}`;
+            }).join(' + ');
+            note=`${segText}<br>ENC 21% → ${toEurStr(priceEur*0.7826)} · <a href="https://karta.hac.hr/map/map" target="_blank" style="color:var(--accent)">karta.hac.hr ↗</a>${debugInfo}`;
+          } else {
+            note=`${hacResult.entry}→${hacResult.exit} · ENC 21% → ${toEurStr(priceEur*0.7826)} · <a href="https://karta.hac.hr/map/map" target="_blank" style="color:var(--accent)">karta.hac.hr ↗</a>${debugInfo}`;
+          }
+          needsPay=true; totalEur+=priceEur;
+        } else if(FREE_LOCAL[id]){
+          action='Local roads — free (no motorway tolls on this section)';
+          color='#0F3460'; needsPay=false;
+          note='Only motorways are tolled in this country';
+        } else {
+          const est=country.prices[0];
+          priceEur=est?parseEuro(est.v):0;
+          priceStr=est?`~${est.v}`:'varies';
+          action='Pay at toll gate'+(country.enc?` · ENC: ${country.enc}`:'');
+          needsPay=!!priceEur; if(needsPay) totalEur+=priceEur;
+        }
+      } else {
+        action='Free — no payment needed';
+      }
+
+      countryResults.push({cc,country,action,priceStr,priceEur,color,needsPay,note,hacInfo});
+    }
+
+    // ── Draw colored polylines per STEP based on road type ──
+    mrRenderers.forEach(r=>r.setMap(null)); mrRenderers=[];
+    mrPolylines.forEach(p=>p.setMap(null)); mrPolylines=[];
+
+    // Road classification based on ACTUAL Google Maps step data
+    // Key insight from debug: Google Maps uses "Spoplatnená cesta" for ALL paid roads
+    const TOLL_COUNTRIES = new Set(['HR','FR','IT','PL','GR','NO','RS','ME','BA','MK','IE','PT','TR']);
+    const FREE_COUNTRIES  = new Set(['DE','NL','BE','LU','DK','SE','FI','LT','LV','EE','GB','IS','CY','MT']);
+    const VIGNETTE_COUNTRIES = new Set(['SK','CZ','AT','CH','HU','SI','RO','BG','MD','LI']);
+    const PAID_ROAD = /Spoplatnená cesta|toll road|mautpflichtig|péage|pedaggio|útdíjas/i;
+    const FREE_MOTORWAY_NUM = /\b(A\d+|E\d+|M\d+|Rv?\d+|Vt?\d+)\b/;
+
+    function classifyStep(step, cc){
+      const instr = (step.instructions||'').replace(/<[^>]+>/g,' ');
+      const isPaid = PAID_ROAD.test(instr);
+
+      // Exit ramps to local roads — even if marked "Spoplatnená" they lead OFF motorway
+      // Detect: "Zíďte výjazdom ... na D|M|R|Č|B|local road"
+      // If maneuver is ramp/exit AND destination road is local (D=HR local, M=BA, not M1/M7)
+      const isExitRamp = /ramp|exit/.test(step.maneuver||'') ||
+                         /Zíďte výjazdom|výjazdom|výjazd|exit|sortie|Abfahrt/i.test(instr);
+
+      // Local road indicators after exit (D47, M14 in BA, county roads)
+      // HR: D\d+ = local; A\d+ = motorway
+      // HU: after exit ramp onto numbered county roads (86, 75, etc) = local
+      // BA: M14, M15 = local main roads
+      const exitToLocal = isExitRamp && (
+        /D\d+/.test(instr) ||    // HR local road Dxx
+        /M1[3-9]|M[2-9]\d/.test(instr) ||  // BA/RS local Mxx (not M1-M12 motorways)
+        /smerom na\s+\w+\s*\/\s*\w+.*(?!Spoplatn)/.test(instr)
+      );
+
+      if(isPaid && !exitToLocal){
+        if(TOLL_COUNTRIES.has(cc))     return 'toll';
+        if(VIGNETTE_COUNTRIES.has(cc)) return 'vignette';
+        if(FREE_COUNTRIES.has(cc))     return 'free';
+        return 'toll';
+      }
+      if(FREE_COUNTRIES.has(cc) && FREE_MOTORWAY_NUM.test(instr) && !isExitRamp) return 'free';
+      return 'local';
+    }
+
+    const allStepsOrdered = result.routes[activeRouteIdx].legs.flatMap(l=>l.steps);
+
+    // Build a country lookup from step start points using countrySegments
+    // Also detect country changes from step instructions ("Vchádzate do krajiny X")
+    let currentStepCC = countryOrder[0] || null;
+    const CC_NAME_MAP = {
+      'Slovensko':'SK','Maďarsko':'HU','Rakúsko':'AT','Slovinsko':'SI',
+      'Chorvátsko':'HR','Bosna a Hercegovina':'BA','Srbsko':'RS','Taliansko':'IT',
+      'Nemecko':'DE','Česko':'CZ','Poľsko':'PL','Rumunsko':'RO','Bulharsko':'BG',
+      'Grécko':'GR','Čierna Hora':'ME','Severné Macedónsko':'MK','Francúzsko':'FR',
+      'Hungary':'HU','Austria':'AT','Slovenia':'SI','Croatia':'HR',
+      'Bosnia':'BA','Serbia':'RS','Germany':'DE','Italy':'IT',
+    };
+
+    for(const step of allStepsOrdered){
+      if(!step.polyline?.points) continue;
+      let stepPath;
+      try { stepPath=google.maps.geometry.encoding.decodePath(step.polyline.points); }
+      catch(e){ continue; }
+      if(!stepPath||stepPath.length<2) continue;
+
+      // Check if this step changes country
+      const instr=(step.instructions||'').replace(/<[^>]+>/g,' ');
+      const countryChange = instr.match(/Vchádzate do krajiny\s+(.+?)(?:\s|$)/i) ||
+                            instr.match(/Entering\s+(.+?)(?:\s|$)/i);
+      if(countryChange){
+        const cname = countryChange[1].trim();
+        for(const [name,cc] of Object.entries(CC_NAME_MAP)){
+          if(cname.startsWith(name)){ currentStepCC=cc; break; }
+        }
+      }
+
+      // Find country from nearest sample point
+      const startPt=stepPath[0];
+      let bestCC=currentStepCC, bestDist=999;
+      for(const seg of countrySegments.filter(Boolean)){
+        const d=Math.abs(seg.lat-startPt.lat())+Math.abs(seg.lng-startPt.lng());
+        if(d<bestDist){ bestDist=d; bestCC=seg.cc; }
+      }
+      // Only use sample point CC if it's close enough (within ~0.8°)
+      const stepCC = bestDist < 0.8 ? bestCC : currentStepCC;
+
+      const roadType = classifyStep(step, stepCC);
+
+      let color, weight, opacity;
+      switch(roadType){
+        case 'vignette': color='#1B4D3E'; weight=6; opacity=0.88; break;
+        case 'toll':     color='#7A3200'; weight=6; opacity=0.88; break;
+        case 'free':     color='#0F3460'; weight=6; opacity=0.88; break;
+        default:         color='#7C3AED'; weight=3; opacity=0.5;  break;
+      }
+
+      mrPolylines.push(new google.maps.Polyline({
+        path:stepPath, strokeColor:color,
+        strokeWeight:weight, strokeOpacity:opacity, map:mrMap,
+      }));
+    }
+
+    // Add markers for stops — derive stopInputs from current mrStops
+    const stopInputs=mrStops.map(id=>document.getElementById(id)?.value?.trim()).filter(Boolean);
+    stopInputs.forEach((addr,i)=>{
+      const labels=['A','B','C','D','E','F','G','H'];
+      const marker = new google.maps.Marker({
+        map:mrMap,
+        position:result.routes[activeRouteIdx].legs[Math.min(i,result.routes[activeRouteIdx].legs.length-1)][i===0?'start_location':'end_location'],
+        label:{text:labels[i]||String(i+1),color:'white',fontWeight:'bold'},
+        title:addr,
+      });
+      mrMarkers.push(marker);
+    });
+
+    // Fit map to route
+    const bounds=new google.maps.LatLngBounds();
+    path.forEach(p=>bounds.extend(p));
+    mrMap.fitBounds(bounds);
+
+    // Build result HTML
+    const distKm=(totalDist/1000).toFixed(0);
+    const durH=Math.floor(totalDur/3600);
+    const durM=Math.floor((totalDur%3600)/60);
+
+    let html=`<div class="mr-route-info">
+      <div class="mr-route-stat"><strong>${distKm} km</strong>distance</div>
+      <div class="mr-route-stat"><strong>${durH}h ${durM}m</strong>drive time</div>
+      <div class="mr-route-stat"><strong>${countryResults.length}</strong>countries</div>
+      <div class="mr-route-stat"><strong>${tripDays}d</strong>trip</div>
+    </div>`;
+
+    html+='<div style="font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);margin-bottom:.6rem;">Countries on route</div>';
+
+    countryResults.forEach(r=>{
+      html+=`<div class="mr-country-item" style="border-left:4px solid ${r.color};">
+        <div class="mr-ci-code">${r.cc}</div>
+        <div class="mr-ci-info">
+          <div class="mr-ci-name">${r.country.name}</div>
+          <div class="mr-ci-sub">${r.action}${r.country.buy&&r.needsPay&&r.country.id!=='hr'?` · <a href="${r.country.buy}" target="_blank" style="color:var(--accent);text-decoration:none;">${r.country.bl} ↗</a>`:''}</div>
+          ${r.note?`<div style="font-size:.65rem;color:var(--enc);margin-top:.25rem;">ℹ️ ${r.note}</div>`:''}
+        </div>
+        ${r.needsPay?`<div class="mr-ci-price">${r.priceStr}</div>`:'<div style="color:var(--f);font-weight:700;font-size:.8rem;">FREE</div>'}
+      </div>`;
+    });
+
+    // Fuel cost calculation
+    const fuelPrice=parseFloat(document.getElementById('mr-fuel-price')?.value)||1.55;
+    const fuelConsumption=parseFloat(document.getElementById('mr-fuel-consumption')?.value)||7;
+    const fuelCost=parseFloat(((totalDist/1000)*fuelConsumption/100*fuelPrice).toFixed(2));
+    const grandTotal=parseFloat((totalEur+fuelCost).toFixed(2));
+
+    if(totalEur>0||fuelCost>0){
+      html+=`<div class="mr-total-box">
+        <div class="mr-total-label">💰 Estimated total trip costs</div>
+        ${totalEur>0?`<div class="mr-total-row"><div style="font-size:.75rem;color:var(--muted);">🛣️ Vignettes + tolls${Object.keys(FX).length?' · live rates':''}</div><div style="font-weight:800;">${toEurStr(totalEur)}</div></div>`:''}
+        <div class="mr-total-row"><div style="font-size:.75rem;color:var(--muted);">⛽ Fuel · ${distKm}km × ${fuelConsumption}L/100km × €${fuelPrice}/L</div><div style="font-weight:800;">${toEurStr(fuelCost)}</div></div>
+        <div class="mr-total-row" style="border-top:1px solid var(--border);margin-top:.4rem;padding-top:.4rem;">
+          <div style="font-size:.8rem;font-weight:700;color:var(--text);">Total estimated trip cost</div>
+          <div class="mr-total-amt">${toEurStr(grandTotal)}</div>
+        </div>
+      </div>`;
+    }
+
+    html+='<div class="rnote" style="margin-top:.75rem;">⚠️ Estimates are approximate. Croatian tolls are distance-based — exact price depends on your entry/exit point. BiH/RS/ME local roads are free even if route passes through.</div>';
+    resultEl.innerHTML=html;
+    document.getElementById('mr-legend').style.display='block';
+
+    // Render route tabs after result
+    const routeTabs=document.getElementById('mr-route-tabs');
+    if(result.routes.length>1){
+      routeTabs.style.display='flex';
+      routeTabs.style.gap='.4rem';
+      routeTabs.style.flexWrap='wrap';
+      routeTabs.innerHTML=result.routes.map((r,i)=>{
+        const km=(r.legs.reduce((s,l)=>s+l.distance.value,0)/1000).toFixed(0);
+        const dur=r.legs.reduce((s,l)=>s+l.duration.value,0);
+        const h=Math.floor(dur/3600), m=Math.floor((dur%3600)/60);
+        const isActive=i===activeRouteIdx;
+        return `<button onclick="switchRoute(${i})" id="rtab-${i}"
+          style="padding:.4rem .8rem;border-radius:8px;
+          border:2px solid ${isActive?'var(--accent)':'var(--border)'};
+          background:${isActive?'var(--accent)':'var(--surface)'};
+          color:${isActive?'#000':'var(--text)'};
+          font-size:.75rem;font-weight:700;cursor:pointer;font-family:'Geist',sans-serif;">
+          Route ${i+1} · ${km}km · ${h}h${m}m
+        </button>`;
+      }).join('');
+    } else {
+      routeTabs.style.display='none';
+    }
+
+  } catch(err){
+    document.getElementById('mr-result').innerHTML=`<div style="font-size:.8rem;color:#c00;padding:.75rem;background:#fde8e6;border-radius:8px;">Could not render route: <strong>${err}</strong>.</div>`;
+    console.error('renderRoute error:', err);
+  }
 }
 
 document.getElementById('stat-countries').textContent=C.length;
 renderCC(); renderSpeed(); renderCalcChecks(); renderENC();
+
+
+// ── HERO ROAD ANIMATION ──
+(function() {
+  const canvas = document.getElementById('heroCanvas');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  let dashOffset = 0;
+  function resize() { canvas.width = canvas.offsetWidth; canvas.height = canvas.offsetHeight; }
+  window.addEventListener('resize', resize);
+  resize();
+  function draw() {
+    const W = canvas.width, H = canvas.height;
+    if (!W || !H) { requestAnimationFrame(draw); return; }
+    ctx.clearRect(0, 0, W, H);
+    const vx = W * 0.78, vy = H * 0.32;
+    const ease = t => t * t * t;
+    const grad = ctx.createLinearGradient(vx, vy, vx, H);
+    grad.addColorStop(0, 'rgba(8,7,15,0)');
+    grad.addColorStop(0.25,'rgba(8,7,15,0.5)');
+    grad.addColorStop(1, 'rgba(5,5,12,0.85)');
+    ctx.beginPath(); ctx.moveTo(vx, vy);
+    ctx.lineTo(W * 0.30, H); ctx.lineTo(W * 1.06, H);
+    ctx.closePath(); ctx.fillStyle = grad; ctx.fill();
+    [[0.30,0.13],[1.06,0.09]].forEach(([ex,alpha])=>{
+      ctx.beginPath(); ctx.moveTo(vx,vy); ctx.lineTo(W*ex,H);
+      ctx.strokeStyle=`rgba(255,255,255,${alpha})`; ctx.lineWidth=1; ctx.stroke();
+    });
+    const N=13;
+    const lane=(xFrac,rgb,alpha)=>{
+      for(let i=0;i<N;i++){
+        const t0=((i/N)+dashOffset)%1, t1=((i+0.38)/N+dashOffset)%1;
+        if(t0<0.05||t1<0.05) continue;
+        const e0=ease(t0),e1=ease(t1);
+        const x0=vx+(W*xFrac-vx)*e0,y0=vy+(H-vy)*e0;
+        const x1=vx+(W*xFrac-vx)*e1,y1=vy+(H-vy)*e1;
+        const a=Math.min(1,t0*2.5)*alpha;
+        ctx.strokeStyle=`rgba(${rgb},${a.toFixed(2)})`;
+        ctx.lineWidth=1+e0*3.2;
+        ctx.beginPath(); ctx.moveTo(x0,y0); ctx.lineTo(x1,y1); ctx.stroke();
+      }
+    };
+    lane(0.68,'212,130,10',0.95);
+    lane(0.53,'255,255,255',0.2);
+    lane(0.85,'255,255,255',0.2);
+    dashOffset=(dashOffset+0.004)%1;
+    requestAnimationFrame(draw);
+  }
+  draw();
+})();
 
 // ── LANDING LOGIC ──
 (function() {
