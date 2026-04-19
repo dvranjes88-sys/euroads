@@ -1023,7 +1023,14 @@ function switchTab(id,btn){
   document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
   const tabBtn = btn || document.querySelector(`.tab[data-tab="${id}"]`);
   if(tabBtn) tabBtn.classList.add('active');
-  if(id==='maproute'){ if(tabBtn) tabBtn.classList.remove('tab-highlight'); initMrMap(); }
+  if(id==='maproute'){
+    if(tabBtn) tabBtn.classList.remove('tab-highlight');
+    initMrMap();
+    // Preload Google Maps SDK v pozadí (šetrí čas pri prvom Calculate)
+    if(typeof loadGoogleMapsSDK === 'function'){
+      loadGoogleMapsSDK().catch(err => console.warn('Google SDK preload failed:', err.message));
+    }
+  }
   document.getElementById('view-'+id)?.classList.add('active');
 }
 
@@ -1046,9 +1053,34 @@ let mrStops=[]; // array of stop DOM ids
 let stopCounter=0;
 
 // ══════════════════════════════════════════════════════════
-// ── Google polyline decoder (encoded polyline → [lng,lat] array) ──
-// Google vracia trasy ako encoded polyline string. Treba dekódovať.
-// Algoritmus z Google Maps documentation.
+// ── Google Maps JS SDK lazy loader ──
+// Script sa načíta až keď ho prvý raz potrebujeme (nie pri každom page load)
+// = šetrí "Map loads" kvótu ak user vôbec nepoužije Route Calculator
+// ══════════════════════════════════════════════════════════
+let _googleLoadPromise = null;
+function loadGoogleMapsSDK(){
+  if(_googleLoadPromise) return _googleLoadPromise;
+  if(window.google?.maps?.DirectionsService){
+    _googleLoadPromise = Promise.resolve();
+    return _googleLoadPromise;
+  }
+  _googleLoadPromise = new Promise((resolve, reject) => {
+    const cbName = '_googleMapsReady_' + Date.now();
+    window[cbName] = () => { delete window[cbName]; resolve(); };
+    const script = document.createElement('script');
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_KEY}&callback=${cbName}&v=weekly&loading=async`;
+    script.async = true;
+    script.defer = true;
+    script.onerror = () => { delete window[cbName]; reject(new Error('Google Maps SDK failed to load')); };
+    document.head.appendChild(script);
+  });
+  return _googleLoadPromise;
+}
+
+// ══════════════════════════════════════════════════════════
+// ── Google polyline decoder ──
+// (Stále potrebujeme pre decode route.overview_polyline ak by sme volali REST)
+// Ale pre DirectionsService dostávame už hotové LatLng objekty.
 // ══════════════════════════════════════════════════════════
 function decodePolyline(encoded){
   const points = [];
@@ -1069,65 +1101,63 @@ function decodePolyline(encoded){
       shift += 5;
     } while(b >= 0x1f);
     lng += (result & 1) ? ~(result >> 1) : (result >> 1);
-
-    // Google vracia [lat, lng], ale my používame [lng, lat] (GeoJSON convention)
     points.push([lng * 1e-5, lat * 1e-5]);
   }
   return points;
 }
 
 // ══════════════════════════════════════════════════════════
-// ── Google Directions API call ──
-// Vracia až 4 rôzne alternatívne trasy (lepšie ako Mapbox)
-// Formát výstupu je kompatibilný s Mapbox Directions štruktúrou:
-//   { routes: [{ geometry: { coordinates: [[lng,lat]...] }, distance, duration }] }
+// ── Google Directions cez JS SDK (obchádza CORS) ──
+// Používa google.maps.DirectionsService namiesto priameho fetch().
+// Vracia až 4 alternatívne trasy.
+// Výstupný formát je kompatibilný s Mapbox Directions štruktúrou.
 // ══════════════════════════════════════════════════════════
 async function fetchGoogleDirections(coords){
-  // coords je [[lng,lat], [lng,lat], ...]
-  const origin = `${coords[0][1]},${coords[0][0]}`;
-  const destination = `${coords[coords.length-1][1]},${coords[coords.length-1][0]}`;
-  const waypoints = coords.slice(1, -1).map(c => `${c[1]},${c[0]}`).join('|');
+  // Zabezpeč že SDK je načítaný
+  await loadGoogleMapsSDK();
 
-  const params = new URLSearchParams({
+  if(!window.google?.maps?.DirectionsService){
+    throw new Error('Google Maps SDK not available');
+  }
+
+  const service = new google.maps.DirectionsService();
+
+  // Origin, destination, waypointy z coords ([[lng,lat]...])
+  const origin = { lat: coords[0][1], lng: coords[0][0] };
+  const destination = { lat: coords[coords.length-1][1], lng: coords[coords.length-1][0] };
+  const waypoints = coords.slice(1, -1).map(c => ({
+    location: new google.maps.LatLng(c[1], c[0]),
+    stopover: true,
+  }));
+
+  const request = {
     origin,
     destination,
-    alternatives: 'true',
-    mode: 'driving',
-    key: GOOGLE_KEY,
-  });
-  if(waypoints) params.set('waypoints', waypoints);
+    waypoints,
+    provideRouteAlternatives: true,
+    travelMode: google.maps.TravelMode.DRIVING,
+  };
 
-  const url = `https://maps.googleapis.com/maps/api/directions/json?${params.toString()}`;
-  const r = await fetch(url);
-  if(!r.ok) throw new Error(`Google Directions API error: ${r.status}`);
-  const data = await r.json();
+  // DirectionsService.route vracia Promise v novej verzii SDK
+  const response = await service.route(request);
 
-  if(data.status !== 'OK'){
-    throw new Error(`Google Directions: ${data.status}${data.error_message ? ' - ' + data.error_message : ''}`);
-  }
-  if(!data.routes?.length) throw new Error('No routes found');
+  if(!response.routes?.length) throw new Error('No routes found');
 
   // Transform Google response → Mapbox-compatible structure
   return {
-    routes: data.routes.map(route => {
-      // Spoj všetky legs do jednej polyline
-      let allCoords = [];
+    routes: response.routes.map(route => {
+      // overview_path je už pole google.maps.LatLng objektov
+      const coordinates = route.overview_path.map(ll => [ll.lng(), ll.lat()]);
+
+      // Spočítaj totals zo všetkých legs
       let totalDist = 0, totalDur = 0;
       for(const leg of route.legs){
         totalDist += leg.distance.value; // metre
         totalDur += leg.duration.value;  // sekundy
-        for(const step of leg.steps){
-          const stepCoords = decodePolyline(step.polyline.points);
-          // Pridaj bez duplicít na hranici steps
-          if(allCoords.length && stepCoords.length){
-            allCoords = allCoords.concat(stepCoords.slice(1));
-          } else {
-            allCoords = allCoords.concat(stepCoords);
-          }
-        }
       }
+
       return {
-        geometry: { type: 'LineString', coordinates: allCoords },
+        geometry: { type: 'LineString', coordinates },
         distance: totalDist,
         duration: totalDur,
         summary: route.summary || '',
@@ -1779,15 +1809,22 @@ async function calcMapRoute(){
 
     resultEl.innerHTML = '<div style="font-size:.8rem;color:var(--muted);padding:.5rem 0;">⏳ Getting routes from Google...</div>';
 
-    // 2. Google Directions API — lepšie alternatívne trasy než Mapbox
+    // 2. Google Directions cez JS SDK (obchádza CORS) — lepšie alternatívne trasy
     //    Mapbox stále používame na vykreslenie mapy (dark style) a geocoding.
+    //    Google SDK sa lazy-loaduje pri prvom volaní (šetrí Map loads kvótu).
     let routeData;
     try {
+      // Pri prvom volaní informuj user-a že sa Google SDK načítava
+      if(!window.google?.maps?.DirectionsService){
+        resultEl.innerHTML = '<div style="font-size:.8rem;color:var(--muted);padding:.5rem 0;">⏳ Loading Google Directions (first time only)...</div>';
+      }
       routeData = await fetchGoogleDirections(coords);
       console.log('[Routes] Google returned', routeData.routes.length, 'route(s)');
+      resultEl.innerHTML = '<div style="font-size:.8rem;color:var(--muted);padding:.5rem 0;">⏳ Processing routes...</div>';
     } catch(googleErr){
       // Fallback na Mapbox ak Google zlyhá
       console.warn('[Routes] Google failed, falling back to Mapbox:', googleErr.message);
+      resultEl.innerHTML = '<div style="font-size:.8rem;color:var(--muted);padding:.5rem 0;">⏳ Getting route from Mapbox (fallback)...</div>';
       const coordStr = coords.map(c => c.join(',')).join(';');
       const routeResp = await fetch(`https://api.mapbox.com/directions/v5/mapbox/driving/${coordStr}?access_token=${MAPBOX_TOKEN}&geometries=geojson&overview=full&steps=false&alternatives=true`);
       routeData = await routeResp.json();
