@@ -1187,53 +1187,355 @@ async function fetchGoogleDirections(coords){
 
   const service = new google.maps.DirectionsService();
 
-  // Origin, destination, waypointy z coords ([[lng,lat]...])
-  const origin = { lat: coords[0][1], lng: coords[0][0] };
-  const destination = { lat: coords[coords.length-1][1], lng: coords[coords.length-1][0] };
-  const waypoints = coords.slice(1, -1).map(c => ({
-    location: new google.maps.LatLng(c[1], c[0]),
-    stopover: true,
-  }));
+  // Pre 2 body (bez waypointov) použijeme jednoduchý Google Directions request s alternatívami
+  // Potom zbehneme cez combineLegRoutes aby sme dostali smart labely (Fastest/Cheapest/Shortest)
+  if(coords.length === 2){
+    const singleLeg = await fetchGoogleSingleLeg(service, coords[0], coords[1], /* alternatives */ true);
+    if(singleLeg.routes.length > 1){
+      // Viac alternatív → použi combineLegRoutes aby sme dostali smart labely
+      return { routes: combineLegRoutes([singleLeg]) };
+    }
+    return singleLeg;
+  }
 
+  // Pre 3+ body (s waypointami) → ROUTE DECOMPOSITION
+  // Google API limitation: provideRouteAlternatives funguje len pre single-leg.
+  // Preto fetchneme alternatívy pre KAŽDÝ leg samostatne a skombinujeme ich.
+  console.log('[Routes] Waypoint mode: decomposing', coords.length-1, 'legs');
+
+  const legPromises = [];
+  for(let i = 0; i < coords.length - 1; i++){
+    legPromises.push(fetchGoogleSingleLeg(service, coords[i], coords[i+1], /* alternatives */ true));
+  }
+  const legResults = await Promise.all(legPromises);
+
+  // Každý legResult má routes[] (1-4 alternatívy pre ten leg)
+  // Skombinujeme: fastest primary + mix-n-match pre 2. a 3. trasu
+  const combinedRoutes = combineLegRoutes(legResults);
+  console.log('[Routes] Combined', legResults.map(l => l.routes.length).join('×'),
+              'leg alternatives →', combinedRoutes.length, 'total routes');
+
+  return { routes: combinedRoutes };
+}
+
+// Pomocná funkcia — jeden Google Directions request pre single leg
+async function fetchGoogleSingleLeg(service, originCoord, destCoord, alternatives){
   const request = {
-    origin,
-    destination,
-    waypoints,
-    // Google API limitation: provideRouteAlternatives funguje len bez waypoints
-    provideRouteAlternatives: waypoints.length === 0,
+    origin: { lat: originCoord[1], lng: originCoord[0] },
+    destination: { lat: destCoord[1], lng: destCoord[0] },
+    provideRouteAlternatives: alternatives,
     travelMode: google.maps.TravelMode.DRIVING,
   };
-
-  // DirectionsService.route vracia Promise v novej verzii SDK
   const response = await service.route(request);
+  if(!response.routes?.length) throw new Error('No routes for leg');
 
-  if(!response.routes?.length) throw new Error('No routes found');
-
-  // Transform Google response → Mapbox-compatible structure
-  // DÔLEŽITÉ: zachovávame aj legs so steps pre classifyStep()
   return {
     routes: response.routes.map(route => {
-      // overview_path je už pole google.maps.LatLng objektov
       const coordinates = route.overview_path.map(ll => [ll.lng(), ll.lat()]);
-
-      // Spočítaj totals zo všetkých legs
       let totalDist = 0, totalDur = 0;
       for(const leg of route.legs){
-        totalDist += leg.distance.value; // metre
-        totalDur += leg.duration.value;  // sekundy
+        totalDist += leg.distance.value;
+        totalDur += leg.duration.value;
       }
-
       return {
         geometry: { type: 'LineString', coordinates },
         distance: totalDist,
         duration: totalDur,
         summary: route.summary || '',
-        // Zachovaj originálne Google legs so steps – potrebné pre classifyStep & HAC detection
         _googleLegs: route.legs,
         _googleRoute: route,
       };
     }),
   };
+}
+
+// Combinuje alternatívy z viacerých legov do 3 "combined routes".
+// ══════════════════════════════════════════════════════════
+// ── Estimate total route cost (pre "Cheapest" detekciu) ──
+// Pre danú kombináciu legov + indexov prejde všetky steps,
+// klasifikuje road types (rovnako ako drawRouteByRoadClass),
+// spočíta vignette + toll + fuel náklady.
+// Rýchla lightweight verzia — bez geocoder volaní.
+// ══════════════════════════════════════════════════════════
+function estimateCombinedRouteCost(legResults, legIndices, tripDays, fuelPrice, fuelConsumption){
+  // 1. Extract all Google steps pre túto kombináciu
+  const allSteps = [];
+  let totalDistM = 0;
+  legIndices.forEach((routeIdx, legI) => {
+    const route = legResults[legI].routes[routeIdx];
+    if(route._googleLegs){
+      for(const leg of route._googleLegs){
+        if(leg.steps) allSteps.push(...leg.steps);
+      }
+    }
+    totalDistM += route.distance;
+  });
+
+  if(!allSteps.length) return { total: 0, countries: {} };
+
+  // 2. Haversine helper
+  function haversineKm(p1, p2){
+    const R = 6371;
+    const dLat = (p2[1]-p1[1]) * Math.PI/180;
+    const dLng = (p2[0]-p1[0]) * Math.PI/180;
+    const a = Math.sin(dLat/2)**2 +
+              Math.cos(p1[1]*Math.PI/180) * Math.cos(p2[1]*Math.PI/180) *
+              Math.sin(dLng/2)**2;
+    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  }
+
+  // 3. Klasifikuj každý step + spočítaj km per country × road class
+  // Detekcia CC: Z "Entering X" v instructions, alebo z prvého bodu step s reverse lookup.
+  // Pre rýchlosť: odkazujeme sa na route _googleLegs[0].start_address, _googleLegs[i].end_address
+  // ktoré obsahujú country názov → mapujeme na CC.
+  let currentCC = null;
+  // Pokúsime sa detekovať start country z prvého leg start_address
+  if(legResults[0]?.routes[legIndices[0]]?._googleLegs?.[0]?.start_address){
+    const addr = legResults[0].routes[legIndices[0]]._googleLegs[0].start_address;
+    for(const [name, cc] of Object.entries(CC_NAME_MAP)){
+      if(addr.includes(name)){ currentCC = cc; break; }
+    }
+  }
+
+  const kmByCountryRoadType = {};
+  for(const step of allSteps){
+    if(!step.polyline?.points) continue;
+    let stepCoords;
+    try {
+      if(window.google?.maps?.geometry?.encoding){
+        stepCoords = google.maps.geometry.encoding.decodePath(step.polyline.points)
+          .map(ll => [ll.lng(), ll.lat()]);
+      } else {
+        stepCoords = decodePolyline(step.polyline.points);
+      }
+    } catch(e){ continue; }
+    if(!stepCoords || stepCoords.length < 2) continue;
+
+    // Detect country change z instructions
+    const instr = (step.instructions || '').replace(/<[^>]+>/g, ' ');
+    const countryChange = instr.match(/Vchádzate do krajiny\s+([^\s,]+)/i) ||
+                          instr.match(/Entering\s+([^\s,]+)/i) ||
+                          instr.match(/Entrez en\s+([^\s,]+)/i);
+    if(countryChange){
+      const cname = countryChange[1].trim();
+      for(const [name, cc] of Object.entries(CC_NAME_MAP)){
+        if(cname.startsWith(name)){ currentCC = cc; break; }
+      }
+    }
+
+    if(!currentCC) continue; // preskoč ak nevieme CC
+
+    // Spočítaj km stepu
+    let stepKm = 0;
+    for(let i = 1; i < stepCoords.length; i++){
+      stepKm += haversineKm(stepCoords[i-1], stepCoords[i]);
+    }
+
+    // Klasifikuj typ cesty
+    const roadType = classifyStep(step, currentCC);
+    if(!kmByCountryRoadType[currentCC]) {
+      kmByCountryRoadType[currentCC] = { toll:0, vignette:0, free:0, local:0 };
+    }
+    kmByCountryRoadType[currentCC][roadType] += stepKm;
+  }
+
+  // 4. Spočítaj náklady per krajina
+  let totalEur = 0;
+  const breakdown = {};
+  const balkanRates = { 'ba': 0.045, 'rs': 0.05, 'me': 0.08, 'mk': 0.03, 'al': 0.04, 'xk': 0.04 };
+  const FREE_LOCAL_LOCAL = {'ba':1,'rs':1,'me':1,'mk':1,'al':1,'xk':1,'ge':1,'am':1,'az':1,'md':1};
+
+  for(const [cc, kmData] of Object.entries(kmByCountryRoadType)){
+    const id = CC_MAP[cc];
+    if(!id) continue;
+    const country = C.find(x => x.id === id);
+    if(!country) continue;
+
+    let countryEur = 0;
+
+    if(country.type === 'vignette' && country.prices.length){
+      // Vignette — aj krátky úsek si vyžaduje vignette (binary)
+      // Použijeme najlacnejšiu vignette ktorá pokrýva tripDays
+      const rec = getBestVignette(country.prices, tripDays);
+      countryEur = parseEuro(rec.v);
+    } else if(country.type === 'toll'){
+      if(id === 'hr'){
+        // HR je distance-based — overené €0.07/km pre Category I
+        // (Zagreb-Split 410km=€26.40, Zagreb-Zadar 253km=€18.20 → priemer €0.07)
+        // NOTE: toto je len ODHAD pre Cheapest detekciu.
+        // Finálna cena v paneli používa live HAC API (calcHRToll) = presná.
+        const hrToll = (kmData.toll || 0) * 0.07;
+        countryEur = hrToll;
+      } else if(FREE_LOCAL_LOCAL[id]){
+        // Balkán — len ak má toll motorway km > 5
+        const tollKm = kmData.toll || 0;
+        if(tollKm > 5){
+          countryEur = tollKm * (balkanRates[id] || 0.045);
+        }
+      } else {
+        // Iné toll country — priemerná sadzba podľa reálnych dát
+        // FR: ~€0.10/km (autoroute vysoko platená), IT: ~€0.075,
+        // PL: ~€0.05, GR: ~€0.08, PT: ~€0.09, IE: €3-4 fixed tolls
+        // NO: distance-based city tolls ~€0.05, TR: ~€0.04
+        const tollRatesOther = {
+          'fr': 0.10, 'it': 0.075, 'pl': 0.05, 'gr': 0.08,
+          'pt': 0.09, 'ie': 0.03, 'no': 0.05, 'tr': 0.04,
+        };
+        const rate = tollRatesOther[id] || 0.07;
+        const tollKm = kmData.toll || 0;
+        if(tollKm > 5){
+          countryEur = tollKm * rate;
+        }
+      }
+    }
+
+    breakdown[cc] = { km: kmData, eur: countryEur };
+    totalEur += countryEur;
+  }
+
+  // 5. Fuel cost
+  const distKm = totalDistM / 1000;
+  const fuelCost = (distKm * fuelConsumption / 100) * fuelPrice;
+  totalEur += fuelCost;
+
+  return { total: parseFloat(totalEur.toFixed(2)), breakdown, fuelCost, distKm };
+}
+
+// ══════════════════════════════════════════════════════════
+// ── Generuj všetky kombinácie leg indexov ──
+// Napr. pre 3 legy s alternatívami [2, 3, 2] → 2×3×2 = 12 kombinácií
+// Limitujeme na rozumnú úroveň (max 32 kombinácií) aby sme nespomalili výpočet
+// ══════════════════════════════════════════════════════════
+function allLegCombinations(legResults){
+  const counts = legResults.map(lr => lr.routes.length);
+  const total = counts.reduce((a,b) => a*b, 1);
+  if(total > 32){
+    // Obmedzíme alternatívy pri veľkých kombinatorikách
+    legResults.forEach(lr => {
+      if(lr.routes.length > 2) lr.routes = lr.routes.slice(0, 2);
+    });
+  }
+  const result = [];
+  const recurse = (legIdx, acc) => {
+    if(legIdx === legResults.length){ result.push([...acc]); return; }
+    for(let i = 0; i < legResults[legIdx].routes.length; i++){
+      acc.push(i);
+      recurse(legIdx+1, acc);
+      acc.pop();
+    }
+  };
+  recurse(0, []);
+  return result;
+}
+
+// Stratégia: 
+//   Route 1 = FASTEST — najrýchlejší pri každom legu
+//   Route 2 = CHEAPEST — najnižšie celkové náklady (vignette+toll+fuel)
+//   Route 3 = SHORTEST — najkratší (pridáme len ak sa líši)
+//   Route 4 = ALTERNATIVE — ďalšia variácia (ak unique)
+function combineLegRoutes(legResults){
+  // Pre každý leg nájdi index fastest (min duration) a shortest (min distance) route
+  const fastestIdx = legResults.map(lr => {
+    let min = 0;
+    for(let i = 1; i < lr.routes.length; i++){
+      if(lr.routes[i].duration < lr.routes[min].duration) min = i;
+    }
+    return min;
+  });
+  const shortestIdx = legResults.map(lr => {
+    let min = 0;
+    for(let i = 1; i < lr.routes.length; i++){
+      if(lr.routes[i].distance < lr.routes[min].distance) min = i;
+    }
+    return min;
+  });
+
+  // CHEAPEST — prejdi všetky kombinácie a vypočítaj total cost
+  // Použi current form values pre fuel kalkuláciu
+  const dateFrom = document.getElementById('mr-date-from')?.value;
+  const dateTo = document.getElementById('mr-date-to')?.value;
+  let tripDays = 7;
+  if(dateFrom && dateTo){
+    const d1 = new Date(dateFrom), d2 = new Date(dateTo);
+    tripDays = Math.max(1, Math.ceil((d2-d1)/(1000*60*60*24)));
+  }
+  const fuelPrice = parseFloat(document.getElementById('mr-fuel-price')?.value) || 1.55;
+  const fuelConsumption = parseFloat(document.getElementById('mr-fuel-consumption')?.value) || 7;
+
+  const allCombos = allLegCombinations(legResults);
+  let cheapestCost = Infinity;
+  let cheapestIdx = null;
+  for(const combo of allCombos){
+    const cost = estimateCombinedRouteCost(legResults, combo, tripDays, fuelPrice, fuelConsumption);
+    if(cost.total > 0 && cost.total < cheapestCost){
+      cheapestCost = cost.total;
+      cheapestIdx = combo;
+    }
+  }
+  console.log('[Routes] Cheapest combination:', cheapestIdx, '→', `€${cheapestCost.toFixed(2)}`);
+
+  // Pre alternatívu: nájdi leg ktorý má najviac alternatív a vezmi 2. najlepšiu
+  let altLegIdx = -1, altRouteIdx = -1;
+  let maxAlts = 1;
+  legResults.forEach((lr, i) => {
+    if(lr.routes.length > maxAlts){
+      maxAlts = lr.routes.length;
+      altLegIdx = i;
+      altRouteIdx = fastestIdx[i] === 0 ? 1 : 0;
+    }
+  });
+
+  // Zostav kombinácie — každá musí byť UNIKÁTNA (no duplicates)
+  const keySet = new Set();
+  const combinations = [];
+  const tryAdd = (label, legIndices) => {
+    if(!legIndices) return;
+    const key = legIndices.join(',');
+    if(keySet.has(key)) return;
+    keySet.add(key);
+    combinations.push({ label, legIndices });
+  };
+
+  tryAdd('Fastest', fastestIdx);
+  tryAdd('Cheapest', cheapestIdx);
+  tryAdd('Shortest', shortestIdx);
+
+  // Alternatíva — prvá non-fastest route pre leg s najviac alternatívami
+  if(altLegIdx >= 0){
+    const altIndices = [...fastestIdx];
+    altIndices[altLegIdx] = altRouteIdx;
+    tryAdd('Alternative', altIndices);
+  }
+
+  // Vytvor skombinované routes
+  return combinations.map(combo => {
+    const legs = combo.legIndices.map((ri, legI) => legResults[legI].routes[ri]);
+    // Spoj coordinates všetkých legs (bez duplikácie pri hraniciach)
+    let coordinates = [];
+    let totalDist = 0, totalDur = 0;
+    let allGoogleLegs = [];
+    legs.forEach((leg, i) => {
+      const legCoords = leg.geometry.coordinates;
+      if(i === 0){
+        coordinates = [...legCoords];
+      } else {
+        // Pridaj bez prvého (je rovnaký ako posledný predošlého)
+        coordinates = coordinates.concat(legCoords.slice(1));
+      }
+      totalDist += leg.distance;
+      totalDur += leg.duration;
+      if(leg._googleLegs) allGoogleLegs = allGoogleLegs.concat(leg._googleLegs);
+    });
+
+    return {
+      geometry: { type: 'LineString', coordinates },
+      distance: totalDist,
+      duration: totalDur,
+      summary: combo.label,
+      _googleLegs: allGoogleLegs,
+      _decomposed: true,
+    };
+  });
 }
 
 const CC_MAP={
@@ -2287,11 +2589,27 @@ async function recomputeResultsPanel(route, validPts, segments, stopInputs){
         const tollKm = kmData.toll || 0;
 
         if(tollKm > 5){
-          // Distance-based toll estimate — závisí od krajiny
-          // BA: A1 je cca €0.035/km (€4 za ~115km Sarajevo-Mostar sekciu)
-          // Iné: podobne nízke sadzby pre Balkán
-          const rates = { 'ba':0.035, 'rs':0.05, 'me':0.06, 'mk':0.04, 'al':0.04, 'xk':0.03 };
-          const rate = rates[id] || 0.04;
+          // Distance-based toll estimate — realistické sadzby podľa oficiálnych operátorov
+          // Sadzby pre Category I (osobné auto do 1.3m výška prednej osi)
+          //
+          // 🇧🇦 BA: jpautoceste.ba + autoputevirs.com — A1 ~€0.045/km
+          //   (Gradiška-Banja Luka 35km = ~€1.60, Tarčin-Sarajevo 25km = ~€1.10)
+          // 🇷🇸 RS: koridor10.rs — ~€0.05/km
+          //   (Belgrade-Niš 210km = ~€10, Belgrade-Horgoš 180km = ~€8)
+          // 🇲🇪 ME: monteput.me — Smokovac tunel ~€4 za ~20km = €0.20/km
+          //   ale po A2 len 20km, takže pre rate radšej €0.08/km
+          // 🇲🇰 MK: koridori.mk — E-75 Gevgelija-Skopje ~€5 za ~170km = €0.03/km
+          // 🇦🇱 AL: A1 toll Kalimash tunel €5 za ~10km úsek = €0.04/km priemerne
+          // 🇽🇰 XK: R7/R6 — ~€3 za 78km = €0.04/km
+          const rates = {
+            'ba': 0.045,  // BA A1 FBiH + Republika Srpska
+            'rs': 0.05,   // RS A1 Koridor X
+            'me': 0.08,   // ME A2 (krátky ale drahý Smokovac tunel)
+            'mk': 0.03,   // MK A1 (najlacnejšia Balkánska diaľnica)
+            'al': 0.04,   // AL A1
+            'xk': 0.04,   // XK R7
+          };
+          const rate = rates[id] || 0.045;
           priceEur = parseFloat((tollKm * rate).toFixed(2));
           priceStr = `~${toEurStr(priceEur)}`;
           action = `Motorway toll · ~${tollKm.toFixed(0)}km × €${rate}/km · cash at gate`;
@@ -2421,7 +2739,15 @@ async function calcMapRoute(){
         const km = (r.distance/1000).toFixed(0);
         const h = Math.floor(r.duration/3600), m = Math.floor((r.duration%3600)/60);
         const isActive = i === 0;
-        return `<button onclick="selectRoute(${i})" id="rtab-${i}" style="padding:.4rem .8rem;border-radius:8px;border:2px solid ${isActive?'var(--accent)':'rgba(255,255,255,.1)'};background:${isActive?'var(--accent)':'rgba(255,255,255,.05)'};color:${isActive?'#000':'var(--text)'};font-size:.75rem;font-weight:700;cursor:pointer;font-family:'Geist',sans-serif;transition:all .15s;">Route ${i+1} · ${km}km · ${h}h${m}m</button>`;
+        // Smart label z decomposition (Fastest/Cheapest/Shortest/Alternative)
+        const label = r._decomposed && r.summary ? r.summary : `Route ${i+1}`;
+        // Farebná ikonka pred labelom — pomáha orientácii
+        let icon = '';
+        if(label === 'Fastest')     icon = '<span style="color:#f4a45a;">⚡</span> ';
+        else if(label === 'Cheapest')  icon = '<span style="color:#22c997;">💰</span> ';
+        else if(label === 'Shortest')  icon = '<span style="color:#6eb3f7;">📏</span> ';
+        else if(label === 'Alternative') icon = '<span style="color:#c084fc;">🔀</span> ';
+        return `<button onclick="selectRoute(${i})" id="rtab-${i}" style="padding:.4rem .8rem;border-radius:8px;border:2px solid ${isActive?'var(--accent)':'rgba(255,255,255,.1)'};background:${isActive?'var(--accent)':'rgba(255,255,255,.05)'};color:${isActive?'#000':'var(--text)'};font-size:.75rem;font-weight:700;cursor:pointer;font-family:'Geist',sans-serif;transition:all .15s;">${icon}${label} · ${km}km · ${h}h${m}m</button>`;
       }).join('');
     } else {
       routeTabs.style.display = 'none';
