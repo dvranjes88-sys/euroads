@@ -3101,25 +3101,26 @@ async function applyCustomRoute(){
     return;
   }
 
-  // Získaj aktuálne waypoint pozície z markerov a pridaj ako stops
-  const waypointCoords = customRouteState.draggableMarkers.map(m => {
-    const ll = m.getLngLat();
-    return [ll.lng, ll.lat];
-  });
-
-  // Pridaj len markery ktoré boli SKUTOČNE posunuté (odstráň tie ktoré ostali na originalLngLat)
-  const movedPoints = [];
+  // Zozbieraj aktuálne pozície VŠETKÝCH markerov na trase (nie len posledný drag)
+  // Ale zohľadni len tie ktoré sa odlišujú od originálnej pozície
+  const movedWaypoints = [];
   customRouteState.draggableMarkers.forEach((m, i) => {
     const ll = m.getLngLat();
-    const wasMovedFromOrig = customRouteState.draggedPoints.some(dp =>
-      Math.abs(dp.newCoord[0] - ll.lng) < 0.001 && Math.abs(dp.newCoord[1] - ll.lat) < 0.001
-    );
-    if(wasMovedFromOrig){
-      movedPoints.push([ll.lng, ll.lat]);
+    const currentLngLat = [ll.lng, ll.lat];
+    // Nájdi v draggedPoints záznam s rovnakým markerIndex
+    const dp = customRouteState.draggedPoints.find(d => d.markerIndex === i + 1);
+    if(dp){
+      movedWaypoints.push({
+        coord: currentLngLat,
+        markerIdx: i, // poradie pozdĺž trasy
+      });
     }
   });
 
-  if(!movedPoints.length){
+  // Sort po markerIdx aby sme zachovali poradie pozdĺž trasy
+  movedWaypoints.sort((a, b) => a.markerIdx - b.markerIdx);
+
+  if(!movedWaypoints.length){
     cancelCustomRoute();
     return;
   }
@@ -3127,36 +3128,71 @@ async function applyCustomRoute(){
   // Vyčisti edit mode UI
   cleanupCustomRouteMode();
 
-  // Pre každý posunutý bod pridaj waypoint ako novú stopu
-  // Pokúsime sa reverse-geocode aby user videl názov miesta
-  console.log('[CustomRoute] Applying', movedPoints.length, 'new waypoints');
+  console.log('[CustomRoute] Applying', movedWaypoints.length, 'new waypoints (pred destination)');
 
-  for(const pt of movedPoints){
-    try {
-      // Reverse geocode aby sme dostali human-readable názov
-      let label = `${pt[1].toFixed(3)}, ${pt[0].toFixed(3)}`;
+  // Helper: reverse geocode s Promise wrapperom
+  const reverseGeocode = (lng, lat) => {
+    return new Promise(resolve => {
       try {
-        _geocoderService.geocode({ location: { lat: pt[1], lng: pt[0] } }, (results, status) => {
+        _geocoderService.geocode({ location: { lat, lng } }, (results, status) => {
           if(status === 'OK' && results[0]){
-            label = results[0].formatted_address;
+            resolve(results[0].formatted_address);
+          } else {
+            resolve(`${lat.toFixed(3)}, ${lng.toFixed(3)}`);
           }
         });
-      } catch(e){}
-
-      // Pridaj do mrStops pred posledný (destination)
-      addStop();
-      // Posledná pridaná stopa je na konci - presunieme ju pred destination
-      // (jednoduchšie: nastavíme jej hodnotu + GPS)
-      const newStopId = mrStops[mrStops.length - 1];
-      const inp = document.getElementById(newStopId);
-      if(inp){
-        inp.value = label;
-        _inputCoords[newStopId] = pt;
+        // Safety timeout — ak geocoder zlyhá, nesedíme tu navždy
+        setTimeout(() => resolve(`${lat.toFixed(3)}, ${lng.toFixed(3)}`), 3000);
+      } catch(e){
+        resolve(`${lat.toFixed(3)}, ${lng.toFixed(3)}`);
       }
-    } catch(e){
-      console.warn('[CustomRoute] Failed to add waypoint:', e);
+    });
+  };
+
+  // Pre každý posunutý bod:
+  // 1) Reverse-geocode aby sme dostali názov miesta
+  // 2) Vytvor nový input PRED destination (posledná stopa)
+  for(const wp of movedWaypoints){
+    const label = await reverseGeocode(wp.coord[0], wp.coord[1]);
+    console.log('[CustomRoute] Waypoint resolved:', wp.coord, '→', label);
+
+    // Create new stop element
+    stopCounter++;
+    const newId = `mr-stop-${stopCounter}`;
+    const newDiv = document.createElement('div');
+    newDiv.className = 'stop-row';
+    newDiv.dataset.stopId = newId;
+    newDiv.innerHTML = `
+      <span class="stop-label">•</span>
+      <input type="text" id="${newId}" placeholder="Waypoint" autocomplete="off">
+      <button class="stop-remove" onclick="removeStop('${newId}')" title="Remove waypoint">×</button>
+    `;
+
+    // Insert BEFORE the last stop row (pred destination)
+    const wrap = document.getElementById('mr-stops-wrap');
+    const allRows = wrap.querySelectorAll('.stop-row');
+    const lastRow = allRows[allRows.length - 1]; // destination
+    wrap.insertBefore(newDiv, lastRow);
+
+    // Insert ID do mrStops array PRED posledný
+    const destId = mrStops[mrStops.length - 1];
+    mrStops = [...mrStops.slice(0, -1), newId, destId];
+
+    // Nastav hodnoty
+    const inp = document.getElementById(newId);
+    if(inp){
+      inp.value = label;
+      _inputCoords[newId] = wp.coord;
     }
+
+    // Attach autocomplete pre novú stopu
+    attachAutocomplete(newId);
   }
+
+  // Prečísluj labels (A/B/C/D...)
+  relabelStops();
+
+  console.log('[CustomRoute] mrStops now:', mrStops);
 
   // Recalculate s novými waypointami
   await calcMapRoute();
