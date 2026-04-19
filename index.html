@@ -733,6 +733,18 @@ main { padding:2rem; max-width:1300px; margin:0 auto; }
             <div class="mrl-item"><span class="mrl-dot" style="background:#6eb3f7;"></span> Free motorway</div>
             <div class="mrl-item"><span class="mrl-dot" style="background:#c084fc;"></span> Local road (free)</div>
           </div>
+          <!-- Map toolbar - Edit route mode -->
+          <div id="mr-map-toolbar" style="position:absolute;top:1rem;right:1rem;z-index:12;display:none;">
+            <button id="mr-edit-btn" onclick="toggleCustomRouteMode()" style="padding:.55rem .9rem;background:rgba(13,17,23,.92);border:1px solid rgba(255,255,255,.15);border-radius:8px;color:#fff;font-family:'Geist',sans-serif;font-size:.75rem;font-weight:600;cursor:pointer;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);box-shadow:0 4px 20px rgba(0,0,0,.4);transition:all .15s;">✏️ Edit route</button>
+            <div id="mr-edit-actions" style="display:none;gap:.5rem;">
+              <button onclick="applyCustomRoute()" style="padding:.55rem .9rem;background:var(--v,#22c997);border:1px solid #22c997;border-radius:8px;color:#0A0E1A;font-family:'Geist',sans-serif;font-size:.75rem;font-weight:700;cursor:pointer;">✓ Apply</button>
+              <button onclick="cancelCustomRoute()" style="padding:.55rem .9rem;background:rgba(13,17,23,.92);border:1px solid rgba(255,255,255,.2);border-radius:8px;color:#fff;font-family:'Geist',sans-serif;font-size:.75rem;font-weight:600;cursor:pointer;">✕ Cancel</button>
+            </div>
+          </div>
+          <!-- Edit mode info -->
+          <div id="mr-edit-hint" style="display:none;position:absolute;top:1rem;left:50%;transform:translateX(-50%);z-index:11;background:rgba(212,130,10,.95);color:#000;padding:.55rem 1rem;border-radius:8px;font-family:'Geist',sans-serif;font-size:.75rem;font-weight:600;box-shadow:0 4px 20px rgba(0,0,0,.4);">
+            ✏️ Drag any point to add waypoint · Click Apply when done
+          </div>
         </div>
       </div>
 
@@ -2656,6 +2668,7 @@ async function selectRoute(idx){
   if(!window.currentRouteData) return;
   const routeData = window.currentRouteData;
   const stopInputs = window.currentStopInputs || [];
+  window.currentActiveRouteIdx = idx;
 
   // Update RIGHT panel — re-render so že Selected bude na novej karte
   renderRouteOptionsPanel(routeData.routes, idx);
@@ -2867,6 +2880,286 @@ async function recomputeResultsPanel(route, validPts, segments, stopInputs){
 }
 
 // ══════════════════════════════════════════════════════════
+// ── CUSTOM ROUTE MODE ──
+// User klikne "Edit route" → trasa sa stane interaktívnou.
+// Na route sa zobrazia draggable body (každých ~50km).
+// User ich môže posunúť na iné miesto.
+// Apply → pridá najbližší zmenený bod ako waypoint do mrStops + recalculate.
+// Cancel → vrátiť pôvodnú trasu.
+// ══════════════════════════════════════════════════════════
+let customRouteState = {
+  active: false,
+  originalCoords: null,   // pôvodná trasa (ak cancel)
+  draggableMarkers: [],   // Mapbox markers na trase
+  draggedPoints: [],      // ktoré body boli posunuté (lng/lat pred/po)
+  previewLayerId: 'mr-preview-layer',
+  previewSourceId: 'mr-preview-source',
+};
+
+function toggleCustomRouteMode(){
+  if(customRouteState.active){
+    // Ak je mode aktívny, klik je ekvivalent Cancel
+    cancelCustomRoute();
+  } else {
+    enterCustomRouteMode();
+  }
+}
+
+function enterCustomRouteMode(){
+  if(!window.currentRouteData){
+    console.warn('[CustomRoute] No route to edit');
+    return;
+  }
+  const route = window.currentRouteData.routes[window.currentActiveRouteIdx ?? 0];
+  if(!route) return;
+
+  customRouteState.active = true;
+  customRouteState.originalCoords = [...route.geometry.coordinates];
+  customRouteState.draggedPoints = [];
+
+  // Zmeň UI na edit mode
+  document.getElementById('mr-edit-btn').style.display = 'none';
+  document.getElementById('mr-edit-actions').style.display = 'flex';
+  document.getElementById('mr-edit-hint').style.display = 'block';
+
+  // Pridaj draggable markers na trase (každých cca 80km, ale min. 3, max. 8)
+  const coords = route.geometry.coordinates;
+  const totalLen = route.distance / 1000; // km
+  const stepKm = Math.max(80, Math.ceil(totalLen / 8));
+  const markerCount = Math.min(8, Math.max(3, Math.floor(totalLen / stepKm)));
+  const step = Math.floor(coords.length / (markerCount + 1));
+
+  for(let i = 1; i <= markerCount; i++){
+    const coord = coords[i * step];
+    if(!coord) continue;
+    const el = document.createElement('div');
+    el.style.cssText = 'width:16px;height:16px;border-radius:50%;background:#D4820A;border:3px solid #fff;cursor:grab;box-shadow:0 2px 8px rgba(0,0,0,.5);';
+    el.title = 'Drag to reshape route';
+
+    const marker = new mapboxgl.Marker({ element: el, draggable: true })
+      .setLngLat(coord)
+      .addTo(mrMap);
+
+    const originalLngLat = [...coord];
+
+    marker.on('dragstart', () => {
+      el.style.cursor = 'grabbing';
+      el.style.background = '#f4a45a';
+    });
+
+    marker.on('drag', () => {
+      // Realtime preview cez dashed line
+      updateCustomRoutePreview();
+    });
+
+    marker.on('dragend', async () => {
+      el.style.cursor = 'grab';
+      el.style.background = '#D4820A';
+      const newLngLat = marker.getLngLat();
+      // Zaznamenaj posunutý bod
+      customRouteState.draggedPoints.push({
+        original: originalLngLat,
+        newCoord: [newLngLat.lng, newLngLat.lat],
+      });
+      // Zavolaj Google aby nám dal novú trasu cez ten bod
+      await updateCustomRouteWithNewWaypoint();
+    });
+
+    customRouteState.draggableMarkers.push(marker);
+  }
+}
+
+function updateCustomRoutePreview(){
+  // Jednoduchý dashed preview — spojíme všetky markery + origin/destination
+  if(!mrMap || !customRouteState.active) return;
+
+  const markerPositions = customRouteState.draggableMarkers.map(m => {
+    const ll = m.getLngLat();
+    return [ll.lng, ll.lat];
+  });
+
+  const firstMarker = document.querySelectorAll('.mapboxgl-marker');
+  // Pre preview len spojíme body čiarami (iba hrubý preview)
+  const coords = customRouteState.originalCoords;
+  if(!coords || coords.length < 2) return;
+
+  const previewCoords = [coords[0], ...markerPositions, coords[coords.length-1]];
+
+  if(mrMap.getSource(customRouteState.previewSourceId)){
+    mrMap.getSource(customRouteState.previewSourceId).setData({
+      type: 'Feature', geometry: { type: 'LineString', coordinates: previewCoords },
+    });
+  } else {
+    mrMap.addSource(customRouteState.previewSourceId, {
+      type: 'geojson',
+      data: { type: 'Feature', geometry: { type: 'LineString', coordinates: previewCoords } },
+    });
+    mrMap.addLayer({
+      id: customRouteState.previewLayerId,
+      type: 'line',
+      source: customRouteState.previewSourceId,
+      paint: {
+        'line-color': '#D4820A',
+        'line-width': 3,
+        'line-dasharray': [2, 2],
+        'line-opacity': 0.6,
+      },
+    });
+  }
+}
+
+async function updateCustomRouteWithNewWaypoint(){
+  // Po dragende pošleme Google request s novými coords aby sme dostali REÁLNU trasu
+  // Tá bude preview dokým user neklikne Apply.
+  if(!customRouteState.active || !customRouteState.draggedPoints.length) return;
+
+  const stopIds = mrStops.filter(id => {
+    const el = document.getElementById(id);
+    return el && el.value.trim().length > 0;
+  });
+  const originCoord = _inputCoords[stopIds[0]] || [customRouteState.originalCoords[0][0], customRouteState.originalCoords[0][1]];
+  const destCoord = _inputCoords[stopIds[stopIds.length-1]] ||
+    [customRouteState.originalCoords[customRouteState.originalCoords.length-1][0],
+     customRouteState.originalCoords[customRouteState.originalCoords.length-1][1]];
+
+  // Zozbieraj všetky marker pozície ako waypointy (aktuálne pozície)
+  const waypointCoords = customRouteState.draggableMarkers.map(m => {
+    const ll = m.getLngLat();
+    return [ll.lng, ll.lat];
+  });
+
+  // Zostav coords: origin + waypoints + destination
+  const coords = [originCoord, ...waypointCoords, destCoord];
+
+  try {
+    const service = new google.maps.DirectionsService();
+    const singleLeg = await fetchGoogleSingleLeg(service, coords[0], coords[coords.length-1], false);
+    // Pre real preview potrebujeme request cez všetky waypointy
+    const response = await service.route({
+      origin: { lat: coords[0][1], lng: coords[0][0] },
+      destination: { lat: coords[coords.length-1][1], lng: coords[coords.length-1][0] },
+      waypoints: coords.slice(1, -1).map(c => ({
+        location: new google.maps.LatLng(c[1], c[0]),
+        stopover: false, // via-point, nie stopover
+      })),
+      travelMode: google.maps.TravelMode.DRIVING,
+    });
+
+    if(response.routes?.length){
+      const newCoords = response.routes[0].overview_path.map(ll => [ll.lng(), ll.lat()]);
+      // Update preview s REAL route (Google returned)
+      if(mrMap.getSource(customRouteState.previewSourceId)){
+        mrMap.getSource(customRouteState.previewSourceId).setData({
+          type: 'Feature', geometry: { type: 'LineString', coordinates: newCoords },
+        });
+      }
+      customRouteState._pendingRoute = response.routes[0];
+      customRouteState._pendingCoords = newCoords;
+    }
+  } catch(err){
+    console.warn('[CustomRoute] Preview update failed:', err);
+  }
+}
+
+async function applyCustomRoute(){
+  if(!customRouteState.active || !customRouteState._pendingRoute){
+    // Nič nebolo posunuté
+    cancelCustomRoute();
+    return;
+  }
+
+  // Získaj aktuálne waypoint pozície z markerov a pridaj ako stops
+  const waypointCoords = customRouteState.draggableMarkers.map(m => {
+    const ll = m.getLngLat();
+    return [ll.lng, ll.lat];
+  });
+
+  // Pridaj len markery ktoré boli SKUTOČNE posunuté (odstráň tie ktoré ostali na originalLngLat)
+  const movedPoints = [];
+  customRouteState.draggableMarkers.forEach((m, i) => {
+    const ll = m.getLngLat();
+    const wasMovedFromOrig = customRouteState.draggedPoints.some(dp =>
+      Math.abs(dp.newCoord[0] - ll.lng) < 0.001 && Math.abs(dp.newCoord[1] - ll.lat) < 0.001
+    );
+    if(wasMovedFromOrig){
+      movedPoints.push([ll.lng, ll.lat]);
+    }
+  });
+
+  if(!movedPoints.length){
+    cancelCustomRoute();
+    return;
+  }
+
+  // Vyčisti edit mode UI
+  cleanupCustomRouteMode();
+
+  // Pre každý posunutý bod pridaj waypoint ako novú stopu
+  // Pokúsime sa reverse-geocode aby user videl názov miesta
+  console.log('[CustomRoute] Applying', movedPoints.length, 'new waypoints');
+
+  for(const pt of movedPoints){
+    try {
+      // Reverse geocode aby sme dostali human-readable názov
+      let label = `${pt[1].toFixed(3)}, ${pt[0].toFixed(3)}`;
+      try {
+        _geocoderService.geocode({ location: { lat: pt[1], lng: pt[0] } }, (results, status) => {
+          if(status === 'OK' && results[0]){
+            label = results[0].formatted_address;
+          }
+        });
+      } catch(e){}
+
+      // Pridaj do mrStops pred posledný (destination)
+      addStop();
+      // Posledná pridaná stopa je na konci - presunieme ju pred destination
+      // (jednoduchšie: nastavíme jej hodnotu + GPS)
+      const newStopId = mrStops[mrStops.length - 1];
+      const inp = document.getElementById(newStopId);
+      if(inp){
+        inp.value = label;
+        _inputCoords[newStopId] = pt;
+      }
+    } catch(e){
+      console.warn('[CustomRoute] Failed to add waypoint:', e);
+    }
+  }
+
+  // Recalculate s novými waypointami
+  await calcMapRoute();
+}
+
+function cancelCustomRoute(){
+  cleanupCustomRouteMode();
+  // Re-render originálnej trasy (už tam bude z currentRouteData)
+  if(window.currentRouteData && typeof window.currentActiveRouteIdx === 'number'){
+    selectRoute(window.currentActiveRouteIdx);
+  }
+}
+
+function cleanupCustomRouteMode(){
+  customRouteState.active = false;
+  customRouteState.draggedPoints = [];
+  customRouteState._pendingRoute = null;
+  customRouteState._pendingCoords = null;
+
+  // Odstráň markery
+  customRouteState.draggableMarkers.forEach(m => m.remove());
+  customRouteState.draggableMarkers = [];
+
+  // Odstráň preview layer
+  if(mrMap){
+    if(mrMap.getLayer(customRouteState.previewLayerId)) mrMap.removeLayer(customRouteState.previewLayerId);
+    if(mrMap.getSource(customRouteState.previewSourceId)) mrMap.removeSource(customRouteState.previewSourceId);
+  }
+
+  // UI reset
+  document.getElementById('mr-edit-btn').style.display = 'block';
+  document.getElementById('mr-edit-actions').style.display = 'none';
+  document.getElementById('mr-edit-hint').style.display = 'none';
+}
+
+// ══════════════════════════════════════════════════════════
 // ── HLAVNÁ FUNKCIA: calcMapRoute ──
 // ══════════════════════════════════════════════════════════
 async function calcMapRoute(){
@@ -2930,6 +3223,7 @@ async function calcMapRoute(){
     // Ulož pre switchovanie
     window.currentRouteData = routeData;
     window.currentStopInputs = stopInputs;
+    window.currentActiveRouteIdx = 0;
 
     const route = routeData.routes[0];
     const rc = route.geometry.coordinates;
@@ -2973,6 +3267,8 @@ async function calcMapRoute(){
     }
 
     document.getElementById('mr-legend').style.display = 'block';
+    // Ukáž Edit route toolbar po úspešnom Calculate
+    document.getElementById('mr-map-toolbar').style.display = 'block';
 
   } catch(err){
     document.getElementById('mr-right-body').innerHTML = `<div style="font-size:.75rem;color:#f87171;padding:.75rem;background:rgba(248,113,113,.08);border:1px solid rgba(248,113,113,.25);border-radius:8px;">Error: ${err.message}</div>`;
@@ -3001,11 +3297,41 @@ function renderRouteOptionsPanel(routes, activeIdx){
     return;
   }
 
+  // ── SELF-CORRECTING CHEAPEST LABEL ──
+  // Ak 2+ trasy majú _exactCost (Live HAC cena po prekliknutí),
+  // prepočítame Cheapest label na základe presných cien.
+  // Labely Fastest a Shortest ostávajú (tie sú determined ihneď z Google dát).
+  const exactCostRoutes = routes.filter(r => typeof r._exactCost === 'number');
+  if(exactCostRoutes.length >= 2){
+    // Nájdi Cheapest podľa _exactCost
+    let newCheapestIdx = -1;
+    let minExact = Infinity;
+    routes.forEach((r, i) => {
+      if(typeof r._exactCost === 'number' && r._exactCost < minExact){
+        minExact = r._exactCost;
+        newCheapestIdx = i;
+      }
+    });
+
+    // Odstráň Cheapest label z ostatných + pridaj k novej Cheapest trase
+    routes.forEach((r, i) => {
+      if(!r._labels) return;
+      if(i === newCheapestIdx){
+        if(!r._labels.includes('Cheapest')) r._labels.push('Cheapest');
+      } else {
+        r._labels = r._labels.filter(l => l !== 'Cheapest');
+      }
+      // Ak trasa nemá žiadny label, daj jej Alternative
+      if(r._labels.length === 0) r._labels.push('Alternative');
+    });
+    console.log('[Cheapest] Self-correcting based on exact costs → Route', newCheapestIdx, '€' + minExact.toFixed(2));
+  }
+
   rightSub.textContent = `${routes.length} alternative${routes.length>1?'s':''} found`;
 
   // Vypočítaj savings pre Cheapest badge
   // Priorita cien:
-  //   1. _exactCost (vrátane Live HAC) — len pre aktuálne selected trasu po recomputeResultsPanel
+  //   1. _exactCost (vrátane Live HAC) — pre trasy ktoré už boli selected
   //   2. _estimatedCost (road-class klasifikácia, rovnaký výpočet čo určil Cheapest label)
   //   3. fallback rough proxy (legacy/single-leg bez decomposition)
   const fuelCons = parseFloat(document.getElementById('mr-fuel-consumption')?.value) || 7;
