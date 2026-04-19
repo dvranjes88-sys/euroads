@@ -29,6 +29,11 @@ header { background:#18160F; color:#fff; height:58px; display:flex; align-items:
 .hero::after { content:'🛣️'; position:absolute; font-size:14rem; right:-1rem; top:-2rem; opacity:.04; pointer-events:none; }
 .hero h1 { position:relative; z-index:1; font-family:'Geist',sans-serif; font-weight:800; font-size:clamp(1.6rem,4vw,2.8rem); letter-spacing:-0.03em; line-height:1.05; margin-bottom:.6rem; }
 .hero h1 em { color:var(--accent); font-style:normal; }
+
+.hero h1 .char { display:inline-block; animation:charFloat 3s ease-in-out infinite; }
+.hero h1 .char-space { display:inline-block; width:0.28em; }
+@keyframes charFloat { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-5px)} }
+
 .hero p { position:relative; z-index:1; color:rgba(255,255,255,.5); font-size:.82rem; max-width:500px; margin-bottom:1.5rem; }
 .hstats { position:relative; z-index:1; display:flex; gap:2rem; flex-wrap:wrap; }
 .hstat-n { font-family:'Geist',sans-serif; font-weight:800; font-size:1.4rem; color:var(--accent); }
@@ -387,26 +392,26 @@ main { padding:2rem; max-width:1300px; margin:0 auto; }
     <p class="land-tagline">Your complete European road trip companion</p>
 
     <div class="land-counter">
-      <div><div class="land-cnt-n">50</div><div class="land-cnt-l">Countries</div></div>
+      <div><div class="land-cnt-n" id="lcnt">–</div><div class="land-cnt-l">Countries</div></div>
       <div><div class="land-cnt-n">3</div><div class="land-cnt-l">Road systems</div></div>
       <div><div class="land-cnt-n">8</div><div class="land-cnt-l">ENC devices</div></div>
       <div><div class="land-cnt-n">0</div><div class="land-cnt-l">Surprises</div></div>
     </div>
 
     <div class="land-features">
-      <div class="land-feat">
+      <div class="land-feat" onclick="dismissLanding('countries')">
         <div class="land-feat-icon">🏷️</div>
         <div class="land-feat-title">Vignettes & Tolls</div>
         <div class="land-feat-desc">Prices for every country, updated 2026</div>
         <div class="land-feat-arrow">Explore →</div>
       </div>
-      <div class="land-feat">
+      <div class="land-feat" onclick="dismissLanding('maproute')">
         <div class="land-feat-icon">🗺️</div>
         <div class="land-feat-title">Route Calculator</div>
         <div class="land-feat-desc">Total road costs for your exact trip</div>
         <div class="land-feat-arrow">Calculate →</div>
       </div>
-      <div class="land-feat">
+      <div class="land-feat" onclick="dismissLanding('speed')">
         <div class="land-feat-icon">⚡</div>
         <div class="land-feat-title">Speed Limits</div>
         <div class="land-feat-desc">Urban, rural & motorway — every country</div>
@@ -433,7 +438,7 @@ main { padding:2rem; max-width:1300px; margin:0 auto; }
 
 <div class="hero">
   <canvas id="heroCanvas"></canvas>
-  <h1>Every road in <em>Europe</em>,<br>one place.</h1>
+  <h1 id="heroTitle"></h1>
   <p>Vignettes, tolls, speed limits and driving rules for every European country — from Portugal to Greece, from Norway to Turkey.</p>
   <div class="hstats">
     <div><div class="hstat-n" id="stat-countries">50</div><div class="hstat-l">Countries</div></div>
@@ -1718,6 +1723,22 @@ function attachAutocomplete(inputId){
     } catch(e){}
   });
   input.addEventListener('blur', ()=>setTimeout(()=>removeAcDropdown(inputId),200));
+  input.addEventListener('keydown', (e)=>{
+    const drop=document.getElementById(`ac-drop-${inputId}`);
+    const items=drop?Array.from(drop.querySelectorAll('div')):[];
+    if(!items.length && e.key==='Enter'){ calcMapRoute(); return; }
+    if(e.key==='ArrowDown'||e.key==='ArrowUp'){
+      e.preventDefault();
+      const cur=items.findIndex(i=>i.dataset.active==='1');
+      items.forEach(i=>{ i.dataset.active=''; i.style.background=''; });
+      const next=e.key==='ArrowDown'?items[(cur+1)%items.length]:items[(cur-1+items.length)%items.length];
+      if(next){ next.dataset.active='1'; next.style.background='rgba(212,130,10,.2)'; input.value=next.textContent.trim(); }
+    } else if(e.key==='Enter'){
+      const active=items.find(i=>i.dataset.active==='1');
+      if(active){ input.value=active.textContent.trim(); removeAcDropdown(inputId); }
+      else { removeAcDropdown(inputId); calcMapRoute(); }
+    }
+  });
 }
 
 function showAcDropdown(inputId, features){
@@ -2531,6 +2552,7 @@ async function renderRoute(result){
 }
 
 document.getElementById('stat-countries').textContent=C.length;
+const _lcnt=document.getElementById('lcnt');if(_lcnt)_lcnt.textContent=C.length;
 renderCC(); renderSpeed(); renderCalcChecks(); renderENC();
 
 
@@ -2581,6 +2603,37 @@ renderCC(); renderSpeed(); renderCalcChecks(); renderENC();
     requestAnimationFrame(draw);
   }
   draw();
+})();
+
+
+// ── HERO TITLE FLOAT ──
+(function() {
+  const el = document.getElementById('heroTitle');
+  if (!el) return;
+  const segments = [
+    { text: 'Every road in ', em: false },
+    { text: 'Europe', em: true },
+    { text: ',', em: false },
+    { text: '\n', em: false },
+    { text: 'one place.', em: false },
+  ];
+  let idx = 0;
+  segments.forEach(seg => {
+    if (seg.text === '\n') { el.appendChild(document.createElement('br')); return; }
+    const wrap = seg.em ? document.createElement('em') : null;
+    const target = wrap || el;
+    seg.text.split('').forEach(ch => {
+      if (ch === ' ') {
+        const sp = document.createElement('span'); sp.className = 'char-space';
+        target.appendChild(sp); idx++; return;
+      }
+      const span = document.createElement('span');
+      span.className = 'char'; span.textContent = ch;
+      span.style.animationDelay = (idx * 0.05) + 's';
+      target.appendChild(span); idx++;
+    });
+    if (wrap) el.appendChild(wrap);
+  });
 })();
 
 // ── LANDING LOGIC ──
