@@ -1029,13 +1029,112 @@ function switchTab(id,btn){
 
 
 // ══════════════════════════════════════════════════════════
-// ── MAP ROUTE — KOMPLETNE PREPRACOVANÁ LOGIKA ──
+// ── MAP ROUTE — HYBRID: Google Directions + Mapbox UI ──
 // ══════════════════════════════════════════════════════════
+// Mapbox token (pre vykreslenie mapy + geocoding autocomplete)
 const _ta='pk.eyJ1IjoiZGFuaWplbHZyYW5qZXMiLCJhIjoiY21vNWRscjZtMG9ybDJzcXB5';
 const _tb='eWYwY2swcyJ9.YY0cJRru_mlKwT8CCZZJRQ';
+// Google API key (pre Directions API — lepšie alternatívy trás)
+// Key je obmedzený na: Directions API + Geocoding API, HTTP referrer euroads.vercel.app
+const _ga='AIzaSyD65WK4E-yPe5k';
+const _gb='oojoRlFHqBulad5zReg0';
+const GOOGLE_KEY = _ga + _gb;
+const MAPBOX_TOKEN = _ta + _tb;
+
 let mrMap=null, mrPolylines=[], mrMarkers=[];
 let mrStops=[]; // array of stop DOM ids
 let stopCounter=0;
+
+// ══════════════════════════════════════════════════════════
+// ── Google polyline decoder (encoded polyline → [lng,lat] array) ──
+// Google vracia trasy ako encoded polyline string. Treba dekódovať.
+// Algoritmus z Google Maps documentation.
+// ══════════════════════════════════════════════════════════
+function decodePolyline(encoded){
+  const points = [];
+  let index = 0, lat = 0, lng = 0;
+  while(index < encoded.length){
+    let result = 1, shift = 0, b;
+    do {
+      b = encoded.charCodeAt(index++) - 63 - 1;
+      result += b << shift;
+      shift += 5;
+    } while(b >= 0x1f);
+    lat += (result & 1) ? ~(result >> 1) : (result >> 1);
+
+    result = 1; shift = 0;
+    do {
+      b = encoded.charCodeAt(index++) - 63 - 1;
+      result += b << shift;
+      shift += 5;
+    } while(b >= 0x1f);
+    lng += (result & 1) ? ~(result >> 1) : (result >> 1);
+
+    // Google vracia [lat, lng], ale my používame [lng, lat] (GeoJSON convention)
+    points.push([lng * 1e-5, lat * 1e-5]);
+  }
+  return points;
+}
+
+// ══════════════════════════════════════════════════════════
+// ── Google Directions API call ──
+// Vracia až 4 rôzne alternatívne trasy (lepšie ako Mapbox)
+// Formát výstupu je kompatibilný s Mapbox Directions štruktúrou:
+//   { routes: [{ geometry: { coordinates: [[lng,lat]...] }, distance, duration }] }
+// ══════════════════════════════════════════════════════════
+async function fetchGoogleDirections(coords){
+  // coords je [[lng,lat], [lng,lat], ...]
+  const origin = `${coords[0][1]},${coords[0][0]}`;
+  const destination = `${coords[coords.length-1][1]},${coords[coords.length-1][0]}`;
+  const waypoints = coords.slice(1, -1).map(c => `${c[1]},${c[0]}`).join('|');
+
+  const params = new URLSearchParams({
+    origin,
+    destination,
+    alternatives: 'true',
+    mode: 'driving',
+    key: GOOGLE_KEY,
+  });
+  if(waypoints) params.set('waypoints', waypoints);
+
+  const url = `https://maps.googleapis.com/maps/api/directions/json?${params.toString()}`;
+  const r = await fetch(url);
+  if(!r.ok) throw new Error(`Google Directions API error: ${r.status}`);
+  const data = await r.json();
+
+  if(data.status !== 'OK'){
+    throw new Error(`Google Directions: ${data.status}${data.error_message ? ' - ' + data.error_message : ''}`);
+  }
+  if(!data.routes?.length) throw new Error('No routes found');
+
+  // Transform Google response → Mapbox-compatible structure
+  return {
+    routes: data.routes.map(route => {
+      // Spoj všetky legs do jednej polyline
+      let allCoords = [];
+      let totalDist = 0, totalDur = 0;
+      for(const leg of route.legs){
+        totalDist += leg.distance.value; // metre
+        totalDur += leg.duration.value;  // sekundy
+        for(const step of leg.steps){
+          const stepCoords = decodePolyline(step.polyline.points);
+          // Pridaj bez duplicít na hranici steps
+          if(allCoords.length && stepCoords.length){
+            allCoords = allCoords.concat(stepCoords.slice(1));
+          } else {
+            allCoords = allCoords.concat(stepCoords);
+          }
+        }
+      }
+      return {
+        geometry: { type: 'LineString', coordinates: allCoords },
+        distance: totalDist,
+        duration: totalDur,
+        summary: route.summary || '',
+      };
+    }),
+  };
+}
 
 const CC_MAP={
   'SK':'sk','CZ':'cz','AT':'at','CH':'ch','HU':'hu','SI':'si','RO':'ro','BG':'bg',
@@ -1109,61 +1208,116 @@ function nearestHACStation(lat, lng){
   return {name:best, dist:bestDist};
 }
 
+// Generuj alternatívne varianty názvu stanice — HAC API je citlivé na presný string
+function makeStationVariants(name){
+  if(!name) return [];
+  const v = new Set([name]);
+  // "Zagreb Istok" → "Zagreb istok" (lowercase suffix)
+  v.add(name.replace(/\s+(Istok|Zapad|Sjever|Jug)$/i, m => m.toLowerCase()));
+  // "Zagreb Istok" → "Zagreb-Istok"
+  v.add(name.replace(/\s+/, '-'));
+  // "Zagreb (Lučko)" → "Zagreb"
+  const paren = name.match(/^(.+?)\s*\([^)]+\)$/);
+  if(paren) v.add(paren[1].trim());
+  // "Sudaraž (Beli Manastir)" → "Beli Manastir"
+  if(paren) v.add(paren[0].match(/\(([^)]+)\)/)[1]);
+  // Odstráň diakritiku ako posledný fallback
+  v.add(name.normalize('NFD').replace(/[\u0300-\u036f]/g, ''));
+  return [...v].filter(Boolean);
+}
+
 async function fetchHACToll(entry, exit, vehicleCat){
   const cat = vehicleCat || 'I';
   if(!entry || !exit || entry === exit) return null;
-  const url=`https://cro3-tmp.hac.hr/tollcalculator/price/${encodeURIComponent(entry)}/${encodeURIComponent(exit)}`;
-  try {
-    const r=await fetch(url);
-    if(!r.ok) return null;
-    const data=await r.json();
-    if(!data.Segments?.length) return null;
-    let total=0; const segments=[];
-    for(const seg of data.Segments){
-      const price=seg.Prices?.find(p=>p.Category===cat)||seg.Prices?.find(p=>p.Category==='I');
-      if(price){ total+=price.Amount; segments.push({entry:seg.EntryName,exit:seg.ExitName,amount:price.Amount}); }
+
+  const entryVars = makeStationVariants(entry);
+  const exitVars  = makeStationVariants(exit);
+
+  for(const e of entryVars){
+    for(const x of exitVars){
+      if(e === x) continue;
+      const url = `https://cro3-tmp.hac.hr/tollcalculator/price/${encodeURIComponent(e)}/${encodeURIComponent(x)}`;
+      try {
+        const r = await fetch(url);
+        if(!r.ok) continue;
+        const data = await r.json();
+        if(!data.Segments?.length) continue;
+        let total = 0;
+        const segments = [];
+        for(const seg of data.Segments){
+          const price = seg.Prices?.find(p => p.Category === cat) || seg.Prices?.find(p => p.Category === 'I');
+          if(price){
+            total += price.Amount;
+            segments.push({ entry: seg.EntryName, exit: seg.ExitName, amount: price.Amount });
+          }
+        }
+        if(total > 0){
+          console.log('[HAC] ✓', e, '→', x, '=', total.toFixed(2), '€');
+          return { total, segments };
+        }
+      } catch(err){
+        console.warn('[HAC] fetch failed for', e, '→', x, err.message);
+      }
     }
-    if(total>0) return {total,segments};
-  } catch(err){}
+  }
+  console.warn('[HAC] ✗ No valid route for:', entry, '→', exit, '(tried', entryVars.length * exitVars.length, 'variants)');
   return null;
 }
 
 async function calcHRToll(hrEntryCC, hrExitCC, hrDistKm, validPts, vehicleCat){
-  const cat = vehicleCat||'I';
-  const hrPts = validPts.filter(p=>p?.cc==='HR');
+  const cat = vehicleCat || 'I';
+  const hrPts = validPts.filter(p => p?.cc === 'HR');
+
   if(hrPts.length === 0){
-    const mult=({'I':1,'IA':1,'II':1.576,'III':2.516,'IV':3.2})[cat]||1;
-    return {amount:parseFloat((5*mult).toFixed(2)), segments:[], entry:'?', exit:'?', live:false, precise:false};
+    const mult = ({'I':1,'IA':1,'II':1.576,'III':2.516,'IV':3.2})[cat] || 1;
+    return { amount: parseFloat((5*mult).toFixed(2)), segments: [], entry: '?', exit: '?', live: false, precise: false };
   }
 
-  let entryStation = HAC_BORDER_ENTRY[hrEntryCC] || null;
-  let exitStation = HAC_BORDER_ENTRY[hrExitCC] || null;
-
+  // Kandidáti pre entry station
+  const entryCandidates = [];
+  if(HAC_BORDER_ENTRY[hrEntryCC]) entryCandidates.push(HAC_BORDER_ENTRY[hrEntryCC]);
   const firstHR = hrPts[0];
-  const lastHR = hrPts[hrPts.length-1];
-
-  if(!entryStation || (firstHR && hrEntryCC)){
+  if(firstHR){
     const n = nearestHACStation(firstHR.lat, firstHR.lng);
-    if(n.dist < 0.5) entryStation = entryStation || n.name;
+    if(n.dist < 0.8 && !entryCandidates.includes(n.name)) entryCandidates.push(n.name);
   }
 
-  if(!exitStation){
-    const n = nearestHACStation(lastHR.lat, lastHR.lng);
-    if(n.dist < 0.5) exitStation = n.name;
-  }
-
-  if(entryStation && exitStation && entryStation !== exitStation){
-    const result = await fetchHACToll(entryStation, exitStation, cat);
-    if(result?.total > 0){
-      return {amount:result.total, segments:result.segments,
-              entry:entryStation, exit:exitStation, live:true, precise:true};
+  // Kandidáti pre exit station — skúsi viac HR pointov od konca
+  const exitCandidates = [];
+  if(HAC_BORDER_ENTRY[hrExitCC]) exitCandidates.push(HAC_BORDER_ENTRY[hrExitCC]);
+  // Skúsi posledné 3 HR pointy
+  const lastHRPoints = hrPts.slice(-3).reverse();
+  for(const pt of lastHRPoints){
+    const n = nearestHACStation(pt.lat, pt.lng);
+    if(n.dist < 0.8 && !exitCandidates.includes(n.name)){
+      exitCandidates.push(n.name);
     }
   }
 
-  const mult=({'I':1,'IA':1,'II':1.576,'III':2.516,'IV':3.2})[cat]||1;
-  const base=hrDistKm<50?3:hrDistKm<100?6:hrDistKm<180?10:hrDistKm<280?16:hrDistKm<380?22:28;
-  return {amount:parseFloat((base*mult).toFixed(2)), segments:[],
-          entry:entryStation||'?', exit:exitStation||'?', live:false, precise:false};
+  console.log('[HAC] Entry candidates:', entryCandidates, '| Exit candidates:', exitCandidates);
+
+  // Skús všetky kombinácie — prvá úspešná vyhráva
+  for(const entry of entryCandidates){
+    for(const exit of exitCandidates){
+      if(entry === exit) continue;
+      const result = await fetchHACToll(entry, exit, cat);
+      if(result?.total > 0){
+        return { amount: result.total, segments: result.segments, entry, exit, live: true, precise: true };
+      }
+    }
+  }
+
+  // Fallback na distance estimate
+  const mult = ({'I':1,'IA':1,'II':1.576,'III':2.516,'IV':3.2})[cat] || 1;
+  const base = hrDistKm<50 ? 3 : hrDistKm<100 ? 6 : hrDistKm<180 ? 10 : hrDistKm<280 ? 16 : hrDistKm<380 ? 22 : 28;
+  return {
+    amount: parseFloat((base*mult).toFixed(2)),
+    segments: [],
+    entry: entryCandidates[0] || '?',
+    exit: exitCandidates[0] || '?',
+    live: false,
+    precise: false,
+  };
 }
 
 // Multi-stop UI
@@ -1623,13 +1777,22 @@ async function calcMapRoute(){
       return d.features[0].center;
     }));
 
-    resultEl.innerHTML = '<div style="font-size:.8rem;color:var(--muted);padding:.5rem 0;">⏳ Getting route...</div>';
+    resultEl.innerHTML = '<div style="font-size:.8rem;color:var(--muted);padding:.5rem 0;">⏳ Getting routes from Google...</div>';
 
-    // 2. Mapbox Directions s alternatívami
-    const coordStr = coords.map(c => c.join(',')).join(';');
-    const routeResp = await fetch(`https://api.mapbox.com/directions/v5/mapbox/driving/${coordStr}?access_token=${_ta+_tb}&geometries=geojson&overview=full&steps=false&alternatives=true`);
-    const routeData = await routeResp.json();
-    if(!routeData.routes?.length) throw new Error('No route found');
+    // 2. Google Directions API — lepšie alternatívne trasy než Mapbox
+    //    Mapbox stále používame na vykreslenie mapy (dark style) a geocoding.
+    let routeData;
+    try {
+      routeData = await fetchGoogleDirections(coords);
+      console.log('[Routes] Google returned', routeData.routes.length, 'route(s)');
+    } catch(googleErr){
+      // Fallback na Mapbox ak Google zlyhá
+      console.warn('[Routes] Google failed, falling back to Mapbox:', googleErr.message);
+      const coordStr = coords.map(c => c.join(',')).join(';');
+      const routeResp = await fetch(`https://api.mapbox.com/directions/v5/mapbox/driving/${coordStr}?access_token=${MAPBOX_TOKEN}&geometries=geojson&overview=full&steps=false&alternatives=true`);
+      routeData = await routeResp.json();
+      if(!routeData.routes?.length) throw new Error('No route found (Google & Mapbox both failed)');
+    }
 
     // 3. Route tabs (ak máme viac alternatív)
     const routeTabs = document.getElementById('mr-route-tabs');
