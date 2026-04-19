@@ -39,10 +39,15 @@ header { background:#18160F; color:#fff; height:58px; display:flex; align-items:
 .hstat-n { font-family:'Geist',sans-serif; font-weight:800; font-size:1.4rem; color:var(--accent); }
 .hstat-l { font-size:.65rem; color:rgba(255,255,255,.4); letter-spacing:.08em; text-transform:uppercase; }
 
-.tab-bar { display:flex; background:var(--surface); border-bottom:2px solid var(--border); padding:0 2rem; position:sticky; top:58px; z-index:190; overflow-x:auto; gap:.25rem; }
-.tab { padding:.75rem 1.3rem; font-family:'Geist',sans-serif; font-weight:700; font-size:.72rem; letter-spacing:.04em; text-transform:uppercase; border:none; background:none; cursor:pointer; color:var(--muted); border-bottom:3px solid transparent; margin-bottom:-2px; white-space:nowrap; transition:all .18s; border-radius:6px 6px 0 0; display:flex; align-items:center; gap:.4rem; }
-.tab.active { color:var(--text); border-bottom-color:var(--accent); background:rgba(212,130,10,0.06); }
-.tab:hover:not(.active) { color:var(--text); background:var(--bg); }
+.tab-bar { display:flex; background:#18160F; border-bottom:1px solid rgba(255,255,255,.07); padding:0 2rem; position:sticky; top:58px; z-index:190; overflow-x:auto; gap:0; scrollbar-width:none; -ms-overflow-style:none; }
+.tab-bar::-webkit-scrollbar { display:none; width:0; height:0; }
+.tab { padding:.85rem 1.1rem; font-family:'Geist',sans-serif; font-weight:700; font-size:.68rem; letter-spacing:.05em; text-transform:uppercase; border:none; background:none; cursor:pointer; color:rgba(255,255,255,.3); border-bottom:2.5px solid transparent; margin-bottom:-1px; white-space:nowrap; transition:all .15s; display:flex; align-items:center; gap:.42rem; }
+.tab svg { opacity:.5; transition:opacity .15s; flex-shrink:0; }
+.tab.active { color:#fff; border-bottom-color:var(--accent); }
+.tab.active svg { opacity:1; }
+.tab:hover:not(.active) { color:rgba(255,255,255,.65); }
+.tab:hover:not(.active) svg { opacity:.75; }
+.tab-badge { font-size:.46rem; background:var(--accent); color:#000; font-weight:900; padding:.1rem .28rem; border-radius:3px; letter-spacing:.05em; }
 
 main { padding:2rem; max-width:1300px; margin:0 auto; }
 .view { display:none; }
@@ -461,11 +466,26 @@ main { padding:2rem; max-width:1300px; margin:0 auto; }
 </div>
 
 <div class="tab-bar">
-  <button class="tab active" data-tab="countries" onclick="switchTab('countries',this)">🗺️ Countries</button>
-  <button class="tab" data-tab="speed" onclick="switchTab('speed',this)">⚡ Speed Limits</button>
-  <button class="tab tab-highlight" data-tab="maproute" onclick="switchTab('maproute',this)">🧮 Route Calculator</button>
-  <button class="tab" data-tab="enc" onclick="switchTab('enc',this)">📦 ENC Devices</button>
-  <button class="tab" data-tab="game" onclick="switchTab('game',this)">🎮 EuroTour Game</button>
+  <button class="tab active" data-tab="countries" onclick="switchTab('countries',this)">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/></svg>
+    Countries
+  </button>
+  <button class="tab" data-tab="speed" onclick="switchTab('speed',this)">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 14 4-4"/><path d="M3.34 19a10 10 0 1 1 17.32 0"/></svg>
+    Speed Limits
+  </button>
+  <button class="tab tab-highlight" data-tab="maproute" onclick="switchTab('maproute',this)">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="19" r="3"/><path d="M9 19h8.5a3.5 3.5 0 0 0 0-7h-11a3.5 3.5 0 0 1 0-7H15"/><circle cx="18" cy="5" r="3"/></svg>
+    Route Calculator <span class="tab-badge">NEW</span>
+  </button>
+  <button class="tab" data-tab="enc" onclick="switchTab('enc',this)">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="2"/><rect x="9" y="9" width="6" height="6"/><path d="M15 2v2M9 2v2M2 15h2M2 9h2M15 22v-2M9 22v-2M22 15h-2M22 9h-2"/></svg>
+    ENC Devices
+  </button>
+  <button class="tab" data-tab="game" onclick="switchTab('game',this)">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="3 6 9 3 15 6 21 3 21 18 15 21 9 18 3 21"/><line x1="9" x2="9" y1="3" y2="18"/><line x1="15" x2="15" y1="6" y2="21"/></svg>
+    EuroTour Game
+  </button>
 </div>
 
 <main>
