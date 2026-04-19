@@ -182,9 +182,16 @@ main { padding:2rem; max-width:1300px; margin:0 auto; }
 .rec-badge { display:inline-flex; align-items:center; gap:.3rem; font-size:.65rem; background:#fff3cd; color:#856404; border:1px solid #ffc107; padding:.2rem .55rem; border-radius:4px; font-weight:600; }
 
 /* BMC BUTTON */
-.bmc-wrap { position:fixed; bottom:1.5rem; right:1.5rem; z-index:500; }
-.bmc-btn { display:flex; align-items:center; gap:.6rem; background:#FFDD00; color:#000; border:none; border-radius:100px; padding:.65rem 1.2rem; font-size:.8rem; font-weight:700; cursor:pointer; text-decoration:none; box-shadow:0 4px 20px rgba(0,0,0,.15); transition:all .2s; white-space:nowrap; }
-.bmc-btn:hover { transform:translateY(-2px); box-shadow:0 8px 25px rgba(0,0,0,.2); }
+.bmc-wrap { position:fixed; bottom:1rem; left:1rem; z-index:500; }
+.bmc-btn { display:flex; align-items:center; gap:.45rem; background:#FFDD00; color:#000; border:none; border-radius:100px; padding:.5rem 1rem; font-size:.72rem; font-weight:700; cursor:pointer; text-decoration:none; box-shadow:0 4px 16px rgba(0,0,0,.3); transition:all .2s; white-space:nowrap; }
+.bmc-btn:hover { transform:translateY(-2px); box-shadow:0 8px 22px rgba(0,0,0,.4); }
+
+/* Open in Google Maps — floating button v pravom dolnom rohu */
+.gmap-wrap { position:fixed; bottom:1.5rem; right:1.5rem; z-index:500; display:none; }
+.gmap-wrap.visible { display:block; }
+.gmap-btn { display:flex; align-items:center; gap:.5rem; background:#1a73e8; color:#fff; border:1px solid rgba(255,255,255,.08); border-radius:100px; padding:.7rem 1.2rem; font-size:.78rem; font-weight:600; cursor:pointer; text-decoration:none; box-shadow:0 6px 20px rgba(26,115,232,.5); transition:all .15s; white-space:nowrap; font-family:'Geist',sans-serif; }
+.gmap-btn:hover { background:#1967d2; transform:translateY(-2px); box-shadow:0 10px 28px rgba(26,115,232,.6); }
+.gmap-btn svg { width:15px; height:15px; flex-shrink:0; }
 
 /* ═══════════════════════════════════════════════════════════
    ROUTE CALCULATOR — 3-COLUMN DASHBOARD LAYOUT
@@ -773,10 +780,20 @@ main { padding:2rem; max-width:1300px; margin:0 auto; }
 
 </main>
 
-<!-- Buy Me a Coffee -->
+<!-- Buy Me a Coffee — ľavý dolný roh -->
 <div class="bmc-wrap">
   <a class="bmc-btn" href="https://buymeacoffee.com/dvranjes" target="_blank" rel="noopener">
-    😊 Buy me a coffee
+    ☕ Buy me a coffee
+  </a>
+</div>
+
+<!-- Open in Google Maps — pravý dolný roh, viditeľné len po Calculate -->
+<div class="gmap-wrap" id="gmap-nav-wrap">
+  <a class="gmap-btn" id="gmap-nav-btn" href="#" target="_blank" rel="noopener" onclick="return openInGoogleMaps(event)">
+    <svg viewBox="0 0 24 24" fill="#fff" xmlns="http://www.w3.org/2000/svg">
+      <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
+    </svg>
+    Open in Google Maps
   </a>
 </div>
 
@@ -1272,6 +1289,7 @@ const MAPBOX_TOKEN = _ta + _tb;
 
 let mrMap=null, mrPolylines=[], mrMarkers=[];
 let mrStops=[]; // array of stop DOM ids
+let mrViaStops=new Set(); // set of stop IDs which are "via" (not stopover) — ich cesta len prechádza cez nich
 let stopCounter=0;
 
 // ══════════════════════════════════════════════════════════
@@ -1334,7 +1352,7 @@ function decodePolyline(encoded){
 // Vracia až 4 alternatívne trasy.
 // Výstupný formát je kompatibilný s Mapbox Directions štruktúrou.
 // ══════════════════════════════════════════════════════════
-async function fetchGoogleDirections(coords){
+async function fetchGoogleDirections(coords, viaFlags){
   // Zabezpeč že SDK je načítaný
   await loadGoogleMapsSDK();
 
@@ -1343,21 +1361,28 @@ async function fetchGoogleDirections(coords){
   }
 
   const service = new google.maps.DirectionsService();
+  viaFlags = viaFlags || coords.map(() => false); // default: všetky sú stopover
 
   // Pre 2 body (bez waypointov) použijeme jednoduchý Google Directions request s alternatívami
-  // Potom zbehneme cez combineLegRoutes aby sme dostali smart labely (Fastest/Cheapest/Shortest)
   if(coords.length === 2){
     const singleLeg = await fetchGoogleSingleLeg(service, coords[0], coords[1], /* alternatives */ true);
     if(singleLeg.routes.length > 1){
-      // Viac alternatív → použi combineLegRoutes aby sme dostali smart labely
       return { routes: combineLegRoutes([singleLeg]) };
     }
     return singleLeg;
   }
 
-  // Pre 3+ body (s waypointami) → ROUTE DECOMPOSITION
-  // Google API limitation: provideRouteAlternatives funguje len pre single-leg.
-  // Preto fetchneme alternatívy pre KAŽDÝ leg samostatne a skombinujeme ich.
+  // Detekuj či máme via-points (prechodné body, nie skutočné zastávky)
+  const hasViaPoints = viaFlags.slice(1, -1).some(v => v);
+
+  if(hasViaPoints){
+    // Ak máme aspoň 1 via-point, nerobíme decomposition (alternatívy by nedávali zmysel)
+    // Pošleme 1 request so všetkými coords + správnymi stopover flagmi
+    console.log('[Routes] Via-points mode: sending single request with correct stopover flags');
+    return fetchGoogleMultiWaypoint(service, coords, viaFlags);
+  }
+
+  // Pre 3+ body (všetko stopover) → ROUTE DECOMPOSITION pre alternatívy
   console.log('[Routes] Waypoint mode: decomposing', coords.length-1, 'legs');
 
   const legPromises = [];
@@ -1366,13 +1391,56 @@ async function fetchGoogleDirections(coords){
   }
   const legResults = await Promise.all(legPromises);
 
-  // Každý legResult má routes[] (1-4 alternatívy pre ten leg)
-  // Skombinujeme: fastest primary + mix-n-match pre 2. a 3. trasu
   const combinedRoutes = combineLegRoutes(legResults);
   console.log('[Routes] Combined', legResults.map(l => l.routes.length).join('×'),
               'leg alternatives →', combinedRoutes.length, 'total routes');
 
   return { routes: combinedRoutes };
+}
+
+// Pomocná funkcia — multi-waypoint request s correct stopover flags (via vs. stopover)
+// Vráti jednu trasu bez alternatív (pre via-point use case)
+async function fetchGoogleMultiWaypoint(service, coords, viaFlags){
+  const origin = { lat: coords[0][1], lng: coords[0][0] };
+  const destination = { lat: coords[coords.length-1][1], lng: coords[coords.length-1][0] };
+
+  // Waypointy sú všetky okrem origin/destination
+  const waypoints = coords.slice(1, -1).map((c, i) => {
+    const isVia = viaFlags[i + 1]; // +1 lebo origin/dest sú z viaFlags 0 a last
+    return {
+      location: new google.maps.LatLng(c[1], c[0]),
+      stopover: !isVia, // via-point = stopover:false, stop = stopover:true
+    };
+  });
+
+  const request = {
+    origin,
+    destination,
+    waypoints,
+    travelMode: google.maps.TravelMode.DRIVING,
+  };
+
+  const response = await service.route(request);
+  if(!response.routes?.length) throw new Error('No routes found for multi-waypoint request');
+
+  return {
+    routes: response.routes.map(route => {
+      const coordinates = route.overview_path.map(ll => [ll.lng(), ll.lat()]);
+      let totalDist = 0, totalDur = 0;
+      for(const leg of route.legs){
+        totalDist += leg.distance.value;
+        totalDur += leg.duration.value;
+      }
+      return {
+        geometry: { type: 'LineString', coordinates },
+        distance: totalDist,
+        duration: totalDur,
+        summary: route.summary || '',
+        _googleLegs: route.legs,
+        _googleRoute: route,
+      };
+    }),
+  };
 }
 
 // Pomocná funkcia — jeden Google Directions request pre single leg
@@ -1769,9 +1837,14 @@ function countryColor(id){
 
 function addMbMarker(coords,label,name){
   const el=document.createElement('div');
-  el.style.cssText='width:28px;height:28px;border-radius:50%;background:#D4820A;color:#000;font-family:Geist,sans-serif;font-weight:900;font-size:12px;display:flex;align-items:center;justify-content:center;border:2px solid rgba(255,255,255,.8);box-shadow:0 2px 10px rgba(0,0,0,.5);cursor:pointer;z-index:10;';
-  el.textContent=label;
-  const marker=new mapboxgl.Marker({element:el}).setLngLat(coords).setPopup(new mapboxgl.Popup({offset:20,closeButton:false}).setHTML(`<strong style="font-size:12px;">${name}</strong>`)).addTo(mrMap);
+  // Ak nie je label = via-point (prechádzacia bod), menší neutrálny bod bez písmena
+  if(!label){
+    el.style.cssText='width:10px;height:10px;border-radius:50%;background:#c084fc;border:2px solid rgba(255,255,255,.6);box-shadow:0 2px 6px rgba(0,0,0,.5);cursor:pointer;z-index:8;opacity:.7;';
+  } else {
+    el.style.cssText='width:28px;height:28px;border-radius:50%;background:#D4820A;color:#000;font-family:Geist,sans-serif;font-weight:900;font-size:12px;display:flex;align-items:center;justify-content:center;border:2px solid rgba(255,255,255,.8);box-shadow:0 2px 10px rgba(0,0,0,.5);cursor:pointer;z-index:10;';
+    el.textContent=label;
+  }
+  const marker=new mapboxgl.Marker({element:el}).setLngLat(coords).setPopup(new mapboxgl.Popup({offset:20,closeButton:false}).setHTML(`<strong style="font-size:12px;">${name||'Via point'}</strong>`)).addTo(mrMap);
   mrMarkers.push(marker);
 }
 
@@ -1963,14 +2036,27 @@ function addStop(placeholder){
 
 function removeStop(id){
   mrStops=mrStops.filter(s=>s!==id);
+  mrViaStops.delete(id);
+  delete _inputCoords[id];
   document.querySelector(`.stop-row[data-stop-id="${id}"]`)?.remove();
   relabelStops();
 }
 
 function relabelStops(){
   const labels=['A','B','C','D','E','F','G','H'];
-  document.querySelectorAll('.stop-row').forEach((row,i)=>{
-    row.querySelector('.stop-label').textContent=labels[i]||String(i+1);
+  let letterIdx = 0;
+  document.querySelectorAll('.stop-row').forEach(row => {
+    const stopId = row.dataset.stopId;
+    const labelSpan = row.querySelector('.stop-label');
+    if(mrViaStops.has(stopId)){
+      // via-point: bullet namiesto písmena
+      labelSpan.textContent = '•';
+      labelSpan.style.color = 'rgba(192,132,252,.8)'; // fialová ako marker
+    } else {
+      labelSpan.textContent = labels[letterIdx] || String(letterIdx+1);
+      labelSpan.style.color = '';
+      letterIdx++;
+    }
   });
 }
 
@@ -3236,6 +3322,7 @@ async function applyCustomRoute(){
     }
 
     mrStops = [...mrStops.slice(0, actualIdx), newId, ...mrStops.slice(actualIdx)];
+    mrViaStops.add(newId); // označ ako via-point (cesta len prechádza, nie je to zastávka)
     insertedCount++;
 
     attachAutocomplete(newId);
@@ -3280,6 +3367,66 @@ function cleanupCustomRouteMode(){
   document.getElementById('mr-edit-btn').style.display = 'block';
   document.getElementById('mr-edit-actions').style.display = 'none';
   document.getElementById('mr-edit-hint').style.display = 'none';
+}
+
+
+// ══════════════════════════════════════════════════════════
+// ── OPEN IN GOOGLE MAPS ──
+// Vygeneruje URL pre Google Maps Directions s origin + waypointmi + destination.
+// User klikne → otvorí sa v novom tabe (web) alebo v Google Maps app (mobile).
+// ══════════════════════════════════════════════════════════
+function buildGoogleMapsUrl(){
+  const stopIds = mrStops.filter(id => {
+    const el = document.getElementById(id);
+    return el && el.value.trim().length > 0;
+  });
+  if(stopIds.length < 2) return null;
+
+  // Pre každú stopu preferuj GPS z _inputCoords (presnejšie),
+  // fallback na text input (Google si ho resolvne)
+  const parts = stopIds.map(id => {
+    const coords = _inputCoords[id];
+    if(coords && coords.length === 2){
+      return `${coords[1]},${coords[0]}`; // lat,lng
+    }
+    return encodeURIComponent(document.getElementById(id).value.trim());
+  });
+
+  const origin = parts[0];
+  const destination = parts[parts.length - 1];
+  const waypoints = parts.slice(1, -1);
+
+  let url = `https://www.google.com/maps/dir/?api=1`;
+  url += `&origin=${origin}`;
+  url += `&destination=${destination}`;
+  if(waypoints.length){
+    url += `&waypoints=${waypoints.join('|')}`;
+  }
+  url += `&travelmode=driving`;
+  return url;
+}
+
+function openInGoogleMaps(ev){
+  if(ev) ev.preventDefault();
+  const url = buildGoogleMapsUrl();
+  if(!url){
+    alert('Please calculate a route first.');
+    return false;
+  }
+  console.log('[GoogleMaps] Opening:', url);
+  window.open(url, '_blank', 'noopener');
+  return false;
+}
+
+// Ukáže/skryje "Open in Google Maps" button podľa stavu trasy
+function toggleGmapNavButton(show){
+  const wrap = document.getElementById('gmap-nav-wrap');
+  if(!wrap) return;
+  if(show){
+    wrap.classList.add('visible');
+  } else {
+    wrap.classList.remove('visible');
+  }
 }
 
 
@@ -3331,12 +3478,16 @@ async function calcMapRoute(){
     setLoading('⏳ Calculating routes from Google…');
 
     // 2. Google Directions cez JS SDK
+    // Pripravíme aj viaFlags array — paralelne s coords, true = via-point (stopover:false)
+    const viaFlags = stopIds.map(id => mrViaStops.has(id));
+    console.log('[Calc] viaFlags:', viaFlags);
+
     let routeData;
     try {
       if(!window.google?.maps?.DirectionsService){
         setLoading('⏳ Loading Google Directions (first time only)…');
       }
-      routeData = await fetchGoogleDirections(coords);
+      routeData = await fetchGoogleDirections(coords, viaFlags);
       console.log('[Routes] Google returned', routeData.routes.length, 'route(s)');
       setLoading('⏳ Processing routes…');
     } catch(googleErr){
@@ -3377,9 +3528,21 @@ async function calcMapRoute(){
     rc.forEach(p => bounds.extend(p));
     mrMap.fitBounds(bounds, { padding: { top: 60, bottom: 60, left: 60, right: 60 }, duration: 1000 });
 
-    // 8. Markers pre stopy
+    // 8. Markers pre stopy — via-points dostanú null label (malý bod namiesto písmena)
     const labels = ['A','B','C','D','E','F','G','H'];
-    coords.forEach((coord, i) => addMbMarker(coord, labels[i] || String(i+1), stopInputs[i]));
+    let letterIdx = 0;
+    coords.forEach((coord, i) => {
+      const stopId = stopIds[i];
+      const isVia = mrViaStops.has(stopId);
+      if(isVia){
+        // via-point: null label → malý fialový bod bez písmena
+        addMbMarker(coord, null, stopInputs[i]);
+      } else {
+        // skutočná zastávka: písmeno
+        addMbMarker(coord, labels[letterIdx] || String(letterIdx+1), stopInputs[i]);
+        letterIdx++;
+      }
+    });
 
     // 9. Render RIGHT panel — Route options karty
     renderRouteOptionsPanel(routeData.routes, 0);
@@ -3397,6 +3560,8 @@ async function calcMapRoute(){
     document.getElementById('mr-legend').style.display = 'block';
     // Ukáž Edit route toolbar po úspešnom Calculate
     document.getElementById('mr-map-toolbar').style.display = 'block';
+    // Ukáž "Open in Google Maps" floating button
+    toggleGmapNavButton(true);
 
   } catch(err){
     document.getElementById('mr-right-body').innerHTML = `<div style="font-size:.75rem;color:#f87171;padding:.75rem;background:rgba(248,113,113,.08);border:1px solid rgba(248,113,113,.25);border-radius:8px;">Error: ${err.message}</div>`;
