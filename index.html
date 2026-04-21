@@ -415,6 +415,43 @@ main { padding:2rem; max-width:1300px; margin:0 auto; }
 .broute { width:100%; padding:.6rem; background:var(--f); color:#fff; border:none; border-radius:7px; font-size:.78rem; font-weight:600; cursor:pointer; font-family:'Geist',sans-serif; margin-bottom:.85rem; transition:background .15s; }
 .broute:hover { background:#0a2850; }
 
+/* Ghost add-stop button - secondary action, less visual weight */
+.mr-add-stop-ghost {
+  display:inline-flex;
+  align-items:center;
+  gap:.45rem;
+  padding:.4rem .75rem;
+  margin-top:.35rem;
+  margin-bottom:.5rem;
+  background:transparent;
+  color:rgba(124,58,237,.85);
+  border:1.5px dashed rgba(124,58,237,.4);
+  border-radius:6px;
+  font-size:.72rem;
+  font-weight:500;
+  font-family:'Geist',sans-serif;
+  cursor:pointer;
+  letter-spacing:.02em;
+  transition:all .15s ease;
+}
+.mr-add-stop-ghost:hover {
+  background:rgba(124,58,237,.08);
+  border-color:rgba(124,58,237,.7);
+  color:rgba(124,58,237,1);
+}
+.mr-add-stop-ghost:active {
+  transform:translateY(1px);
+}
+.mr-add-stop-ghost svg {
+  width:11px;
+  height:11px;
+  stroke:currentColor;
+  fill:none;
+  stroke-width:2.5;
+  stroke-linecap:round;
+  opacity:.8;
+}
+
 .divider-or { text-align:center; font-size:.7rem; color:var(--muted); margin:.75rem 0; display:flex; align-items:center; gap:.6rem; }
 .divider-or::before, .divider-or::after { content:''; flex:1; height:1px; background:var(--border); }
 
@@ -762,8 +799,8 @@ main { padding:2rem; max-width:1300px; margin:0 auto; }
       <!-- STOPS sekcia -->
       <div class="mr-stops-label">Stops</div>
       <div id="mr-stops-wrap"></div>
-      <button class="broute" onclick="addStop()" style="margin-top:.1rem;display:inline-flex;align-items:center;gap:.4rem;padding:.5rem 1rem;">
-        <svg style="width:12px;height:12px;stroke:currentColor;fill:none;stroke-width:2.5;stroke-linecap:round;" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+      <button class="mr-add-stop-ghost" onclick="addStop()">
+        <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
         Add stop
       </button>
 
