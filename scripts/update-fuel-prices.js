@@ -187,7 +187,22 @@ function parseHRPricesFromCijeneGoriva(html) {
       companies.push({ name, price, top: isTopBrand(name) });
     }
 
-    if(companies.length === 0) return { median: null, companies: [] };
+    if(companies.length === 0){
+      // DEBUG: dump section info to diagnose what HTML actually arrived
+      const euroCount = (section.match(/€/g) || []).length;
+      const eurEntityCount = (section.match(/&euro;|&#8364;|&#x20AC;/gi) || []).length;
+      const eurTextCount = (section.match(/\bEUR\b/g) || []).length;
+      const numberCount = (section.match(/[\d]+[,.][\d]+/g) || []).length;
+      console.log(`    ${label}: ❌ NO companies parsed!`);
+      console.log(`      section.length=${section.length}`);
+      console.log(`      € symbols: ${euroCount}, EUR entities: ${eurEntityCount}, EUR text: ${eurTextCount}`);
+      console.log(`      number patterns (X,XX or X.XX): ${numberCount}`);
+      console.log(`      First 500 chars of section:`);
+      console.log(`      ---`);
+      console.log(`      ${section.slice(0, 500)}`);
+      console.log(`      ---`);
+      return { median: null, companies: [] };
+    }
 
     // Sort: top brands first, then alphabetically
     companies.sort((a, b) => {
@@ -201,8 +216,19 @@ function parseHRPricesFromCijeneGoriva(html) {
     return { median, companies };
   };
 
+  // DEBUG: log overall fetch info BEFORE attempting parse
+  console.log(`    📥 HTML received: ${html.length} chars`);
+  console.log(`    📝 Stripped text: ${stripped.length} chars`);
+  console.log(`    💶 Total € in stripped: ${(stripped.match(/€/g) || []).length}`);
+  console.log(`    💶 Total &euro;/&#8364; entities: ${(stripped.match(/&euro;|&#8364;|&#x20AC;/gi) || []).length}`);
+  console.log(`    💶 Total "EUR" text occurrences: ${(stripped.match(/\bEUR\b/g) || []).length}`);
+  console.log(`    🔢 Total decimal numbers (X,XX or X.XX): ${(stripped.match(/[\d]+[,.][\d]+/g) || []).length}`);
+
   const petrolSection = extractSection('Eurosuper 95');
   const dieselSection = extractSection('Eurodizel');
+
+  console.log(`    📦 Petrol section: ${petrolSection ? petrolSection.length + ' chars' : 'NULL'}`);
+  console.log(`    📦 Diesel section: ${dieselSection ? dieselSection.length + ' chars' : 'NULL'}`);
 
   const petrolData = parseSection(petrolSection, 'Eurosuper 95');
   const dieselData = parseSection(dieselSection, 'Eurodizel');
