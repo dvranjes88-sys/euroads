@@ -1,0 +1,35 @@
+{
+  "_updated": "2026-04-21",
+  "_description": "Manual fuel prices for non-EU countries. Update monthly from GlobalPetrolPrices.com or national sources.",
+  "_update_instructions": "Edit this file when prices change significantly. GitHub Action will merge these into fuel-prices.json. For EU countries (AT, BE, ...), do NOT override — they are fetched automatically from EU Oil Bulletin.",
+  "_sources": {
+    "BA": "https://www.globalpetrolprices.com/Bosnia-and-Herzegovina/gasoline_prices/",
+    "RS": "https://www.globalpetrolprices.com/Serbia/gasoline_prices/",
+    "ME": "https://www.globalpetrolprices.com/Montenegro/gasoline_prices/",
+    "MK": "https://www.globalpetrolprices.com/Macedonia/gasoline_prices/",
+    "AL": "https://www.globalpetrolprices.com/Albania/gasoline_prices/",
+    "XK": "https://www.globalpetrolprices.com/Kosovo/gasoline_prices/",
+    "CH": "https://www.globalpetrolprices.com/Switzerland/gasoline_prices/",
+    "NO": "https://www.globalpetrolprices.com/Norway/gasoline_prices/",
+    "UK": "https://www.globalpetrolprices.com/United-Kingdom/gasoline_prices/",
+    "TR": "https://www.globalpetrolprices.com/Turkey/gasoline_prices/",
+    "UA": "https://www.globalpetrolprices.com/Ukraine/gasoline_prices/",
+    "MD": "https://www.globalpetrolprices.com/Moldova/gasoline_prices/",
+    "GE": "https://www.globalpetrolprices.com/Georgia/gasoline_prices/"
+  },
+  "prices": {
+    "BA": { "petrol": 1.38, "diesel": 1.71 },
+    "RS": { "petrol": 1.42, "diesel": 1.61 },
+    "ME": { "petrol": 1.55, "diesel": 1.65 },
+    "MK": { "petrol": 1.48, "diesel": 1.55 },
+    "AL": { "petrol": 1.56, "diesel": 1.63 },
+    "XK": { "petrol": 1.30, "diesel": 1.35 },
+    "CH": { "petrol": 1.85, "diesel": 2.05 },
+    "NO": { "petrol": 2.20, "diesel": 2.30 },
+    "UK": { "petrol": 1.68, "diesel": 1.80 },
+    "TR": { "petrol": 1.35, "diesel": 1.40 },
+    "UA": { "petrol": 1.25, "diesel": 1.35 },
+    "MD": { "petrol": 1.30, "diesel": 1.35 },
+    "GE": { "petrol": 1.10, "diesel": 1.25 }
+  }
+}
