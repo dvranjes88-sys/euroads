@@ -1,0 +1,40 @@
+name: Update Fuel Prices
+
+on:
+  schedule:
+    # Every Thursday at 16:00 UTC (18:00 CET) - after EU Oil Bulletin release
+    - cron: '0 16 * * 4'
+  workflow_dispatch:  # Manual trigger button in GitHub UI
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Run fuel price updater
+        id: update
+        run: node scripts/update-fuel-prices.js
+        continue-on-error: true
+
+      - name: Commit & push if changed
+        if: steps.update.outcome == 'success'
+        run: |
+          if git diff --quiet fuel-prices.json; then
+            echo "No changes to commit"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          UPDATED_DATE=$(node -p "require('./fuel-prices.json')._updated")
+          git add fuel-prices.json
+          git commit -m "data: auto-update fuel prices ${UPDATED_DATE}"
+          git push
