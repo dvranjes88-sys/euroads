@@ -82,98 +82,135 @@ function parseEUPrices(text) {
 }
 
 // ── Scrape Croatia from cijenegoriva.info ──────────────────
-// HTML contains tables with structure:
-//   <strong>Eurosuper 95</strong> (or markdown **Eurosuper 95**)
-//   | Naftna tvrtka | Cijena |
-//   | AdriaOil | 1,66 € |
-//   | Ina | 1,66 € | ...
+// Page can be served as raw HTML (with <table>, <tr>, <td>, <strong>)
+// OR as markdown (with **bold**, | tables |). Parser handles both.
 //
 // Returns:
 //   { petrol: 1.66, diesel: 1.85,
 //     companies: { petrol: [{name, price}, ...], diesel: [...] },
-//     _lastUpdated: date string extracted from page }
-//
-// Top national networks (prioritized in UI): INA, Lukoil, Shell, Petrol, Tifon, Crodux, AdriaOil
-// Local/regional pumps (Attendo, Mitea) are also captured but de-prioritized.
+//     validFrom: date string }
 
-const TOP_BRANDS = ['INA', 'Lukoil', 'Shell', 'Petrol', 'Tifon', 'Crodux', 'AdriaOil', 'Ina'];
+const TOP_BRANDS = ['ina', 'lukoil', 'shell', 'petrol', 'tifon', 'crodux', 'adriaoil'];
 
 function normalizeCompanyName(raw) {
+  // Strip HTML tags first (in case there are any remaining)
+  let name = raw.replace(/<[^>]+>/g, '').trim();
   // "Crodux Derivati (Petrol)" → "Crodux"
-  // "Attendo centar (Dugo Selo)" → "Attendo"
-  // "Ina" → "INA"
-  let name = raw.replace(/\([^)]+\)/g, '').trim();
+  // "Attendo centar (Dugo Selo)" → "Attendo centar"
+  name = name.replace(/\s*\([^)]+\)/g, '').trim();
   name = name.replace(/\s+Derivati$/i, '').trim();
   if(name.toLowerCase() === 'ina') return 'INA';
   return name;
 }
 
 function isTopBrand(name) {
-  const lower = name.toLowerCase();
-  return TOP_BRANDS.some(b => b.toLowerCase() === lower);
+  return TOP_BRANDS.includes(name.toLowerCase());
 }
 
 function parseHRPricesFromCijeneGoriva(html) {
-  // Extract "CIJENE vrijede od 07.04.2026. do 21.04.2026." - valid from/to
+  // Strip HTML tags only when needed - keep raw for table extraction
+  const stripped = html.replace(/<[^>]+>/g, ' ').replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ');
+
+  // Extract date "vrijede od 07.04.2026"
   let validDate = null;
-  const dateMatch = html.match(/vrijede\s+od\s+(\d{1,2}\.\d{1,2}\.\d{4})/i);
+  const dateMatch = stripped.match(/vrijede\s+od\s+(\d{1,2}\.\d{1,2}\.\d{4})/i);
   if(dateMatch) validDate = dateMatch[1];
 
-  const extractSection = (regex, label) => {
-    let searchFrom = 0;
-    while(searchFrom < html.length){
-      const searchSlice = html.slice(searchFrom);
-      const match = searchSlice.match(regex);
-      if(!match) return null;
-      const absoluteIdx = searchFrom + match.index;
-      const beforeText = html.slice(Math.max(0, absoluteIdx - 30), absoluteIdx).toLowerCase();
-      if(beforeText.includes('premium')){
-        searchFrom = absoluteIdx + match[0].length;
-        continue;
+  // Find ALL price+company combinations using PERMISSIVE regex.
+  // This works on both HTML and markdown — we look for:
+  //   <something>CompanyName<something>1,66 €<something>
+  // where "something" is any markup (HTML tags, pipes, etc.)
+  //
+  // Strategy: split text into chunks at heading-like keywords,
+  // then for each chunk extract company-price pairs.
+
+  // First locate fuel type sections by keyword position in stripped text
+  const findKeyword = (text, keyword, skipPremium = true) => {
+    let pos = 0;
+    while(pos < text.length){
+      const idx = text.toLowerCase().indexOf(keyword.toLowerCase(), pos);
+      if(idx === -1) return -1;
+      if(skipPremium){
+        const before = text.slice(Math.max(0, idx - 25), idx).toLowerCase();
+        if(before.includes('premium')){
+          pos = idx + keyword.length;
+          continue;
+        }
       }
-      const headingEnd = absoluteIdx + match[0].length;
-      const rest = html.slice(headingEnd);
-      const nextHeading = rest.search(/(?:\*\*|<strong[^>]*>)\s*(?:Eurosuper|Eurodizel|Premium|Autoplin|Lo[žz]\s*ulje|Plavi)/i);
-      const sectionEnd = nextHeading === -1 ? Math.min(rest.length, 2000) : nextHeading;
-      return rest.slice(0, sectionEnd);
+      return idx;
     }
-    return null;
+    return -1;
   };
 
-  const parseCompaniesFromSection = (section, label) => {
+  // Get sections between headings in stripped text
+  const extractSection = (startKeyword) => {
+    const startIdx = findKeyword(stripped, startKeyword, true);
+    if(startIdx === -1) return null;
+    const sectionStart = startIdx + startKeyword.length;
+    const rest = stripped.slice(sectionStart);
+    // Stop at next heading: any of the fuel/section names
+    const nextHeadingRegex = /\b(Premium|Eurosuper|Eurodizel|Autoplin|Lo[žz]\s*ulje|Plavi)\b/i;
+    const nextMatch = rest.match(nextHeadingRegex);
+    const sectionEnd = nextMatch ? Math.min(nextMatch.index, 3000) : Math.min(rest.length, 3000);
+    return rest.slice(0, sectionEnd);
+  };
+
+  // Parse companies+prices from a section
+  // Permissive: looks for pairs of (CompanyName, NUMBER €)
+  // CompanyName is identified by being a sequence of letters before a price.
+  const parseSection = (section, label) => {
     if(!section) return { median: null, companies: [] };
-    // Match: | <company name> | <number>,<number> € |  (markdown table rows)
-    const rowMatches = [...section.matchAll(/\|\s*([A-Z][^|\n]+?)\s*\|\s*([\d]+[,.][\d]+)\s*€\s*\|/g)];
+
+    // Extract all price values "1,66 €" or "1.66 €"
+    // PLUS the ~80 chars BEFORE each price (where company name lives)
+    const priceRegex = /([\d]+[,.][\d]+)\s*€/g;
     const companies = [];
-    for(const m of rowMatches){
-      const rawName = m[1].trim();
-      const price = parseFloat(m[2].replace(',', '.'));
+    let m;
+    while((m = priceRegex.exec(section)) !== null){
+      const price = parseFloat(m[1].replace(',', '.'));
       if(isNaN(price) || price < 0.8 || price > 3.5) continue;
+      const before = section.slice(Math.max(0, m.index - 80), m.index);
+      // Strip pipes and table headers
+      let cleanBefore = before.replace(/[|]/g, ' ').replace(/\s+/g, ' ').trim();
+      // Remove generic table headers if they appear in our search window
+      cleanBefore = cleanBefore.replace(/\b(Naftna\s+tvrtka|Cijena|tvrtka|Cijene)\b/gi, '').trim();
+      // Now match: capital letter, then word chars/spaces/parens, ending in letter or paren
+      const nameMatch = cleanBefore.match(/([A-ZČĆŠĐŽ][a-zA-ZČčĆćŠšĐđŽž0-9 ()]*[a-zA-ZČčĆćŠšĐđŽž)])\s*$/);
+      if(!nameMatch) continue;
+      const rawName = nameMatch[1].trim();
+      // Skip if name is too generic (extra safety)
+      if(/^(Naftna|tvrtka|Cijena|tvrtke)$/i.test(rawName)) continue;
       const name = normalizeCompanyName(rawName);
-      if(name && name.length > 1) companies.push({ name, price, top: isTopBrand(name) });
+      if(!name || name.length < 2 || name.length > 40) continue;
+      // Avoid duplicates (some pages list same company twice)
+      if(companies.some(c => c.name === name)) continue;
+      companies.push({ name, price, top: isTopBrand(name) });
     }
+
     if(companies.length === 0) return { median: null, companies: [] };
+
     // Sort: top brands first, then alphabetically
     companies.sort((a, b) => {
       if(a.top !== b.top) return a.top ? -1 : 1;
       return a.name.localeCompare(b.name);
     });
-    // Median price
+
     const prices = companies.map(c => c.price).sort((a, b) => a - b);
     const median = prices[Math.floor(prices.length / 2)];
-    console.log(`    ${label}: ${companies.length} companies, median €${median}`);
+    console.log(`    ${label}: ${companies.length} companies, median €${median.toFixed(2)}`);
     return { median, companies };
   };
 
-  const petrolSection = extractSection(/(?:\*\*|<strong[^>]*>)\s*Eurosuper\s*95\s*(?:\*\*|<\/strong>)/i, 'Eurosuper 95');
-  const dieselSection = extractSection(/(?:\*\*|<strong[^>]*>)\s*Eurodizel\s*(?:\*\*|<\/strong>)/i, 'Eurodizel');
+  const petrolSection = extractSection('Eurosuper 95');
+  const dieselSection = extractSection('Eurodizel');
 
-  const petrolData = parseCompaniesFromSection(petrolSection, 'Eurosuper 95');
-  const dieselData = parseCompaniesFromSection(dieselSection, 'Eurodizel');
+  const petrolData = parseSection(petrolSection, 'Eurosuper 95');
+  const dieselData = parseSection(dieselSection, 'Eurodizel');
 
   if(!petrolData.median || !dieselData.median){
-    throw new Error(`Could not parse HR from cijenegoriva.info (petrol=${petrolData.median}, diesel=${dieselData.median})`);
+    throw new Error(`Could not parse HR (petrol=${petrolData.median}, diesel=${dieselData.median}, sections found: petrol=${!!petrolSection}, diesel=${!!dieselSection})`);
   }
+
   return {
     petrol: petrolData.median,
     diesel: dieselData.median,
