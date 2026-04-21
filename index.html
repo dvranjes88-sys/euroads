@@ -361,8 +361,6 @@ main { padding:2rem; max-width:1300px; margin:0 auto; }
 .mr-route-card.shortest.selected { border-color: #6eb3f7; color: #6eb3f7; background: rgba(110,179,247,.06); }
 .mr-route-card.alternative { border-color: rgba(192,132,252,.25); }
 .mr-route-card.alternative.selected { border-color: #c084fc; color: #c084fc; background: rgba(192,132,252,.06); }
-.mr-route-card.tollfree { border-color: rgba(167,139,250,.3); }
-.mr-route-card.tollfree.selected { border-color: #a78bfa; color: #a78bfa; background: rgba(167,139,250,.07); }
 
 .mr-route-card-head { display: flex; align-items: center; gap: .45rem; margin-bottom: .35rem; }
 .mr-route-ico { width: 22px; height: 22px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: .75rem; flex-shrink: 0; }
@@ -370,7 +368,6 @@ main { padding:2rem; max-width:1300px; margin:0 auto; }
 .mr-route-ico.cheapest { background: rgba(34,201,151,.15); color: #22c997; }
 .mr-route-ico.shortest { background: rgba(110,179,247,.15); color: #6eb3f7; }
 .mr-route-ico.alternative { background: rgba(192,132,252,.15); color: #c084fc; }
-.mr-route-ico.tollfree { background: rgba(167,139,250,.15); color: #a78bfa; }
 .mr-route-label { font-family: 'Geist', sans-serif; font-weight: 700; font-size: .72rem; color: #fff; }
 .mr-route-save { margin-left: auto; background: #22c997; color: #0A0E1A; font-size: .55rem; font-weight: 800; padding: .12rem .45rem; border-radius: 3px; letter-spacing: .04em; white-space: nowrap; }
 .mr-route-selected-pill { margin-left: auto; font-size: .58rem; color: inherit; font-weight: 700; display: flex; align-items: center; gap: .25rem; }
@@ -1599,14 +1596,13 @@ async function fetchGoogleMultiWaypoint(service, coords, viaFlags){
 }
 
 // Pomocná funkcia — jeden Google Directions request pre single leg
-async function fetchGoogleSingleLeg(service, originCoord, destCoord, alternatives, avoidTolls){
+async function fetchGoogleSingleLeg(service, originCoord, destCoord, alternatives){
   const request = {
     origin: { lat: originCoord[1], lng: originCoord[0] },
     destination: { lat: destCoord[1], lng: destCoord[0] },
     provideRouteAlternatives: alternatives,
     travelMode: google.maps.TravelMode.DRIVING,
   };
-  if(avoidTolls) request.avoidTolls = true;
   const response = await service.route(request);
   if(!response.routes?.length) throw new Error('No routes for leg');
 
@@ -1628,68 +1624,6 @@ async function fetchGoogleSingleLeg(service, originCoord, destCoord, alternative
       };
     }),
   };
-}
-
-// ══════════════════════════════════════════════════════════
-// ── Fetch Toll-Free Route ──
-// Volá Google Directions s avoidTolls:true pre kompletnú
-// trasu (všetky stops, single request). Vráti jednu trasu
-// alebo null ak je identická s existujúcou.
-// ══════════════════════════════════════════════════════════
-async function fetchTollFreeRoute(service, coords, viaFlags, existingRoutes){
-  try {
-    // Pre single-leg (2 body): priamo fetchGoogleSingleLeg s avoidTolls
-    if(coords.length === 2){
-      const leg = await fetchGoogleSingleLeg(service, coords[0], coords[1], false, /* avoidTolls */ true);
-      if(!leg.routes?.length) return null;
-      return leg.routes[0];
-    }
-
-    // Multi-waypoint: jeden request s avoidTolls + správnymi stopover flagmi
-    viaFlags = viaFlags || coords.map(() => false);
-    const origin = { lat: coords[0][1], lng: coords[0][0] };
-    const destination = { lat: coords[coords.length-1][1], lng: coords[coords.length-1][0] };
-    const waypoints = coords.slice(1, -1).map((c, i) => ({
-      location: new google.maps.LatLng(c[1], c[0]),
-      stopover: !viaFlags[i + 1],
-    }));
-
-    const response = await service.route({
-      origin,
-      destination,
-      waypoints,
-      avoidTolls: true,
-      travelMode: google.maps.TravelMode.DRIVING,
-    });
-    if(!response.routes?.length) return null;
-
-    const route = response.routes[0];
-    const coordinates = route.overview_path.map(ll => [ll.lng(), ll.lat()]);
-    let totalDist = 0, totalDur = 0;
-    for(const leg of route.legs){
-      totalDist += leg.distance.value;
-      totalDur += leg.duration.value;
-    }
-    return {
-      geometry: { type: 'LineString', coordinates },
-      distance: totalDist,
-      duration: totalDur,
-      summary: route.summary || '',
-      _googleLegs: route.legs,
-      _googleRoute: route,
-    };
-  } catch(e){
-    console.warn('[TollFree] Failed to fetch toll-free route:', e.message);
-    return null;
-  }
-}
-
-// Helper: detekuj či sú dve routes takmer identické (same path)
-function isDuplicateRoute(routeA, routeB, distToleranceM = 2000){
-  if(!routeA || !routeB) return false;
-  // Rovnaká dĺžka ± 2km + rovnaký čas ± 5 min = duplicate
-  return Math.abs(routeA.distance - routeB.distance) < distToleranceM
-      && Math.abs(routeA.duration - routeB.duration) < 300;
 }
 
 // Combinuje alternatívy z viacerých legov do 3 "combined routes".
@@ -3727,41 +3661,12 @@ async function calcMapRoute(){
     console.log('[Calc] viaFlags:', viaFlags);
 
     let routeData;
-    let tollFreeRoute = null;
     try {
       if(!window.google?.maps?.DirectionsService){
         setLoading('⏳ Loading Google Directions (first time only)…');
       }
       routeData = await fetchGoogleDirections(coords, viaFlags);
       console.log('[Routes] Google returned', routeData.routes.length, 'route(s)');
-
-      // Toll-free fetch — paralelný extra request po loadnutí SDK
-      setLoading('⏳ Fetching toll-free alternative…');
-      try {
-        tollFreeRoute = await fetchTollFreeRoute(
-          new google.maps.DirectionsService(),
-          coords,
-          viaFlags,
-          []
-        );
-        if(tollFreeRoute){
-          const isDup = routeData.routes.some(r => isDuplicateRoute(r, tollFreeRoute));
-          if(isDup){
-            console.log('[TollFree] Toll-free route is duplicate → skipping');
-            tollFreeRoute = null;
-          } else {
-            console.log('[TollFree] Adding toll-free:',
-              `${(tollFreeRoute.distance/1000).toFixed(0)}km`,
-              `${Math.floor(tollFreeRoute.duration/60)}min`);
-            tollFreeRoute._labels = ['Toll-free'];
-            tollFreeRoute._isTollFree = true;
-            routeData.routes.push(tollFreeRoute);
-          }
-        }
-      } catch(tfErr){
-        console.warn('[TollFree] Toll-free fetch failed:', tfErr.message);
-      }
-
       setLoading('⏳ Processing routes…');
     } catch(googleErr){
       console.warn('[Routes] Google failed, falling back to Mapbox:', googleErr.message);
@@ -3925,10 +3830,9 @@ function renderRouteOptionsPanel(routes, activeIdx){
     const h = Math.floor(r.duration/3600), m = Math.floor((r.duration%3600)/60);
     const labelsArr = r._labels && r._labels.length ? r._labels : [(r._decomposed && r.summary) || (i === 0 ? 'Fastest' : `Route ${i+1}`)];
     const primaryLabel = labelsArr[0];
-    // Toll-free → tollfree (remove hyphen for CSS class matching)
-    const labelLower = primaryLabel.toLowerCase().replace('-', '');
+    const labelLower = primaryLabel.toLowerCase();
 
-    const icons = { fastest: '⚡', cheapest: '€', shortest: '↔', alternative: '🔀', tollfree: '🚫' };
+    const icons = { fastest: '⚡', cheapest: '€', shortest: '↔', alternative: '🔀' };
     const ico = icons[labelLower] || '•';
 
     const isSelected = i === activeIdx;
@@ -3944,8 +3848,8 @@ function renderRouteOptionsPanel(routes, activeIdx){
     // Ak má trasa viac labelov (napr. "Fastest + Shortest"), zobraz všetky
     const allLabels = labelsArr.length > 1
       ? labelsArr.map((l, li) => {
-          const iconList = { Fastest: '⚡', Cheapest: '€', Shortest: '↔', Alternative: '🔀', 'Toll-free': '🚫' };
-          const colorList = { Fastest: '#f4a45a', Cheapest: '#22c997', Shortest: '#6eb3f7', Alternative: '#c084fc', 'Toll-free': '#a78bfa' };
+          const iconList = { Fastest: '⚡', Cheapest: '€', Shortest: '↔', Alternative: '🔀' };
+          const colorList = { Fastest: '#f4a45a', Cheapest: '#22c997', Shortest: '#6eb3f7', Alternative: '#c084fc' };
           return `<span style="color:${colorList[l] || '#fff'};font-size:.7rem;">${iconList[l] || '•'} ${l}</span>`;
         }).join('<span style="color:rgba(255,255,255,.25);margin:0 .3rem;">+</span>')
       : `<span class="mr-route-label">${primaryLabel}</span>`;
