@@ -3,51 +3,167 @@
   "_sources": {
     "eu_27": "EU Oil Bulletin via fuel-prices.eu (CC BY 4.0)",
     "hr": "Government of Croatia via cijenegoriva.info (updated every 14 days)",
-    "balkan": "Manual via balkan-manual.json (monthly updates)"
+    "balkan": "Manual via balkan-manual.json (last edit 2026-04-21)"
   },
-  "_auto_updated": "2026-04-21T19:00:00Z",
+  "_auto_updated": "2026-04-21T19:53:38.860Z",
   "_notes": "Prices are national weekly averages including all taxes. Highway stations may charge 10-25% more.",
   "prices": {
-    "AT": { "petrol": 1.72, "diesel": 2.08 },
-    "BE": { "petrol": 1.88, "diesel": 2.33 },
-    "BG": { "petrol": 1.47, "diesel": 1.76 },
-    "HR": { "petrol": 1.66, "diesel": 1.85 },
-    "CY": { "petrol": 1.52, "diesel": 1.84 },
-    "CZ": { "petrol": 1.69, "diesel": 1.87 },
-    "DK": { "petrol": 2.23, "diesel": 2.34 },
-    "EE": { "petrol": 1.74, "diesel": 2.06 },
-    "FI": { "petrol": 2.01, "diesel": 2.30 },
-    "FR": { "petrol": 2.04, "diesel": 2.31 },
-    "DE": { "petrol": 2.14, "diesel": 2.28 },
-    "GR": { "petrol": 2.07, "diesel": 2.20 },
-    "HU": { "petrol": 1.64, "diesel": 1.71 },
-    "IE": { "petrol": 1.92, "diesel": 2.16 },
-    "IT": { "petrol": 1.78, "diesel": 2.15 },
-    "LV": { "petrol": 1.83, "diesel": 2.12 },
-    "LT": { "petrol": 1.75, "diesel": 2.15 },
-    "LU": { "petrol": 1.72, "diesel": 2.01 },
-    "MT": { "petrol": 1.34, "diesel": 1.21 },
-    "NL": { "petrol": 2.32, "diesel": 2.47 },
-    "PL": { "petrol": 1.43, "diesel": 1.77 },
-    "PT": { "petrol": 1.91, "diesel": 2.08 },
-    "RO": { "petrol": 1.75, "diesel": 1.92 },
-    "SK": { "petrol": 1.67, "diesel": 1.75 },
-    "SI": { "petrol": 1.64, "diesel": 1.85 },
-    "ES": { "petrol": 1.55, "diesel": 1.89 },
-    "SE": { "petrol": 1.71, "diesel": 2.13 },
-    "BA": { "petrol": 1.38, "diesel": 1.71 },
-    "RS": { "petrol": 1.42, "diesel": 1.61 },
-    "ME": { "petrol": 1.55, "diesel": 1.65 },
-    "MK": { "petrol": 1.48, "diesel": 1.55 },
-    "AL": { "petrol": 1.56, "diesel": 1.63 },
-    "XK": { "petrol": 1.30, "diesel": 1.35 },
-    "CH": { "petrol": 1.85, "diesel": 2.05 },
-    "NO": { "petrol": 2.20, "diesel": 2.30 },
-    "UK": { "petrol": 1.68, "diesel": 1.80 },
-    "TR": { "petrol": 1.35, "diesel": 1.40 },
-    "UA": { "petrol": 1.25, "diesel": 1.35 },
-    "MD": { "petrol": 1.30, "diesel": 1.35 },
-    "GE": { "petrol": 1.10, "diesel": 1.25 }
+    "MT": {
+      "petrol": 1.34,
+      "diesel": 1.21
+    },
+    "PL": {
+      "petrol": 1.434,
+      "diesel": 1.769
+    },
+    "BG": {
+      "petrol": 1.47,
+      "diesel": 1.756
+    },
+    "CY": {
+      "petrol": 1.52,
+      "diesel": 1.844
+    },
+    "ES": {
+      "petrol": 1.552,
+      "diesel": 1.885
+    },
+    "HU": {
+      "petrol": 1.635,
+      "diesel": 1.706
+    },
+    "SI": {
+      "petrol": 1.635,
+      "diesel": 1.852
+    },
+    "SK": {
+      "petrol": 1.669,
+      "diesel": 1.75
+    },
+    "CZ": {
+      "petrol": 1.693,
+      "diesel": 1.869
+    },
+    "SE": {
+      "petrol": 1.712,
+      "diesel": 2.129
+    },
+    "AT": {
+      "petrol": 1.718,
+      "diesel": 2.075
+    },
+    "HR": {
+      "petrol": 1.72,
+      "diesel": 1.99
+    },
+    "LU": {
+      "petrol": 1.721,
+      "diesel": 2.007
+    },
+    "EE": {
+      "petrol": 1.742,
+      "diesel": 2.058
+    },
+    "LT": {
+      "petrol": 1.745,
+      "diesel": 2.151
+    },
+    "RO": {
+      "petrol": 1.75,
+      "diesel": 1.915
+    },
+    "IT": {
+      "petrol": 1.783,
+      "diesel": 2.153
+    },
+    "LV": {
+      "petrol": 1.833,
+      "diesel": 2.124
+    },
+    "BE": {
+      "petrol": 1.875,
+      "diesel": 2.326
+    },
+    "PT": {
+      "petrol": 1.911,
+      "diesel": 2.083
+    },
+    "IE": {
+      "petrol": 1.917,
+      "diesel": 2.161
+    },
+    "FI": {
+      "petrol": 2.011,
+      "diesel": 2.304
+    },
+    "FR": {
+      "petrol": 2.036,
+      "diesel": 2.314
+    },
+    "DE": {
+      "petrol": 2.141,
+      "diesel": 2.275
+    },
+    "DK": {
+      "petrol": 2.232,
+      "diesel": 2.342
+    },
+    "NL": {
+      "petrol": 2.316,
+      "diesel": 2.469
+    },
+    "BA": {
+      "petrol": 1.38,
+      "diesel": 1.71
+    },
+    "RS": {
+      "petrol": 1.42,
+      "diesel": 1.61
+    },
+    "ME": {
+      "petrol": 1.55,
+      "diesel": 1.65
+    },
+    "MK": {
+      "petrol": 1.48,
+      "diesel": 1.55
+    },
+    "AL": {
+      "petrol": 1.56,
+      "diesel": 1.63
+    },
+    "XK": {
+      "petrol": 1.3,
+      "diesel": 1.35
+    },
+    "CH": {
+      "petrol": 1.85,
+      "diesel": 2.05
+    },
+    "NO": {
+      "petrol": 2.2,
+      "diesel": 2.3
+    },
+    "UK": {
+      "petrol": 1.68,
+      "diesel": 1.8
+    },
+    "TR": {
+      "petrol": 1.35,
+      "diesel": 1.4
+    },
+    "UA": {
+      "petrol": 1.25,
+      "diesel": 1.35
+    },
+    "MD": {
+      "petrol": 1.3,
+      "diesel": 1.35
+    },
+    "GE": {
+      "petrol": 1.1,
+      "diesel": 1.25
+    }
   },
   "hr_live": {
     "validFrom": "07.04.2026",
@@ -55,22 +171,78 @@
     "updatedAt": "2026-04-21T19:00:00Z",
     "companies": {
       "petrol": [
-        { "name": "AdriaOil", "price": 1.66, "top": true },
-        { "name": "Crodux", "price": 1.66, "top": true },
-        { "name": "INA", "price": 1.66, "top": true },
-        { "name": "Lukoil", "price": 1.66, "top": true },
-        { "name": "Petrol", "price": 1.66, "top": true },
-        { "name": "Shell", "price": 1.66, "top": true },
-        { "name": "Tifon", "price": 1.66, "top": true }
+        {
+          "name": "AdriaOil",
+          "price": 1.66,
+          "top": true
+        },
+        {
+          "name": "Crodux",
+          "price": 1.66,
+          "top": true
+        },
+        {
+          "name": "INA",
+          "price": 1.66,
+          "top": true
+        },
+        {
+          "name": "Lukoil",
+          "price": 1.66,
+          "top": true
+        },
+        {
+          "name": "Petrol",
+          "price": 1.66,
+          "top": true
+        },
+        {
+          "name": "Shell",
+          "price": 1.66,
+          "top": true
+        },
+        {
+          "name": "Tifon",
+          "price": 1.66,
+          "top": true
+        }
       ],
       "diesel": [
-        { "name": "AdriaOil", "price": 1.85, "top": true },
-        { "name": "Crodux", "price": 1.85, "top": true },
-        { "name": "INA", "price": 1.85, "top": true },
-        { "name": "Lukoil", "price": 1.85, "top": true },
-        { "name": "Petrol", "price": 1.85, "top": true },
-        { "name": "Shell", "price": 1.85, "top": true },
-        { "name": "Tifon", "price": 1.85, "top": true }
+        {
+          "name": "AdriaOil",
+          "price": 1.85,
+          "top": true
+        },
+        {
+          "name": "Crodux",
+          "price": 1.85,
+          "top": true
+        },
+        {
+          "name": "INA",
+          "price": 1.85,
+          "top": true
+        },
+        {
+          "name": "Lukoil",
+          "price": 1.85,
+          "top": true
+        },
+        {
+          "name": "Petrol",
+          "price": 1.85,
+          "top": true
+        },
+        {
+          "name": "Shell",
+          "price": 1.85,
+          "top": true
+        },
+        {
+          "name": "Tifon",
+          "price": 1.85,
+          "top": true
+        }
       ]
     }
   }
