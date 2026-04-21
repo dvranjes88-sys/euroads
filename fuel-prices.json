@@ -5,7 +5,7 @@
     "hr": "Government of Croatia via cijenegoriva.info (updated every 14 days)",
     "balkan": "Manual via balkan-manual.json (last edit 2026-04-21)"
   },
-  "_auto_updated": "2026-04-21T19:53:38.860Z",
+  "_auto_updated": "2026-04-21T20:35:37.421Z",
   "_notes": "Prices are national weekly averages including all taxes. Highway stations may charge 10-25% more.",
   "prices": {
     "MT": {
@@ -53,8 +53,8 @@
       "diesel": 2.075
     },
     "HR": {
-      "petrol": 1.72,
-      "diesel": 1.99
+      "petrol": 1.64,
+      "diesel": 1.78
     },
     "LU": {
       "petrol": 1.721,
@@ -166,84 +166,110 @@
     }
   },
   "hr_live": {
-    "validFrom": "07.04.2026",
-    "source": "cijenegoriva.info",
-    "updatedAt": "2026-04-21T19:00:00Z",
+    "validFrom": "21.4.2026",
     "companies": {
       "petrol": [
         {
           "name": "AdriaOil",
-          "price": 1.66,
-          "top": true
-        },
-        {
-          "name": "Crodux",
-          "price": 1.66,
-          "top": true
+          "price": 1.64,
+          "min": 1.44,
+          "max": 1.66,
+          "top": true,
+          "variant": "EUROSUPER 95"
         },
         {
           "name": "INA",
-          "price": 1.66,
-          "top": true
+          "price": 1.64,
+          "min": 1.64,
+          "max": 1.66,
+          "top": true,
+          "variant": "EUROSUPER 95 CLASS PLUS"
         },
         {
           "name": "Lukoil",
-          "price": 1.66,
-          "top": true
+          "price": 1.64,
+          "min": 1.64,
+          "max": 1.66,
+          "top": true,
+          "variant": "Eurosuper BS 95"
         },
         {
           "name": "Petrol",
-          "price": 1.66,
-          "top": true
+          "price": 1.64,
+          "min": 1.64,
+          "max": 1.68,
+          "top": true,
+          "variant": "Q MAX EUROSUPER 95"
         },
         {
           "name": "Shell",
-          "price": 1.66,
-          "top": true
+          "price": 1.64,
+          "min": 1.42,
+          "max": 1.64,
+          "top": true,
+          "variant": "Shell Fuelsave EuroSuper 95"
         },
         {
           "name": "Tifon",
-          "price": 1.66,
-          "top": true
+          "price": 1.64,
+          "min": 0,
+          "max": 1.66,
+          "top": true,
+          "variant": "EVO Eurosuper 95 BS"
         }
       ],
       "diesel": [
         {
           "name": "AdriaOil",
-          "price": 1.85,
-          "top": true
-        },
-        {
-          "name": "Crodux",
-          "price": 1.85,
-          "top": true
+          "price": 1.78,
+          "min": 1.36,
+          "max": 1.85,
+          "top": true,
+          "variant": "EURODIESEL"
         },
         {
           "name": "INA",
-          "price": 1.85,
-          "top": true
+          "price": 1.78,
+          "min": 1.78,
+          "max": 1.85,
+          "top": true,
+          "variant": "EURODIZEL CLASS PLUS"
         },
         {
           "name": "Lukoil",
-          "price": 1.85,
-          "top": true
+          "price": 1.78,
+          "min": 1.78,
+          "max": 1.85,
+          "top": true,
+          "variant": "Eurodiesel BS"
         },
         {
           "name": "Petrol",
-          "price": 1.85,
-          "top": true
+          "price": 1.78,
+          "min": 1.78,
+          "max": 1.83,
+          "top": true,
+          "variant": "EURODIZEL AD B7"
         },
         {
           "name": "Shell",
-          "price": 1.85,
-          "top": true
+          "price": 1.78,
+          "min": 1.43,
+          "max": 1.78,
+          "top": true,
+          "variant": "Shell Fuelsave EuroDiesel"
         },
         {
           "name": "Tifon",
-          "price": 1.85,
-          "top": true
+          "price": 2.02,
+          "min": 0,
+          "max": 2.25,
+          "top": true,
+          "variant": "EVO Eurodiesel BS Premium"
         }
       ]
-    }
+    },
+    "source": "cijenegoriva.info",
+    "updatedAt": "2026-04-21T20:35:37.421Z"
   }
 }
