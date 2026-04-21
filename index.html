@@ -2337,11 +2337,29 @@ function initMrMap(){
   document.getElementById('mr-date-from').value=today.toISOString().split('T')[0];
   document.getElementById('mr-date-to').value=nextWeek.toISOString().split('T')[0];
   initStops();
-  // Track či user manuálne zmenil fuel price → potom ho ne-auto-prepisujeme
+  // ── Live recompute on fuel price/consumption change ──
+  // Track override flag + debounced re-render for instant feedback
+  let fuelRerenderTimer = null;
+  const triggerFuelRerender = () => {
+    if(fuelRerenderTimer) clearTimeout(fuelRerenderTimer);
+    fuelRerenderTimer = setTimeout(() => {
+      if(window.currentRouteData && window.currentActiveRouteIdx !== undefined){
+        selectRoute(window.currentActiveRouteIdx);
+      }
+    }, 250);
+  };
   const fp = document.getElementById('mr-fuel-price');
   if(fp && !fp._listenerBound){
-    fp.addEventListener('input', () => { window.mrUserFuelOverride = true; });
+    fp.addEventListener('input', () => {
+      window.mrUserFuelOverride = true;
+      triggerFuelRerender();
+    });
     fp._listenerBound = true;
+  }
+  const fc = document.getElementById('mr-fuel-consumption');
+  if(fc && !fc._listenerBound){
+    fc.addEventListener('input', triggerFuelRerender);
+    fc._listenerBound = true;
   }
   if(typeof mapboxgl==='undefined'){
     const s=document.createElement('script');
@@ -2358,6 +2376,16 @@ function onFuelTypeChange(){
   if(window.currentRouteData && window.currentActiveRouteIdx !== undefined){
     const route = window.currentRouteData.routes[window.currentActiveRouteIdx];
     if(route) selectRoute(window.currentActiveRouteIdx);
+  }
+}
+
+// Reset fuel price na weighted avg per-country (clear user override)
+function resetFuelToAvg(){
+  window.mrUserFuelOverride = false;
+  const fp = document.getElementById('mr-fuel-price');
+  if(fp) fp.value = '1.55'; // default → trigger auto-fill
+  if(window.currentRouteData && window.currentActiveRouteIdx !== undefined){
+    selectRoute(window.currentActiveRouteIdx);
   }
 }
 
@@ -3200,7 +3228,8 @@ async function recomputeResultsPanel(route, validPts, segments, stopInputs){
   }
 
   // ══════════════════════════════════════════════════════════
-  // ── FUEL CALCULATION — per-country breakdown ──
+  // ── FUEL CALCULATION — per-country breakdown (Option D) ──
+  // ── Ak user override: vypni per-country, použi jednotnú cenu ──
   // ══════════════════════════════════════════════════════════
   const fuelType = document.getElementById('mr-fuel-type')?.value || 'petrol';
   const fuelCons = parseFloat(document.getElementById('mr-fuel-consumption')?.value) || 7;
@@ -3209,7 +3238,6 @@ async function recomputeResultsPanel(route, validPts, segments, stopInputs){
   const fuelInput = document.getElementById('mr-fuel-price');
   const currentInputVal = fuelInput ? parseFloat(fuelInput.value) : null;
   const weightedAvg = getWeightedAvgFuelPrice(window._lastRouteKmByCountry, fuelType, ccList);
-  // Pravidlo: auto-fill ak user nemá override AND (prázdny input OR default 1.55)
   if(fuelInput && weightedAvg && !window.mrUserFuelOverride){
     const isDefaultOrEmpty = !currentInputVal || Math.abs(currentInputVal - 1.55) < 0.001;
     if(isDefaultOrEmpty){
@@ -3217,12 +3245,17 @@ async function recomputeResultsPanel(route, validPts, segments, stopInputs){
     }
   }
 
-  // 2. Per-country fuel breakdown
-  const perCountryFuel = computePerCountryFuel(window._lastRouteKmByCountry, fuelCons, fuelType, ccList);
+  // 2. Rozhodni či použiť per-country breakdown ALEBO jednotný input price
+  //    - User override → jednotná cena (nech user vidí čo napísal)
+  //    - Žiadny override → per-country breakdown z FUEL_PRICES
+  const fuelPriceInput = parseFloat(fuelInput?.value) || 1.55;
+  const usePerCountry = !window.mrUserFuelOverride;
+  const perCountryFuel = usePerCountry
+    ? computePerCountryFuel(window._lastRouteKmByCountry, fuelCons, fuelType, ccList)
+    : [];
   const totalFuelCostByCountry = perCountryFuel.reduce((sum, e) => sum + e.cost, 0);
 
-  // 3. Ak máme breakdown, použijeme sum per krajiny. Inak fallback na globálny input price.
-  const fuelPriceInput = parseFloat(fuelInput?.value) || 1.55;
+  // 3. Final fuel cost: per-country ak je dostupný, inak user price × total km
   const fallbackFuelCost = parseFloat(((route.distance/1000) * fuelCons/100 * fuelPriceInput).toFixed(2));
   const fuelCost = perCountryFuel.length > 0
     ? parseFloat(totalFuelCostByCountry.toFixed(2))
@@ -3256,11 +3289,14 @@ async function recomputeResultsPanel(route, validPts, segments, stopInputs){
 
   // Fuel header row
   const fuelTypeLabel = fuelType === 'diesel' ? 'Diesel' : 'Petrol';
+  const customPriceBadge = window.mrUserFuelOverride
+    ? `<span style="font-size:.55rem;color:#f4a45a;background:rgba(244,164,90,.12);border-radius:4px;padding:.1rem .35rem;margin-left:.35rem;vertical-align:middle;">YOUR PRICE</span>`
+    : '';
   html += `<div class="mr-country-item" style="border-left-color:rgba(255,255,255,.2);">
     <div class="mr-country-row1">
       <div>
         <span class="mr-cc-tag" style="background:transparent;border:none;">⛽</span>
-        <span class="mr-cname" style="color:rgba(255,255,255,.7);">Fuel · ${fuelTypeLabel}</span>
+        <span class="mr-cname" style="color:rgba(255,255,255,.7);">Fuel · ${fuelTypeLabel}${customPriceBadge}</span>
       </div>
       <span class="mr-cprice" style="color:rgba(255,255,255,.85);">${toEurStr(fuelCost)}</span>
     </div>`;
@@ -3269,8 +3305,6 @@ async function recomputeResultsPanel(route, validPts, segments, stopInputs){
   if(perCountryFuel.length > 0){
     html += `<div class="mr-country-row2" style="font-size:.6rem;line-height:1.55;opacity:.85;margin-top:.2rem;">`;
     html += perCountryFuel.map(e => {
-      const countryData = C.find(x => x.id === e.cc.toLowerCase());
-      const name = countryData?.name || e.cc;
       return `<div style="display:flex;justify-content:space-between;gap:.5rem;">
         <span>${e.cc} · ${e.km.toFixed(0)}km × €${e.pricePerL.toFixed(2)}</span>
         <span style="color:rgba(255,255,255,.9);">${toEurStr(e.cost)}</span>
@@ -3279,8 +3313,11 @@ async function recomputeResultsPanel(route, validPts, segments, stopInputs){
     html += `<div style="opacity:.5;margin-top:.25rem;font-size:.55rem;">Avg ${FUEL_PRICES._updated} · EU Oil Bulletin</div>`;
     html += `</div>`;
   } else {
-    // Fallback: jednoduchý row (neznáme krajiny)
-    html += `<div class="mr-country-row2">${distKm}km × ${fuelCons}L/100 × €${fuelPriceInput}</div>`;
+    // Fallback: jednoduchý row (user override alebo neznáme krajiny)
+    const resetLink = window.mrUserFuelOverride
+      ? ` · <a href="#" onclick="event.preventDefault();resetFuelToAvg();" style="color:#22c997;">Use avg prices</a>`
+      : '';
+    html += `<div class="mr-country-row2">${distKm}km × ${fuelCons}L/100 × €${fuelPriceInput.toFixed(2)}${resetLink}</div>`;
   }
 
   html += `</div>`;
