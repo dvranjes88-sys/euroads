@@ -108,43 +108,56 @@ function isTopBrand(name) {
 }
 
 function parseHRPricesFromCijeneGoriva(html) {
-  // Strip HTML tags only when needed - keep raw for table extraction
-  const stripped = html.replace(/<[^>]+>/g, ' ').replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ');
+  // Step 1: Decode HTML entities BEFORE stripping tags
+  // Server sends &euro; (or &#8364; / &#x20AC;) instead of literal € symbol
+  let decoded = html
+    .replace(/&euro;/gi, '€')
+    .replace(/&#8364;/g, '€')
+    .replace(/&#x20AC;/gi, '€')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/&quot;/g, '"')
+    .replace(/&#039;|&apos;/g, "'")
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>');
 
-  // Extract date "vrijede od 07.04.2026"
+  // Step 2: Strip HTML tags
+  const stripped = decoded.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ');
+
+  // Extract date "vrijede od 21.04.2026"
   let validDate = null;
   const dateMatch = stripped.match(/vrijede\s+od\s+(\d{1,2}\.\d{1,2}\.\d{4})/i);
   if(dateMatch) validDate = dateMatch[1];
 
-  // Find ALL price+company combinations using PERMISSIVE regex.
-  // This works on both HTML and markdown — we look for:
-  //   <something>CompanyName<something>1,66 €<something>
-  // where "something" is any markup (HTML tags, pipes, etc.)
-  //
-  // Strategy: split text into chunks at heading-like keywords,
-  // then for each chunk extract company-price pairs.
-
-  // First locate fuel type sections by keyword position in stripped text
-  const findKeyword = (text, keyword, skipPremium = true) => {
+  // SMART keyword finder: keyword must be FOLLOWED by prices in CLOSE proximity
+  // (within ~250 chars), otherwise it's a navigation link / article title.
+  // For tables, the first price typically appears within 50-100 chars after the heading.
+  const findKeyword = (text, keyword) => {
     let pos = 0;
     while(pos < text.length){
       const idx = text.toLowerCase().indexOf(keyword.toLowerCase(), pos);
       if(idx === -1) return -1;
-      if(skipPremium){
-        const before = text.slice(Math.max(0, idx - 25), idx).toLowerCase();
-        if(before.includes('premium')){
-          pos = idx + keyword.length;
-          continue;
-        }
+      // Skip if preceded by "Premium"
+      const before = text.slice(Math.max(0, idx - 25), idx).toLowerCase();
+      if(before.includes('premium')){
+        pos = idx + keyword.length;
+        continue;
+      }
+      // Skip if FIRST price doesn't appear within 250 chars after keyword
+      // (in real article tables, first price comes within ~100 chars after heading)
+      const closeAfter = text.slice(idx + keyword.length, idx + keyword.length + 250);
+      if(!/[\d]+[,.][\d]+\s*€/.test(closeAfter)){
+        pos = idx + keyword.length;
+        continue;
       }
       return idx;
     }
     return -1;
   };
 
-  // Get sections between headings in stripped text
+  // Get sections between headings
   const extractSection = (startKeyword) => {
-    const startIdx = findKeyword(stripped, startKeyword, true);
+    const startIdx = findKeyword(stripped, startKeyword);
     if(startIdx === -1) return null;
     const sectionStart = startIdx + startKeyword.length;
     const rest = stripped.slice(sectionStart);
