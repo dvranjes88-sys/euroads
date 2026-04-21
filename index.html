@@ -837,6 +837,17 @@ main { padding:2rem; max-width:1300px; margin:0 auto; }
         </div>
 
         <div class="mr-toolbar-item narrow">
+          <label>Fuel type</label>
+          <div class="mr-input-wrap">
+            <svg class="mr-input-icon" viewBox="0 0 24 24"><path d="M3 7h10v13H3z"/><path d="M13 10l3-3h3v10l-3 3"/></svg>
+            <select id="mr-fuel-type" onchange="onFuelTypeChange()">
+              <option value="petrol">Petrol</option>
+              <option value="diesel">Diesel</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="mr-toolbar-item narrow">
           <label>Fuel €/L</label>
           <div class="mr-input-wrap">
             <svg class="mr-input-icon" viewBox="0 0 24 24"><path d="M4 21V7l5-4 5 4v14"/><path d="M4 11h10"/><path d="M17 11l3 2v7"/><path d="M17 17h3"/></svg>
@@ -1974,6 +1985,106 @@ const CC_MAP={
 
 const FREE_LOCAL={'ba':true,'rs':true,'me':true,'mk':true,'al':true,'xk':true,'ge':true,'am':true,'az':true,'md':true};
 
+// ══════════════════════════════════════════════════════════════
+// ── FUEL PRICES DATASET ──
+// Priemerné maloobchodné ceny per krajina v EUR/L (April 2026)
+// Zdroj: EU Oil Bulletin + national statistics pre non-EU
+// Update: manually raz mesačne → zmeniť _updated + hodnoty
+// ══════════════════════════════════════════════════════════════
+const FUEL_PRICES = {
+  _updated: '2026-04-13',
+  _source: 'EU Oil Bulletin + national data',
+  // EU krajiny
+  'AT': { petrol: 1.69, diesel: 1.81 },   // Austria
+  'BE': { petrol: 1.91, diesel: 2.23 },   // Belgium
+  'BG': { petrol: 1.30, diesel: 1.31 },   // Bulgaria
+  'HR': { petrol: 1.52, diesel: 1.54 },   // Croatia (gov-regulated)
+  'CY': { petrol: 1.58, diesel: 1.61 },   // Cyprus
+  'CZ': { petrol: 1.46, diesel: 1.44 },   // Czechia
+  'DK': { petrol: 1.91, diesel: 2.36 },   // Denmark
+  'EE': { petrol: 1.81, diesel: 1.85 },   // Estonia
+  'FI': { petrol: 2.01, diesel: 2.27 },   // Finland
+  'FR': { petrol: 1.95, diesel: 2.19 },   // France
+  'DE': { petrol: 1.82, diesel: 2.29 },   // Germany
+  'GR': { petrol: 1.95, diesel: 2.12 },   // Greece
+  'HU': { petrol: 1.54, diesel: 1.61 },   // Hungary
+  'IE': { petrol: 1.77, diesel: 2.18 },   // Ireland
+  'IT': { petrol: 1.87, diesel: 1.98 },   // Italy
+  'LV': { petrol: 1.66, diesel: 1.71 },   // Latvia
+  'LT': { petrol: 1.60, diesel: 2.12 },   // Lithuania
+  'LU': { petrol: 1.61, diesel: 1.45 },   // Luxembourg
+  'MT': { petrol: 1.34, diesel: 1.21 },   // Malta
+  'NL': { petrol: 2.32, diesel: 2.47 },   // Netherlands
+  'PL': { petrol: 1.41, diesel: 1.42 },   // Poland
+  'PT': { petrol: 1.78, diesel: 1.69 },   // Portugal
+  'RO': { petrol: 1.44, diesel: 1.51 },   // Romania
+  'SK': { petrol: 1.58, diesel: 1.55 },   // Slovakia
+  'SI': { petrol: 1.51, diesel: 1.59 },   // Slovenia
+  'ES': { petrol: 1.56, diesel: 1.51 },   // Spain
+  'SE': { petrol: 1.79, diesel: 2.15 },   // Sweden
+  // Non-EU Balkán (manuálne z rhinocarhire/globalpetrolprices, Apr 2026)
+  'BA': { petrol: 1.38, diesel: 1.71 },   // Bosnia
+  'RS': { petrol: 1.42, diesel: 1.61 },   // Serbia
+  'ME': { petrol: 1.55, diesel: 1.65 },   // Montenegro
+  'MK': { petrol: 1.48, diesel: 1.55 },   // North Macedonia
+  'AL': { petrol: 1.56, diesel: 1.63 },   // Albania
+  'XK': { petrol: 1.30, diesel: 1.35 },   // Kosovo
+  // Ostatné
+  'CH': { petrol: 1.85, diesel: 2.05 },   // Switzerland
+  'NO': { petrol: 2.20, diesel: 2.30 },   // Norway
+  'UK': { petrol: 1.68, diesel: 1.80 },   // United Kingdom
+  'TR': { petrol: 1.35, diesel: 1.40 },   // Turkey
+  'UA': { petrol: 1.25, diesel: 1.35 },   // Ukraine
+  'MD': { petrol: 1.30, diesel: 1.35 },   // Moldova
+  'GE': { petrol: 1.10, diesel: 1.25 },   // Georgia
+};
+
+// Helper: Z kmByCountry + fuel type vypočíta per-country breakdown
+// Vráti pole { cc, name, km, pricePerL, liters, cost }
+function computePerCountryFuel(kmByCountry, fuelCons, fuelType, ccList){
+  const result = [];
+  if(!kmByCountry) return result;
+  for(const cc of ccList){
+    const k = kmByCountry[cc.toUpperCase()];
+    if(!k) continue;
+    const totalKm = (k.toll || 0) + (k.vignette || 0) + (k.free || 0) + (k.local || 0);
+    if(totalKm < 0.5) continue; // skipni zanedbateľné
+    const prices = FUEL_PRICES[cc.toUpperCase()];
+    if(!prices) continue; // neznáma krajina — fallback používa default price globálne
+    const pricePerL = prices[fuelType] || prices.petrol;
+    const liters = totalKm * fuelCons / 100;
+    const cost = liters * pricePerL;
+    result.push({
+      cc: cc.toUpperCase(),
+      km: totalKm,
+      pricePerL,
+      liters,
+      cost: parseFloat(cost.toFixed(2)),
+    });
+  }
+  return result;
+}
+
+// Helper: Vážený priemer ceny paliva pre celú trasu (pre auto-fill inputu)
+// Vracia null ak žiadna krajina nemá dáta
+function getWeightedAvgFuelPrice(kmByCountry, fuelType, ccList){
+  if(!kmByCountry) return null;
+  let totalKm = 0, totalCost = 0;
+  for(const cc of ccList){
+    const k = kmByCountry[cc.toUpperCase()];
+    if(!k) continue;
+    const km = (k.toll || 0) + (k.vignette || 0) + (k.free || 0) + (k.local || 0);
+    if(km < 0.5) continue;
+    const prices = FUEL_PRICES[cc.toUpperCase()];
+    if(!prices) continue;
+    const price = prices[fuelType] || prices.petrol;
+    totalKm += km;
+    totalCost += km * price;
+  }
+  if(totalKm < 1) return null;
+  return parseFloat((totalCost / totalKm).toFixed(2));
+}
+
 // ── OPRAVA: Jasné farby ladené s legendou (nie tmavé ktoré splývajú s dark mapou) ──
 // Pre FREE_LOCAL krajiny (BA, RS, ME, MK, AL, XK, GE, AM, AZ, MD) vrátime free modrú,
 // lebo aj keď sú technicky type='toll' (majú tolls na motorway),
@@ -2226,12 +2337,28 @@ function initMrMap(){
   document.getElementById('mr-date-from').value=today.toISOString().split('T')[0];
   document.getElementById('mr-date-to').value=nextWeek.toISOString().split('T')[0];
   initStops();
+  // Track či user manuálne zmenil fuel price → potom ho ne-auto-prepisujeme
+  const fp = document.getElementById('mr-fuel-price');
+  if(fp && !fp._listenerBound){
+    fp.addEventListener('input', () => { window.mrUserFuelOverride = true; });
+    fp._listenerBound = true;
+  }
   if(typeof mapboxgl==='undefined'){
     const s=document.createElement('script');
     s.src='https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.js';
     s.onload=createMrMap;
     document.head.appendChild(s);
   } else { createMrMap(); }
+}
+
+// Handler pre zmenu fuel type (petrol/diesel) — reset override flag aby sa recomputovalo
+function onFuelTypeChange(){
+  window.mrUserFuelOverride = false;
+  // Ak už bola trasa vypočítaná, prepočítaj LEFT panel s novým fuel type
+  if(window.currentRouteData && window.currentActiveRouteIdx !== undefined){
+    const route = window.currentRouteData.routes[window.currentActiveRouteIdx];
+    if(route) selectRoute(window.currentActiveRouteIdx);
+  }
 }
 
 // ══════════════════════════════════════════════════════════
@@ -3072,10 +3199,34 @@ async function recomputeResultsPanel(route, validPts, segments, stopInputs){
     countryRows.push({ cc, name: country.name, clr, action, priceStr, priceEur, needsPay, note, buy: country.buy, bl: country.bl, id });
   }
 
-  // Fuel
-  const fuelPrice = parseFloat(document.getElementById('mr-fuel-price')?.value) || 1.55;
+  // ══════════════════════════════════════════════════════════
+  // ── FUEL CALCULATION — per-country breakdown ──
+  // ══════════════════════════════════════════════════════════
+  const fuelType = document.getElementById('mr-fuel-type')?.value || 'petrol';
   const fuelCons = parseFloat(document.getElementById('mr-fuel-consumption')?.value) || 7;
-  const fuelCost = parseFloat(((route.distance/1000) * fuelCons/100 * fuelPrice).toFixed(2));
+
+  // 1. Auto-fill fuel price input ak user neoverrol (default 1.55 alebo prázdny)
+  const fuelInput = document.getElementById('mr-fuel-price');
+  const currentInputVal = fuelInput ? parseFloat(fuelInput.value) : null;
+  const weightedAvg = getWeightedAvgFuelPrice(window._lastRouteKmByCountry, fuelType, ccList);
+  // Pravidlo: auto-fill ak user nemá override AND (prázdny input OR default 1.55)
+  if(fuelInput && weightedAvg && !window.mrUserFuelOverride){
+    const isDefaultOrEmpty = !currentInputVal || Math.abs(currentInputVal - 1.55) < 0.001;
+    if(isDefaultOrEmpty){
+      fuelInput.value = weightedAvg.toFixed(2);
+    }
+  }
+
+  // 2. Per-country fuel breakdown
+  const perCountryFuel = computePerCountryFuel(window._lastRouteKmByCountry, fuelCons, fuelType, ccList);
+  const totalFuelCostByCountry = perCountryFuel.reduce((sum, e) => sum + e.cost, 0);
+
+  // 3. Ak máme breakdown, použijeme sum per krajiny. Inak fallback na globálny input price.
+  const fuelPriceInput = parseFloat(fuelInput?.value) || 1.55;
+  const fallbackFuelCost = parseFloat(((route.distance/1000) * fuelCons/100 * fuelPriceInput).toFixed(2));
+  const fuelCost = perCountryFuel.length > 0
+    ? parseFloat(totalFuelCostByCountry.toFixed(2))
+    : fallbackFuelCost;
   const grandTotal = parseFloat((totalEur + fuelCost).toFixed(2));
 
   // ─── Render LEFT panel ───
@@ -3103,17 +3254,36 @@ async function recomputeResultsPanel(route, validPts, segments, stopInputs){
     </div>`;
   }
 
-  // Fuel row
+  // Fuel header row
+  const fuelTypeLabel = fuelType === 'diesel' ? 'Diesel' : 'Petrol';
   html += `<div class="mr-country-item" style="border-left-color:rgba(255,255,255,.2);">
     <div class="mr-country-row1">
       <div>
         <span class="mr-cc-tag" style="background:transparent;border:none;">⛽</span>
-        <span class="mr-cname" style="color:rgba(255,255,255,.7);">Fuel</span>
+        <span class="mr-cname" style="color:rgba(255,255,255,.7);">Fuel · ${fuelTypeLabel}</span>
       </div>
       <span class="mr-cprice" style="color:rgba(255,255,255,.85);">${toEurStr(fuelCost)}</span>
-    </div>
-    <div class="mr-country-row2">${distKm}km × ${fuelCons}L/100 × €${fuelPrice}</div>
-  </div>`;
+    </div>`;
+
+  // Per-country breakdown (ak máme data)
+  if(perCountryFuel.length > 0){
+    html += `<div class="mr-country-row2" style="font-size:.6rem;line-height:1.55;opacity:.85;margin-top:.2rem;">`;
+    html += perCountryFuel.map(e => {
+      const countryData = C.find(x => x.id === e.cc.toLowerCase());
+      const name = countryData?.name || e.cc;
+      return `<div style="display:flex;justify-content:space-between;gap:.5rem;">
+        <span>${e.cc} · ${e.km.toFixed(0)}km × €${e.pricePerL.toFixed(2)}</span>
+        <span style="color:rgba(255,255,255,.9);">${toEurStr(e.cost)}</span>
+      </div>`;
+    }).join('');
+    html += `<div style="opacity:.5;margin-top:.25rem;font-size:.55rem;">Avg ${FUEL_PRICES._updated} · EU Oil Bulletin</div>`;
+    html += `</div>`;
+  } else {
+    // Fallback: jednoduchý row (neznáme krajiny)
+    html += `<div class="mr-country-row2">${distKm}km × ${fuelCons}L/100 × €${fuelPriceInput}</div>`;
+  }
+
+  html += `</div>`;
 
   html += `<div style="font-size:.6rem;color:rgba(255,255,255,.35);margin-top:.8rem;text-align:center;line-height:1.5;">⚠️ Estimates are approximate.<br>Buy vignettes before your trip.</div>`;
 
