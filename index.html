@@ -1999,57 +1999,77 @@ const FREE_LOCAL={'ba':true,'rs':true,'me':true,'mk':true,'al':true,'xk':true,'g
 
 // ══════════════════════════════════════════════════════════════
 // ── FUEL PRICES DATASET ──
-// Priemerné maloobchodné ceny per krajina v EUR/L (April 2026)
-// Zdroj: EU Oil Bulletin + national statistics pre non-EU
-// Update: manually raz mesačne → zmeniť _updated + hodnoty
+// Priemerné maloobchodné ceny per krajina v EUR/L
+// Primárny zdroj: fuel-prices.json (live, GitHub Action weekly update)
+// Fallback: inline hodnoty nižšie (zaguarantuje funkčnosť ak fetch zlyhá)
 // ══════════════════════════════════════════════════════════════
-const FUEL_PRICES = {
-  _updated: '2026-04-13',
-  _source: 'EU Oil Bulletin + national data',
-  // EU krajiny
-  'AT': { petrol: 1.69, diesel: 1.81 },   // Austria
-  'BE': { petrol: 1.91, diesel: 2.23 },   // Belgium
-  'BG': { petrol: 1.30, diesel: 1.31 },   // Bulgaria
-  'HR': { petrol: 1.52, diesel: 1.54 },   // Croatia (gov-regulated)
-  'CY': { petrol: 1.58, diesel: 1.61 },   // Cyprus
-  'CZ': { petrol: 1.46, diesel: 1.44 },   // Czechia
-  'DK': { petrol: 1.91, diesel: 2.36 },   // Denmark
-  'EE': { petrol: 1.81, diesel: 1.85 },   // Estonia
-  'FI': { petrol: 2.01, diesel: 2.27 },   // Finland
-  'FR': { petrol: 1.95, diesel: 2.19 },   // France
-  'DE': { petrol: 1.82, diesel: 2.29 },   // Germany
-  'GR': { petrol: 1.95, diesel: 2.12 },   // Greece
-  'HU': { petrol: 1.54, diesel: 1.61 },   // Hungary
-  'IE': { petrol: 1.77, diesel: 2.18 },   // Ireland
-  'IT': { petrol: 1.87, diesel: 1.98 },   // Italy
-  'LV': { petrol: 1.66, diesel: 1.71 },   // Latvia
-  'LT': { petrol: 1.60, diesel: 2.12 },   // Lithuania
-  'LU': { petrol: 1.61, diesel: 1.45 },   // Luxembourg
-  'MT': { petrol: 1.34, diesel: 1.21 },   // Malta
-  'NL': { petrol: 2.32, diesel: 2.47 },   // Netherlands
-  'PL': { petrol: 1.41, diesel: 1.42 },   // Poland
-  'PT': { petrol: 1.78, diesel: 1.69 },   // Portugal
-  'RO': { petrol: 1.44, diesel: 1.51 },   // Romania
-  'SK': { petrol: 1.58, diesel: 1.55 },   // Slovakia
-  'SI': { petrol: 1.51, diesel: 1.59 },   // Slovenia
-  'ES': { petrol: 1.56, diesel: 1.51 },   // Spain
-  'SE': { petrol: 1.79, diesel: 2.15 },   // Sweden
-  // Non-EU Balkán (manuálne z rhinocarhire/globalpetrolprices, Apr 2026)
-  'BA': { petrol: 1.38, diesel: 1.71 },   // Bosnia
-  'RS': { petrol: 1.42, diesel: 1.61 },   // Serbia
-  'ME': { petrol: 1.55, diesel: 1.65 },   // Montenegro
-  'MK': { petrol: 1.48, diesel: 1.55 },   // North Macedonia
-  'AL': { petrol: 1.56, diesel: 1.63 },   // Albania
-  'XK': { petrol: 1.30, diesel: 1.35 },   // Kosovo
+let FUEL_PRICES = {
+  _updated: '2026-04-21',
+  _source: 'inline fallback',
+  // EU 27 (hodnoty z EU Oil Bulletin 13.4.2026)
+  'AT': { petrol: 1.72, diesel: 2.08 },
+  'BE': { petrol: 1.88, diesel: 2.33 },
+  'BG': { petrol: 1.47, diesel: 1.76 },
+  'HR': { petrol: 1.64, diesel: 1.78 },
+  'CY': { petrol: 1.52, diesel: 1.84 },
+  'CZ': { petrol: 1.69, diesel: 1.87 },
+  'DK': { petrol: 2.23, diesel: 2.34 },
+  'EE': { petrol: 1.74, diesel: 2.06 },
+  'FI': { petrol: 2.01, diesel: 2.30 },
+  'FR': { petrol: 2.04, diesel: 2.31 },
+  'DE': { petrol: 2.14, diesel: 2.28 },
+  'GR': { petrol: 2.07, diesel: 2.20 },
+  'HU': { petrol: 1.64, diesel: 1.71 },
+  'IE': { petrol: 1.92, diesel: 2.16 },
+  'IT': { petrol: 1.78, diesel: 2.15 },
+  'LV': { petrol: 1.83, diesel: 2.12 },
+  'LT': { petrol: 1.75, diesel: 2.15 },
+  'LU': { petrol: 1.72, diesel: 2.01 },
+  'MT': { petrol: 1.34, diesel: 1.21 },
+  'NL': { petrol: 2.32, diesel: 2.47 },
+  'PL': { petrol: 1.43, diesel: 1.77 },
+  'PT': { petrol: 1.91, diesel: 2.08 },
+  'RO': { petrol: 1.75, diesel: 1.92 },
+  'SK': { petrol: 1.67, diesel: 1.75 },
+  'SI': { petrol: 1.64, diesel: 1.85 },
+  'ES': { petrol: 1.55, diesel: 1.89 },
+  'SE': { petrol: 1.71, diesel: 2.13 },
+  // Non-EU Balkán (manual update)
+  'BA': { petrol: 1.38, diesel: 1.71 },
+  'RS': { petrol: 1.42, diesel: 1.61 },
+  'ME': { petrol: 1.55, diesel: 1.65 },
+  'MK': { petrol: 1.48, diesel: 1.55 },
+  'AL': { petrol: 1.56, diesel: 1.63 },
+  'XK': { petrol: 1.30, diesel: 1.35 },
   // Ostatné
-  'CH': { petrol: 1.85, diesel: 2.05 },   // Switzerland
-  'NO': { petrol: 2.20, diesel: 2.30 },   // Norway
-  'UK': { petrol: 1.68, diesel: 1.80 },   // United Kingdom
-  'TR': { petrol: 1.35, diesel: 1.40 },   // Turkey
-  'UA': { petrol: 1.25, diesel: 1.35 },   // Ukraine
-  'MD': { petrol: 1.30, diesel: 1.35 },   // Moldova
-  'GE': { petrol: 1.10, diesel: 1.25 },   // Georgia
+  'CH': { petrol: 1.85, diesel: 2.05 },
+  'NO': { petrol: 2.20, diesel: 2.30 },
+  'UK': { petrol: 1.68, diesel: 1.80 },
+  'TR': { petrol: 1.35, diesel: 1.40 },
+  'UA': { petrol: 1.25, diesel: 1.35 },
+  'MD': { petrol: 1.30, diesel: 1.35 },
+  'GE': { petrol: 1.10, diesel: 1.25 },
 };
+
+// Async loader: pokúsi sa nahradiť inline hodnoty čerstvými z fuel-prices.json
+// (same-origin fetch, bez CORS problému, auto-updated každý štvrtok GitHub Action)
+(async function loadLiveFuelPrices(){
+  try {
+    const resp = await fetch('./fuel-prices.json', { cache: 'no-cache' });
+    if(!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    const data = await resp.json();
+    if(!data.prices || typeof data.prices !== 'object') throw new Error('Invalid JSON structure');
+    // Merge: zachovaj metadáta, prepíš ceny
+    FUEL_PRICES = {
+      _updated: data._updated || FUEL_PRICES._updated,
+      _source: 'live (fuel-prices.json)',
+      ...data.prices,
+    };
+    console.log(`[Fuel] Loaded live prices dated ${FUEL_PRICES._updated} (${Object.keys(data.prices).length} countries)`);
+  } catch(e) {
+    console.warn(`[Fuel] Live fetch failed: ${e.message}. Using inline fallback dated ${FUEL_PRICES._updated}.`);
+  }
+})();
 
 // Helper: Z kmByCountry + fuel type vypočíta per-country breakdown
 // Vráti pole { cc, name, km, pricePerL, liters, cost }
