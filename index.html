@@ -301,11 +301,23 @@ main { padding:2rem; max-width:1300px; margin:0 auto; }
 .mr-col.collapsed { border-radius: var(--r); overflow: visible; }
 .mr-col.collapsed .mr-col-head,
 .mr-col.collapsed .mr-col-body { display: none; }
-.mr-col.collapsed .mr-edge-toggle-left,
-.mr-col.collapsed .mr-edge-toggle-right {
-  top: 1rem;
+/* Keď je panel collapsed, toggle button sa presunie DOVNÚTRA panelu (celá plocha panelu) */
+.mr-col.collapsed .mr-edge-toggle {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  width: auto;
+  height: auto;
   transform: none;
-  height: 44px;
+  border-radius: var(--r);
+  border: 1px solid rgba(255,255,255,.12);
+  background: rgba(13,17,23,.85);
+}
+.mr-col.collapsed .mr-edge-toggle:hover {
+  background: rgba(13,17,23,.95);
+  border-color: rgba(255,255,255,.25);
 }
 /* Keď je panel collapsed, zmeň smer šípky */
 .mr-col.collapsed .mr-edge-toggle-left::before { content: '›'; }
