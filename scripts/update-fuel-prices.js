@@ -19,8 +19,9 @@ const https = require('https');
 
 // ── Config ─────────────────────────────────────────────────
 const EU_URL = 'https://www.fuel-prices.eu/llms-full.txt';
-const HR_PRIMARY_URL = 'https://www.cijenegoriva.info/';
-const HR_FALLBACK_URL = 'https://nafta.hr/';
+const HR_HAK_URL = 'https://www.hak.hr/info/cijene-goriva/';        // PRIMARY: official MGOR data, server-rendered, per-company min/max/median
+const HR_PRIMARY_URL = 'https://www.cijenegoriva.info/';            // FALLBACK 1
+const HR_FALLBACK_URL = 'https://nafta.hr/';                        // FALLBACK 2 (JS-rendered, usually fails)
 const REPO_ROOT = path.resolve(__dirname, '..');
 const OUTPUT = path.join(REPO_ROOT, 'fuel-prices.json');
 const BALKAN_FILE = path.join(REPO_ROOT, 'balkan-manual.json');
@@ -81,7 +82,153 @@ function parseEUPrices(text) {
   return prices;
 }
 
-// ── Scrape Croatia from cijenegoriva.info ──────────────────
+// ── Scrape Croatia from hak.hr (PRIMARY SOURCE) ────────────
+// Hrvatski Autoklub (HAK) gets data directly from MGOR (Ministry).
+// HTML is server-rendered with stable structure:
+//
+//   <div id="div_eurosuper95">
+//     <table class="stylized nowrapper">
+//       <tr>
+//         <td><strong>Adria Oil d.o.o.</strong></td>     ← Obveznik (company)
+//         <td>EUROSUPER 95</td>                           ← Gorivo (variant)
+//         <td>1,44 €</td>                                 ← Minimalna
+//         <td>1,66 €</td>                                 ← Maksimalna
+//         <td>1,64 €</td>                                 ← Medijan
+//       </tr>
+//
+// Returns same shape as cijenegoriva parser so downstream code is unchanged:
+//   { petrol, diesel, companies: { petrol: [...], diesel: [...] }, validFrom }
+//
+// Each company entry: { name, price (median), min, max, top, variant }
+// Filtering: skip Premium variants (CLASS PLUS PREMIUM, ECTO, G-POWER, V-Power, Q MAX)
+// to keep only "basic" fuel grade per company that customers actually buy.
+
+// Map "Obveznik" (full legal name) → friendly brand name
+function normalizeHAKCompany(rawName) {
+  const name = rawName.replace(/<[^>]+>/g, '').trim();
+  const lower = name.toLowerCase();
+  if(lower.includes('ina')) return 'INA';
+  if(lower.includes('lukoil')) return 'Lukoil';
+  if(lower.includes('coral')) return 'Shell';        // Coral Croatia = Shell distributor
+  if(lower.includes('shell')) return 'Shell';
+  if(lower.includes('petrol')) return 'Petrol';
+  if(lower.includes('tifon')) return 'Tifon';
+  if(lower.includes('crodux')) return 'Crodux';
+  if(lower.includes('adria')) return 'AdriaOil';
+  // Fallback: strip "d.o.o.", "d.d." legal suffixes
+  return name.replace(/\s+d\.o\.o\.?$/i, '').replace(/\s+d\.d\.?$/i, '').trim();
+}
+
+// True for "basic" fuel variants, false for Premium / specialty grades
+function isBasicVariant(variantName) {
+  const v = variantName.toUpperCase();
+  // Premium markers - exclude these
+  if(v.includes('PREMIUM')) return false;
+  if(v.includes('ECTO')) return false;
+  if(v.includes('G-POWER')) return false;
+  if(v.includes('V-POWER')) return false;
+  if(v.includes('Q MAX')) return false;
+  return true;
+}
+
+function parseHRPricesFromHAK(html) {
+  // Extract date: "Zadnje ažurirano: 21.4.2026."
+  let validDate = null;
+  const dateMatch = html.match(/Zadnje\s+a[žz]urirano:\s*(\d{1,2}\.\d{1,2}\.\d{4})/i);
+  if(dateMatch) validDate = dateMatch[1];
+
+  // Parse a single fuel-type div (e.g. div_eurosuper95, div_eurodizel)
+  // Returns { median, companies } where companies sorted top-brands first
+  const parseFuelDiv = (divId, label) => {
+    // Extract just this div's content (between id="divId" and next sibling div or table end)
+    // We use a generous boundary - look for next <div id="div_..."> or end of #CijeneGorivaTablice
+    const divRegex = new RegExp(`<div\\s+id="${divId}"[^>]*>([\\s\\S]*?)(?=<div\\s+id="div_|<\\/div>\\s*<\\/div>)`, 'i');
+    const divMatch = html.match(divRegex);
+    if(!divMatch){
+      console.log(`    ${label}: ❌ <div id="${divId}"> not found`);
+      return { median: null, companies: [] };
+    }
+    const divContent = divMatch[1];
+
+    // Extract all <tr> rows (skip <thead> rows)
+    // Match: <tr>...<td><strong>NAME</strong></td><td>VARIANT</td><td>MIN €</td><td>MAX €</td><td>MEDIAN €</td>...</tr>
+    const rowRegex = /<tr>\s*<td>\s*<strong>([^<]+)<\/strong>\s*<\/td>\s*<td>([^<]+)<\/td>\s*<td>([\d,.\s]+)\s*€\s*<\/td>\s*<td>([\d,.\s]+)\s*€\s*<\/td>\s*<td>([\d,.\s]+)\s*€\s*<\/td>/gi;
+    const allRows = [...divContent.matchAll(rowRegex)];
+
+    if(allRows.length === 0){
+      console.log(`    ${label}: ❌ no <tr> rows matched in div content (${divContent.length} chars)`);
+      return { median: null, companies: [] };
+    }
+
+    // Group by company: pick the BASIC variant per company (skip Premium grades)
+    // If a company has ONLY Premium variants, fall back to the cheapest one
+    const byCompany = {};
+    for(const row of allRows){
+      const rawName = row[1];
+      const variant = row[2].trim();
+      const min = parseFloat(row[3].replace(',', '.'));
+      const max = parseFloat(row[4].replace(',', '.'));
+      const median = parseFloat(row[5].replace(',', '.'));
+      if(isNaN(median) || median < 0.5 || median > 4.0) continue;
+
+      const company = normalizeHAKCompany(rawName);
+      if(!company) continue;
+      const isBasic = isBasicVariant(variant);
+
+      // Prefer basic variant; if already have basic, skip (unless this is also basic with lower median)
+      const existing = byCompany[company];
+      if(!existing){
+        byCompany[company] = { name: company, price: median, min, max, variant, top: true, isBasic };
+      } else if(!existing.isBasic && isBasic){
+        // Replace premium with basic
+        byCompany[company] = { name: company, price: median, min, max, variant, top: true, isBasic };
+      } else if(existing.isBasic && isBasic && median < existing.price){
+        // Both basic, prefer lower median
+        byCompany[company] = { name: company, price: median, min, max, variant, top: true, isBasic };
+      }
+    }
+
+    const companies = Object.values(byCompany).map(c => ({
+      name: c.name, price: c.price, min: c.min, max: c.max, top: true, variant: c.variant,
+    }));
+
+    if(companies.length === 0){
+      console.log(`    ${label}: ❌ no companies after grouping`);
+      return { median: null, companies: [] };
+    }
+
+    // Sort alphabetically (all are top brands here)
+    companies.sort((a, b) => a.name.localeCompare(b.name));
+
+    // National median across all companies (their median prices)
+    const allMedians = companies.map(c => c.price).sort((a, b) => a - b);
+    const nationalMedian = allMedians[Math.floor(allMedians.length / 2)];
+
+    console.log(`    ${label}: ${companies.length} companies, national median €${nationalMedian.toFixed(2)}`);
+    return { median: nationalMedian, companies };
+  };
+
+  console.log(`    📥 HTML received: ${html.length} chars`);
+
+  const petrolData = parseFuelDiv('div_eurosuper95', 'Eurosuper 95');
+  const dieselData = parseFuelDiv('div_eurodizel', 'Eurodizel');
+
+  if(!petrolData.median || !dieselData.median){
+    throw new Error(`HAK parse failed (petrol=${petrolData.median}, diesel=${dieselData.median})`);
+  }
+
+  return {
+    petrol: petrolData.median,
+    diesel: dieselData.median,
+    companies: {
+      petrol: petrolData.companies,
+      diesel: dieselData.companies,
+    },
+    validFrom: validDate,
+  };
+}
+
+// ── Scrape Croatia from cijenegoriva.info (FALLBACK) ───────
 // Page can be served as raw HTML (with <table>, <tr>, <td>, <strong>)
 // OR as markdown (with **bold**, | tables |). Parser handles both.
 //
@@ -129,24 +276,32 @@ function parseHRPricesFromCijeneGoriva(html) {
   const dateMatch = stripped.match(/vrijede\s+od\s+(\d{1,2}\.\d{1,2}\.\d{4})/i);
   if(dateMatch) validDate = dateMatch[1];
 
-  // SMART keyword finder: keyword must be FOLLOWED by prices in CLOSE proximity
-  // (within ~250 chars), otherwise it's a navigation link / article title.
-  // For tables, the first price typically appears within 50-100 chars after the heading.
+  // SMART keyword finder: keyword must precede an ACTUAL TABLE of prices,
+  // not a navigation link or intro text mentioning prices.
+  // Heuristic: real table has multiple prices clustered close together.
+  // - At least 1 price within 100 chars (table starts immediately after heading)
+  // - At least 3 prices within 500 chars (multiple rows)
   const findKeyword = (text, keyword) => {
     let pos = 0;
     while(pos < text.length){
       const idx = text.toLowerCase().indexOf(keyword.toLowerCase(), pos);
       if(idx === -1) return -1;
-      // Skip if preceded by "Premium"
+      // Skip "Premium" prefix
       const before = text.slice(Math.max(0, idx - 25), idx).toLowerCase();
       if(before.includes('premium')){
         pos = idx + keyword.length;
         continue;
       }
-      // Skip if FIRST price doesn't appear within 250 chars after keyword
-      // (in real article tables, first price comes within ~100 chars after heading)
-      const closeAfter = text.slice(idx + keyword.length, idx + keyword.length + 250);
-      if(!/[\d]+[,.][\d]+\s*€/.test(closeAfter)){
+      // Check 1: A price must be very close (within 100 chars) — tables start right after heading
+      const veryClose = text.slice(idx + keyword.length, idx + keyword.length + 100);
+      if(!/[\d]+[,.][\d]+\s*€/.test(veryClose)){
+        pos = idx + keyword.length;
+        continue;
+      }
+      // Check 2: At least 3 prices within 500 chars (real table, not just intro mention)
+      const tableRange = text.slice(idx + keyword.length, idx + keyword.length + 500);
+      const priceCount = (tableRange.match(/[\d]+[,.][\d]+\s*€/g) || []).length;
+      if(priceCount < 3){
         pos = idx + keyword.length;
         continue;
       }
@@ -280,7 +435,18 @@ function parseHRPricesFromNafta(html) {
 
 // ── Try all HR sources in order ────────────────────────────
 async function scrapeCroatia() {
-  // Primary: cijenegoriva.info (server-rendered tables)
+  // PRIMARY: hak.hr (server-rendered, MGOR official data, per-company min/max/median)
+  try {
+    console.log(`  → Trying ${HR_HAK_URL}…`);
+    const html = await fetchText(HR_HAK_URL);
+    const prices = parseHRPricesFromHAK(html);
+    console.log(`  ✅ Source: hak.hr`);
+    return prices;
+  } catch(e) {
+    console.warn(`  ⚠️  hak.hr failed: ${e.message}`);
+  }
+
+  // FALLBACK 1: cijenegoriva.info (server-rendered tables)
   try {
     console.log(`  → Trying ${HR_PRIMARY_URL}…`);
     const html = await fetchText(HR_PRIMARY_URL);
@@ -291,7 +457,7 @@ async function scrapeCroatia() {
     console.warn(`  ⚠️  cijenegoriva.info failed: ${e.message}`);
   }
 
-  // Fallback: nafta.hr (JS-rendered, probably won't work but try anyway)
+  // FALLBACK 2: nafta.hr (JS-rendered, probably won't work but try anyway)
   try {
     console.log(`  → Trying ${HR_FALLBACK_URL}…`);
     const html = await fetchText(HR_FALLBACK_URL);
