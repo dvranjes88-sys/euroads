@@ -361,6 +361,25 @@ main { padding:2rem; max-width:1300px; margin:0 auto; }
 .mr-country-row2 { font-size: .62rem; color: rgba(255,255,255,.4); margin-top: .15rem; line-height: 1.4; }
 .mr-country-row2 a { color: var(--accent); text-decoration: none; }
 
+/* HR LIVE inline badge (appears inside country breakdown row) */
+.mr-live-inline-badge { display: inline-flex; align-items: center; gap: 3px; font-size: .5rem; font-weight: 700; letter-spacing: .05em; color: #ef4444; padding: 1px 5px; margin-left: 4px; background: rgba(239,68,68,.12); border: 1px solid rgba(239,68,68,.3); border-radius: 8px; vertical-align: middle; }
+.mr-live-dot { width: 5px; height: 5px; border-radius: 50%; background: #ef4444; animation: mrLivePulse 2s ease-in-out infinite; flex-shrink: 0; }
+@keyframes mrLivePulse { 0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(239,68,68,.6); } 50% { opacity: .5; box-shadow: 0 0 0 3px rgba(239,68,68,0); } }
+
+/* HR LIVE Banner (appears after cost breakdown when route includes Croatia) */
+.mr-hr-banner { background: linear-gradient(to right, rgba(239,68,68,.08), rgba(239,68,68,.02) 80%); border-left: 3px solid #ef4444; border-radius: 0 6px 6px 0; padding: .6rem .85rem; margin-top: .5rem; }
+.mr-hr-banner-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: .4rem; gap: .5rem; }
+.mr-hr-banner-title { display: flex; align-items: center; gap: 6px; font-size: .7rem; font-weight: 600; color: #fff; }
+.mr-hr-banner-meta { font-size: .55rem; color: rgba(255,255,255,.4); white-space: nowrap; }
+.mr-live-badge { display: inline-flex; align-items: center; gap: 4px; font-size: .5rem; font-weight: 700; letter-spacing: .05em; color: #ef4444; padding: 2px 7px; background: rgba(239,68,68,.15); border: 1px solid rgba(239,68,68,.35); border-radius: 10px; text-transform: uppercase; }
+.mr-flag-hr { display: inline-block; width: 14px; height: 10px; background: linear-gradient(to bottom, #ff0000 0%, #ff0000 33%, #ffffff 33%, #ffffff 66%, #171796 66%, #171796 100%); border-radius: 1px; flex-shrink: 0; }
+.mr-hr-companies { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; margin-bottom: .45rem; }
+.mr-hr-company { display: flex; justify-content: space-between; padding: 3px 6px; background: rgba(255,255,255,.03); border: 1px solid rgba(255,255,255,.06); border-radius: 3px; font-size: .58rem; }
+.mr-hr-company > span:first-child { color: rgba(255,255,255,.5); }
+.mr-hr-company > span:last-child { color: rgba(255,255,255,.85); font-weight: 600; }
+.mr-hak-link { display: flex; justify-content: space-between; align-items: center; padding: 5px 10px; background: rgba(124,58,237,.12); border: 1px solid rgba(124,58,237,.3); border-radius: 5px; font-size: .6rem; color: #c084fc; text-decoration: none; cursor: pointer; transition: background .15s; }
+.mr-hak-link:hover { background: rgba(124,58,237,.18); }
+
 /* RIGHT panel — Route options */
 .mr-route-card { border-radius: 8px; padding: .65rem .8rem; margin-bottom: .5rem; cursor: pointer; position: relative; border: 1.5px solid rgba(255,255,255,.08); background: rgba(255,255,255,.02); transition: all .15s; }
 .mr-route-card:hover { background: rgba(255,255,255,.04); border-color: rgba(255,255,255,.15); }
@@ -2065,7 +2084,13 @@ let FUEL_PRICES = {
       _source: 'live (fuel-prices.json)',
       ...data.prices,
     };
+    // Uložiť HR live data pre banner (per-company breakdown)
+    window.FUEL_PRICES_HR_LIVE = data.hr_live || null;
     console.log(`[Fuel] Loaded live prices dated ${FUEL_PRICES._updated} (${Object.keys(data.prices).length} countries)`);
+    if(window.FUEL_PRICES_HR_LIVE){
+      const pCount = window.FUEL_PRICES_HR_LIVE.companies?.petrol?.length || 0;
+      console.log(`[Fuel] HR live: ${pCount} companies, valid from ${window.FUEL_PRICES_HR_LIVE.validFrom || 'n/a'}`);
+    }
   } catch(e) {
     console.warn(`[Fuel] Live fetch failed: ${e.message}. Using inline fallback dated ${FUEL_PRICES._updated}.`);
   }
@@ -3337,8 +3362,12 @@ async function recomputeResultsPanel(route, validPts, segments, stopInputs){
   if(perCountryFuel.length > 0){
     html += `<div class="mr-country-row2" style="font-size:.6rem;line-height:1.55;opacity:.85;margin-top:.2rem;">`;
     html += perCountryFuel.map(e => {
-      return `<div style="display:flex;justify-content:space-between;gap:.5rem;">
-        <span>${e.cc} · ${e.km.toFixed(0)}km × €${e.pricePerL.toFixed(2)}</span>
+      const isHR = e.cc === 'HR';
+      const liveBadge = isHR
+        ? `<span class="mr-live-inline-badge"><span class="mr-live-dot"></span>LIVE</span>`
+        : '';
+      return `<div style="display:flex;justify-content:space-between;gap:.5rem;align-items:center;">
+        <span>${e.cc} · ${e.km.toFixed(0)}km × €${e.pricePerL.toFixed(2)}${liveBadge}</span>
         <span style="color:rgba(255,255,255,.9);">${toEurStr(e.cost)}</span>
       </div>`;
     }).join('');
@@ -3353,6 +3382,40 @@ async function recomputeResultsPanel(route, validPts, segments, stopInputs){
   }
 
   html += `</div>`;
+
+  // ── HR LIVE Banner: zobraziť iba ak trasa prechádza cez HR a máme live data ──
+  const hasHR = ccList.some(cc => cc.toUpperCase() === 'HR');
+  const hrLiveData = window.FUEL_PRICES_HR_LIVE;
+  if(hasHR && hrLiveData && !window.mrUserFuelOverride){
+    const companies = hrLiveData.companies?.[fuelType] || [];
+    const topCompanies = companies.filter(c => c.top).slice(0, 6);
+    const validFrom = hrLiveData.validFrom || '';
+    const validFromLabel = validFrom ? `Valid from ${validFrom}` : 'Gov-regulated price';
+
+    html += `<div class="mr-hr-banner">
+      <div class="mr-hr-banner-top">
+        <div class="mr-hr-banner-title">
+          <span class="mr-flag-hr"></span>
+          Croatia · fuel prices
+          <span class="mr-live-badge"><span class="mr-live-dot"></span>LIVE</span>
+        </div>
+        <div class="mr-hr-banner-meta">${validFromLabel}</div>
+      </div>`;
+
+    if(topCompanies.length > 0){
+      html += `<div class="mr-hr-companies">`;
+      html += topCompanies.map(c =>
+        `<div class="mr-hr-company"><span>${c.name}</span><span>€${c.price.toFixed(2)}</span></div>`
+      ).join('');
+      html += `</div>`;
+    }
+
+    html += `<a class="mr-hak-link" href="https://map.hak.hr/?lang=en&cats=3101;3103;3104;3109;3106" target="_blank" rel="noopener noreferrer">
+      <span>See live per-station prices on HAK Map</span>
+      <span>↗</span>
+    </a>`;
+    html += `</div>`;
+  }
 
   html += `<div style="font-size:.6rem;color:rgba(255,255,255,.35);margin-top:.8rem;text-align:center;line-height:1.5;">⚠️ Estimates are approximate.<br>Buy vignettes before your trip.</div>`;
 
