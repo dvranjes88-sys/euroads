@@ -20,7 +20,8 @@ html { scroll-behavior: smooth; }
 body { background:var(--bg); color:var(--text); font-family:'Geist',sans-serif; font-size:15px; line-height:1.6; overflow-x:hidden; }
 
 header { background:#18160F; color:#fff; height:58px; display:flex; align-items:center; justify-content:space-between; padding:0 2rem; position:sticky; top:0; z-index:200; border-bottom:3px solid var(--accent); }
-.logo { font-family:'Geist',sans-serif; font-weight:900; font-size:1.2rem; letter-spacing:-0.04em; }
+.logo { font-family:'Geist',sans-serif; font-weight:900; font-size:1.2rem; letter-spacing:-0.04em; display:flex; align-items:center; gap:.55rem; }
+.logo-network { flex-shrink:0; }
 .logo span { color:var(--accent); }
 .hm { font-size:.7rem; color:rgba(255,255,255,.4); letter-spacing:.1em; text-transform:uppercase; }
 
@@ -497,11 +498,11 @@ main { padding:2rem; max-width:1300px; margin:0 auto; }
 .sel-tag button:hover { opacity:1; }
 
 @keyframes pulse-green {
-  0%,100% { box-shadow:0 0 0 0 rgba(27,77,62,.4); }
-  50% { box-shadow:0 0 0 8px rgba(27,77,62,0); }
+  0%,100% { box-shadow:0 0 0 0 rgba(45,212,191,.5); }
+  50% { box-shadow:0 0 0 8px rgba(45,212,191,0); }
 }
-.bcalc.pulse { animation:pulse-green 2s infinite; background:var(--v); }
-.bcalc.pulse:hover { background:#144038; }
+.bcalc.pulse { animation:pulse-green 2s infinite; background:#2dd4bf; color:#02110d; font-weight:600; }
+.bcalc.pulse:hover { background:#22b89c; }
 
 /* Pulsing tab */
 @keyframes pulse-tab {
@@ -728,7 +729,16 @@ main { padding:2rem; max-width:1300px; margin:0 auto; }
 <!-- ── END LANDING ── -->
 
 <header>
-  <div class="logo">Euro<span>Roads</span></div>
+  <div class="logo">
+    <svg class="logo-network" width="22" height="22" viewBox="0 0 22 22" fill="none" aria-hidden="true">
+      <line x1="4" y1="4" x2="18" y2="11" stroke="rgba(255,255,255,0.3)" stroke-width="1.2"/>
+      <line x1="18" y1="11" x2="4" y2="18" stroke="rgba(255,255,255,0.3)" stroke-width="1.2"/>
+      <circle cx="4" cy="4" r="2.8" fill="#2dd4bf"/>
+      <circle cx="18" cy="11" r="2.8" fill="#a78bfa"/>
+      <circle cx="4" cy="18" r="2.8" fill="#D4820A"/>
+    </svg>
+    Euro<span>Roads</span>
+  </div>
   <div class="hm">All of Europe · 2026</div>
 </header>
 
