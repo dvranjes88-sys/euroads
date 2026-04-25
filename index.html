@@ -237,13 +237,37 @@ main { padding:2rem; max-width:1300px; margin:0 auto; }
 .mr-toolbar-item label { font-size: .6rem; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; }
 .mr-toolbar-item.narrow { flex: 0 0 85px; min-width: 75px; }
 .mr-toolbar-item.wide { flex: 2; min-width: 200px; }
-.mr-toolbar-calc { display: flex; flex-direction: column; justify-content: flex-end; }
-.mr-toolbar-calc .bcalc { padding: .55rem 1.1rem; white-space: nowrap; display: inline-flex; align-items: center; gap: .4rem; }
+.mr-toolbar-calc { display: flex; justify-content: flex-end; margin-top: .9rem; padding-top: .85rem; border-top: 1px solid rgba(255,255,255,.06); }
+.mr-toolbar-calc .bcalc { padding: .65rem 1.6rem; white-space: nowrap; display: inline-flex; align-items: center; gap: .4rem; width: auto; flex: 0 0 auto; }
+
+/* VARIANT C: 2-column desktop layout (Stops left + Trip details right) */
+.mr-form-2col {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
+  gap: 2rem;
+  align-items: start;
+}
+.mr-form-col-stops, .mr-form-col-details { min-width: 0; }
+.mr-form-col-details .mr-input-toolbar {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: .6rem;
+  margin-top: 0;
+  padding-top: 0;
+  border-top: none;
+}
+.mr-form-col-details .mr-toolbar-item { flex: none; min-width: 0; }
+.mr-form-col-details .mr-toolbar-item.wide { grid-column: span 2; flex: none; min-width: 0; }
+.mr-form-col-details .mr-toolbar-item.narrow { flex: none; min-width: 0; }
 
 @media(max-width: 900px){
+  .mr-form-2col { grid-template-columns: 1fr; gap: 1.25rem; }
+  .mr-form-col-details .mr-input-toolbar { grid-template-columns: 1fr 1fr; }
   .mr-input-toolbar { flex-direction: column; }
   .mr-toolbar-item, .mr-toolbar-calc { width: 100%; }
   .mr-toolbar-item.narrow, .mr-toolbar-item.wide { flex: 1; min-width: 0; }
+  .mr-toolbar-calc { justify-content: stretch; }
+  .mr-toolbar-calc .bcalc { width: 100%; }
 }
 
 .mr-input-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem; }
@@ -836,80 +860,91 @@ main { padding:2rem; max-width:1300px; margin:0 auto; }
         </div>
       </div>
 
-      <!-- STOPS sekcia -->
-      <div class="mr-stops-label">Stops</div>
-      <div id="mr-stops-wrap"></div>
-      <button class="mr-add-stop-ghost" onclick="addStop()">
-        <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
-        Add stop
-      </button>
+      <!-- 2-COLUMN LAYOUT: Stops vľavo, Trip details vpravo -->
+      <div class="mr-form-2col">
 
-      <!-- TOOLBAR: dates / vehicle / fuel / Calculate -->
-      <div class="mr-input-toolbar">
-
-        <div class="mr-toolbar-item">
-          <label>Departure</label>
-          <div class="mr-input-wrap">
-            <svg class="mr-input-icon" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="15" rx="2"/><path d="M8 3v4M16 3v4M3 10h18"/></svg>
-            <input type="date" id="mr-date-from">
-          </div>
-        </div>
-
-        <div class="mr-toolbar-item">
-          <label>Return</label>
-          <div class="mr-input-wrap">
-            <svg class="mr-input-icon" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="15" rx="2"/><path d="M8 3v4M16 3v4M3 10h18"/><path d="M9 14l2 2 4-4"/></svg>
-            <input type="date" id="mr-date-to">
-          </div>
-        </div>
-
-        <div class="mr-toolbar-item wide">
-          <label>Vehicle</label>
-          <div class="mr-input-wrap">
-            <svg class="mr-input-icon" viewBox="0 0 24 24"><path d="M14 17h4l-1-5h-5l-1 2h-4l-2 3v2h13z"/><circle cx="8" cy="19" r="2"/><circle cx="17" cy="19" r="2"/></svg>
-            <select id="mr-vehicle-cat">
-              <option value="I">Category I — Passenger car (up to 1.9m)</option>
-              <option value="IA">Category IA — Motorcycle</option>
-              <option value="II">Category II — SUV/Van over 1.9m</option>
-              <option value="III">Category III — 3-axle vehicle</option>
-            </select>
-          </div>
-        </div>
-
-        <div class="mr-toolbar-item narrow">
-          <label>Fuel type</label>
-          <div class="mr-input-wrap">
-            <svg class="mr-input-icon" viewBox="0 0 24 24"><path d="M3 7h10v13H3z"/><path d="M13 10l3-3h3v10l-3 3"/></svg>
-            <select id="mr-fuel-type" onchange="onFuelTypeChange()">
-              <option value="petrol">Petrol</option>
-              <option value="diesel">Diesel</option>
-            </select>
-          </div>
-        </div>
-
-        <div class="mr-toolbar-item narrow">
-          <label>Fuel €/L</label>
-          <div class="mr-input-wrap">
-            <svg class="mr-input-icon" viewBox="0 0 24 24"><path d="M4 21V7l5-4 5 4v14"/><path d="M4 11h10"/><path d="M17 11l3 2v7"/><path d="M17 17h3"/></svg>
-            <input type="number" id="mr-fuel-price" value="1.55" step="0.01" min="0.5" max="5">
-          </div>
-        </div>
-
-        <div class="mr-toolbar-item narrow">
-          <label>L/100km</label>
-          <div class="mr-input-wrap">
-            <svg class="mr-input-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
-            <input type="number" id="mr-fuel-consumption" value="7" step="0.5" min="1" max="30">
-          </div>
-        </div>
-
-        <div class="mr-toolbar-calc">
-          <button class="bcalc pulse" onclick="calcMapRoute()">
-            Calculate
-            <svg style="width:13px;height:13px;stroke:currentColor;fill:none;stroke-width:2.5;stroke-linecap:round;" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+        <!-- ĽAVÁ STRANA: STOPS sekcia -->
+        <div class="mr-form-col-stops">
+          <div class="mr-stops-label">Stops</div>
+          <div id="mr-stops-wrap"></div>
+          <button class="mr-add-stop-ghost" onclick="addStop()">
+            <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+            Add stop
           </button>
         </div>
 
+        <!-- PRAVÁ STRANA: TRIP DETAILS (dates, vehicle, fuel) -->
+        <div class="mr-form-col-details">
+          <div class="mr-stops-label">Trip details</div>
+          <div class="mr-input-toolbar">
+
+            <div class="mr-toolbar-item">
+              <label>Departure</label>
+              <div class="mr-input-wrap">
+                <svg class="mr-input-icon" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="15" rx="2"/><path d="M8 3v4M16 3v4M3 10h18"/></svg>
+                <input type="date" id="mr-date-from">
+              </div>
+            </div>
+
+            <div class="mr-toolbar-item">
+              <label>Return</label>
+              <div class="mr-input-wrap">
+                <svg class="mr-input-icon" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="15" rx="2"/><path d="M8 3v4M16 3v4M3 10h18"/><path d="M9 14l2 2 4-4"/></svg>
+                <input type="date" id="mr-date-to">
+              </div>
+            </div>
+
+            <div class="mr-toolbar-item wide">
+              <label>Vehicle</label>
+              <div class="mr-input-wrap">
+                <svg class="mr-input-icon" viewBox="0 0 24 24"><path d="M14 17h4l-1-5h-5l-1 2h-4l-2 3v2h13z"/><circle cx="8" cy="19" r="2"/><circle cx="17" cy="19" r="2"/></svg>
+                <select id="mr-vehicle-cat">
+                  <option value="I">Category I — Passenger car (up to 1.9m)</option>
+                  <option value="IA">Category IA — Motorcycle</option>
+                  <option value="II">Category II — SUV/Van over 1.9m</option>
+                  <option value="III">Category III — 3-axle vehicle</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="mr-toolbar-item narrow">
+              <label>Fuel type</label>
+              <div class="mr-input-wrap">
+                <svg class="mr-input-icon" viewBox="0 0 24 24"><path d="M3 7h10v13H3z"/><path d="M13 10l3-3h3v10l-3 3"/></svg>
+                <select id="mr-fuel-type" onchange="onFuelTypeChange()">
+                  <option value="petrol">Petrol</option>
+                  <option value="diesel">Diesel</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="mr-toolbar-item narrow">
+              <label>Fuel €/L</label>
+              <div class="mr-input-wrap">
+                <svg class="mr-input-icon" viewBox="0 0 24 24"><path d="M4 21V7l5-4 5 4v14"/><path d="M4 11h10"/><path d="M17 11l3 2v7"/><path d="M17 17h3"/></svg>
+                <input type="number" id="mr-fuel-price" value="1.55" step="0.01" min="0.5" max="5">
+              </div>
+            </div>
+
+            <div class="mr-toolbar-item narrow">
+              <label>L/100km</label>
+              <div class="mr-input-wrap">
+                <svg class="mr-input-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+                <input type="number" id="mr-fuel-consumption" value="7" step="0.5" min="1" max="30">
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+      </div>
+
+      <!-- CALCULATE BUTTON: full-width row, button vpravo dole -->
+      <div class="mr-toolbar-calc">
+        <button class="bcalc pulse" onclick="calcMapRoute()">
+          Calculate
+          <svg style="width:13px;height:13px;stroke:currentColor;fill:none;stroke-width:2.5;stroke-linecap:round;" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+        </button>
       </div>
     </div>
 
