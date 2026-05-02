@@ -2294,7 +2294,9 @@ function ferryHaversineKm(a, b){
 }
 
 // Detekuje ferry steps z Google Directions response.
-// Vracia surové segmenty { from:{lat,lng}, to:{lat,lng}, durationS, distanceM, instructions }
+// Vracia surové segmenty { from:{lat,lng}, to:{lat,lng}, coords, durationS, distanceM, instructions }
+// coords = dekódovaná step polyline (skutočná GPS sailing path okolo poloostrovov),
+// použije sa v drawFerrySegments pre cyan dashed čiaru po reálnej trase lode.
 function detectFerrySegments(googleLegs){
   if(!googleLegs) return [];
   const out = [];
@@ -2318,9 +2320,22 @@ function detectFerrySegments(googleLegs){
                    lng: typeof el.lng === 'function' ? el.lng() : el.lng };
       }
       if(!fromLL || !toLL) continue;
+      // Dekóduj step polyline pre actual sailing path (curved okolo poloostrovov)
+      let stepCoords = null;
+      if(step.polyline?.points){
+        try {
+          if(window.google?.maps?.geometry?.encoding){
+            stepCoords = google.maps.geometry.encoding.decodePath(step.polyline.points)
+              .map(ll => [ll.lng(), ll.lat()]);
+          } else {
+            stepCoords = decodePolyline(step.polyline.points);
+          }
+        } catch(e){ stepCoords = null; }
+      }
       out.push({
         from: fromLL,
         to: toLL,
+        coords: stepCoords && stepCoords.length >= 2 ? stepCoords : null,
         distanceM: step.distance?.value || 0,
         durationS: step.duration?.value || 0,
         instructions: instr,
@@ -2469,6 +2484,7 @@ function detectAndPriceFerries(route, vehicleCat){
         reversed: m.reversed,
         distKm: m.distKm,
         durationS: seg.durationS || (m.route.duration_minutes * 60),
+        coords: seg.coords, // actual GPS sailing path (curved); null fallback → port-to-port straight
         kind: 'ferry',
         price,
       });
@@ -2494,7 +2510,7 @@ function detectAndPriceFerries(route, vehicleCat){
   }
 
   if(detected.length){
-    console.log('[Ferry] Detected:', detected.map(d => `${d.route.id} (${d.kind}, €${d.price?.totalEur ?? '?'})`).join(', '));
+    console.log('[Ferry] Detected:', detected.map(d => `${d.route.id} (${d.kind}, €${d.price?.totalEur ?? '?'}, ${d.coords ? d.coords.length+'pt curve' : 'no polyline'})`).join(', '));
   }
   return detected;
 }
@@ -2518,20 +2534,28 @@ function estimateFerryCostForLegs(legResults, legIndices, vehicleCat){
   return ferries.reduce((sum, f) => sum + (f.price?.totalEur || 0), 0);
 }
 
-// Kreslí ferry/bridge segmenty na mape — bodkovaná fialová čiara s 🚢 markerom v strede.
+// Kreslí ferry segmenty na mape — bodkovaná cyan čiara po skutočnej GPS sailing path
+// (z Google ferry step.polyline). Ak coords chýbajú → fallback port-to-port straight.
+// Bridges (kind='bridge') sa NEKRESLIA — sú to skutočné cesty (DRIVING segments) takže
+// drawRouteByRoadClass ich už vykreslí ako normálnu toll/free cestu, a my ich len
+// pridáme ako riadok v cost breakdown paneli.
 // IDs sa pushnú do mrPolylines aby clearMapLayers ich vyčistil pri prepnutí trasy.
 function drawFerrySegments(detectedFerries){
   if(!mrMap || !detectedFerries?.length) return;
   detectedFerries.forEach((f, i) => {
+    if(f.kind === 'bridge') return; // bridge je real road, kreslí sa cez road renderer
     const r = f.route;
-    const fromC = [r.from.lng, r.from.lat];
-    const toC   = [r.to.lng, r.to.lat];
+    // Použij skutočnú GPS curve z Google step.polyline ak je dostupná,
+    // inak fallback na rovnú čiaru port-to-port.
+    const coords = (f.coords && f.coords.length >= 2)
+      ? f.coords
+      : [[r.from.lng, r.from.lat], [r.to.lng, r.to.lat]];
     const id = `mr-ferry-${i}`;
     mrPolylines.push(id);
     try {
       mrMap.addSource(id, {
         type: 'geojson',
-        data: { type:'Feature', geometry: { type:'LineString', coordinates: [fromC, toC] } }
+        data: { type:'Feature', geometry: { type:'LineString', coordinates: coords } }
       });
       mrMap.addLayer({
         id,
