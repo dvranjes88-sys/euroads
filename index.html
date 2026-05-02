@@ -1925,14 +1925,18 @@ function combineLegRoutes(legResults){
   }
   const fuelPrice = parseFloat(document.getElementById('mr-fuel-price')?.value) || 1.55;
   const fuelConsumption = parseFloat(document.getElementById('mr-fuel-consumption')?.value) || 7;
+  // Ferry-aware: pre Cheapest detekciu spočítame aj ferry/bridge náklady
+  const vehicleCat = document.getElementById('mr-vehicle-cat')?.value || 'I';
 
   const allCombos = allLegCombinations(legResults);
   let cheapestCost = Infinity;
   let cheapestIdx = null;
   for(const combo of allCombos){
     const cost = estimateCombinedRouteCost(legResults, combo, tripDays, fuelPrice, fuelConsumption);
-    if(cost.total > 0 && cost.total < cheapestCost){
-      cheapestCost = cost.total;
+    const ferryCost = estimateFerryCostForLegs(legResults, combo, vehicleCat);
+    const totalWithFerry = cost.total + ferryCost;
+    if(totalWithFerry > 0 && totalWithFerry < cheapestCost){
+      cheapestCost = totalWithFerry;
       cheapestIdx = combo;
     }
   }
@@ -1970,7 +1974,8 @@ function combineLegRoutes(legResults){
     // Zoraď ich podľa cost (vzostupne) a ber z konca aby sme mali niečo iné než čo už máme
     const scored = allCombos2.map(combo => {
       const cost = estimateCombinedRouteCost(legResults, combo, tripDays, fuelPrice, fuelConsumption);
-      return { combo, cost: cost.total };
+      const ferryCost = estimateFerryCostForLegs(legResults, combo, vehicleCat);
+      return { combo, cost: cost.total + ferryCost };
     }).sort((a, b) => a.cost - b.cost);
     // Nájdi prvú kombináciu ktorú ešte nemáme
     for(const s of scored){
@@ -2033,8 +2038,9 @@ function combineLegRoutes(legResults){
     });
 
     // Vypočítaj total cost pre túto konkrétnu kombináciu — KĽÚČOVÉ pre konzistentnosť
-    // UI panel a Cheapest detekcia musia používať rovnaký výpočet
+    // UI panel a Cheapest detekcia musia používať rovnaký výpočet (vrátane ferry/bridge)
     const costEstimate = estimateCombinedRouteCost(legResults, combo.legIndices, tripDays, fuelPrice, fuelConsumption);
+    const ferryCost = estimateFerryCostForLegs(legResults, combo.legIndices, vehicleCat);
 
     return {
       geometry: { type: 'LineString', coordinates },
@@ -2044,7 +2050,8 @@ function combineLegRoutes(legResults){
       _googleLegs: allGoogleLegs,
       _decomposed: true,
       _labels: combo.labels, // viac labelov ak trasa spĺňa viacero kritérií
-      _estimatedCost: costEstimate.total, // rovnaký výpočet ako použila Cheapest detekcia
+      _estimatedCost: costEstimate.total + ferryCost, // ferry-aware estimate
+      _ferryCost: ferryCost,
     };
   });
 }
@@ -2148,31 +2155,100 @@ let FUEL_PRICES = {
 // Detekcia: car_ferry → Google step instructions; bridge_toll → route geometry proximity
 // ══════════════════════════════════════════════════════════════
 let FERRY_ROUTES = [
-  { id:'split-supetar',     operator:'Jadrolinija',           from:{name:'Split',code:'SPL',lat:43.5057,lng:16.4366}, to:{name:'Supetar (Brač)',code:'SUP',lat:43.3851,lng:16.5505}, duration_minutes:50,  type:'car_ferry',   booking_url:'https://www.jadrolinija.hr/en/ferry-croatia' },
-  { id:'split-stari-grad',  operator:'Jadrolinija',           from:{name:'Split',code:'SPL',lat:43.5057,lng:16.4366}, to:{name:'Stari Grad (Hvar)',code:'STG',lat:43.1844,lng:16.5921}, duration_minutes:120, type:'car_ferry',   booking_url:'https://www.jadrolinija.hr/en/ferry-croatia' },
-  { id:'drvenik-sucuraj',   operator:'Jadrolinija',           from:{name:'Drvenik',code:'DRV',lat:43.1483,lng:17.2467}, to:{name:'Sućuraj (Hvar)',code:'SUC',lat:43.1280,lng:17.1900}, duration_minutes:35,  type:'car_ferry', booking_url:'https://www.jadrolinija.hr/en/ferry-croatia' },
-  { id:'ploce-trpanj',      operator:'Jadrolinija',           from:{name:'Ploče',code:'PLC',lat:43.0561,lng:17.4339}, to:{name:'Trpanj (Pelješac)',code:'TRP',lat:43.0080,lng:17.2641}, duration_minutes:60,  type:'car_ferry', booking_url:'https://www.jadrolinija.hr/en/ferry-croatia' },
-  { id:'biograd-tkon',      operator:'Jadrolinija',           from:{name:'Biograd na Moru',code:'BIO',lat:43.9433,lng:15.4434}, to:{name:'Tkon (Pašman)',code:'TKO',lat:43.9120,lng:15.3611}, duration_minutes:25, type:'car_ferry', booking_url:'https://www.jadrolinija.hr/en/ferry-croatia' },
-  { id:'storebaelt',        operator:'Storebælt (Sund & Bælt)', from:{name:'Halsskov (Zealand)',code:'HLS',lat:55.3450,lng:11.0258}, to:{name:'Knudshoved (Funen)',code:'KND',lat:55.2972,lng:10.8770}, duration_minutes:0, type:'bridge_toll', booking_url:'https://www.storebaelt.dk/en/prices/' },
-  { id:'oresund',           operator:'Øresundsbron',          from:{name:'Copenhagen (Kastrup)',code:'CPH',lat:55.6093,lng:12.6394}, to:{name:'Malmö (Lernacken)',code:'MMA',lat:55.5719,lng:12.6500}, duration_minutes:0, type:'bridge_toll', booking_url:'https://www.oresundsbron.com/en/prices' },
-  { id:'puttgarden-rodby',  operator:'Scandlines',            from:{name:'Puttgarden',code:'PUT',lat:54.4972,lng:11.2364}, to:{name:'Rødby',code:'ROD',lat:54.6531,lng:11.3508}, duration_minutes:45, type:'car_ferry', booking_url:'https://www.scandlines.com/booking' },
-  { id:'ancona-split',      operator:'Jadrolinija / SNAV',    from:{name:'Ancona',code:'ANC',lat:43.6173,lng:13.5056}, to:{name:'Split',code:'SPL',lat:43.5057,lng:16.4366}, duration_minutes:660, type:'car_ferry', booking_url:'https://www.jadrolinija.hr/en/ferry-croatia/italy-croatia-line' },
-  { id:'bari-dubrovnik',    operator:'Jadrolinija',           from:{name:'Bari',code:'BRI',lat:41.1278,lng:16.8704}, to:{name:'Dubrovnik (Gruž)',code:'DBV',lat:42.6622,lng:18.0763}, duration_minutes:540, type:'car_ferry', booking_url:'https://www.jadrolinija.hr/en/ferry-croatia/italy-croatia-line' },
+  // Jadrolinija — short routes (top-5 from Phase 1 spec)
+  { id:'split-supetar',      operator:'Jadrolinija', from:{name:'Split',code:'SPL',lat:43.5057,lng:16.4366}, to:{name:'Supetar (Brač)',code:'SUP',lat:43.3851,lng:16.5505}, duration_minutes:50, type:'car_ferry', booking_url:'https://www.jadrolinija.hr/en/ferry-croatia' },
+  { id:'split-stari-grad',   operator:'Jadrolinija', from:{name:'Split',code:'SPL',lat:43.5057,lng:16.4366}, to:{name:'Stari Grad (Hvar)',code:'STG',lat:43.1844,lng:16.5921}, duration_minutes:120, type:'car_ferry', booking_url:'https://www.jadrolinija.hr/en/ferry-croatia' },
+  { id:'drvenik-sucuraj',    operator:'Jadrolinija', from:{name:'Drvenik',code:'DRV',lat:43.1483,lng:17.2467}, to:{name:'Sućuraj (Hvar)',code:'SUC',lat:43.1280,lng:17.1900}, duration_minutes:35, type:'car_ferry', booking_url:'https://www.jadrolinija.hr/en/ferry-croatia' },
+  { id:'ploce-trpanj',       operator:'Jadrolinija', from:{name:'Ploče',code:'PLC',lat:43.0561,lng:17.4339}, to:{name:'Trpanj (Pelješac)',code:'TRP',lat:43.0080,lng:17.2641}, duration_minutes:60, type:'car_ferry', booking_url:'https://www.jadrolinija.hr/en/ferry-croatia' },
+  { id:'biograd-tkon',       operator:'Jadrolinija', from:{name:'Biograd na Moru',code:'BIO',lat:43.9433,lng:15.4434}, to:{name:'Tkon (Pašman)',code:'TKO',lat:43.9120,lng:15.3611}, duration_minutes:25, type:'car_ferry', booking_url:'https://www.jadrolinija.hr/en/ferry-croatia' },
+  // Jadrolinija — Split-area car ferries to other islands
+  { id:'split-vela-luka',    operator:'Jadrolinija', from:{name:'Split',code:'SPL',lat:43.5057,lng:16.4366}, to:{name:'Vela Luka (Korčula)',code:'VLK',lat:42.9622,lng:16.7160}, duration_minutes:180, type:'car_ferry', booking_url:'https://www.jadrolinija.hr/en/ferry-croatia' },
+  { id:'split-vis',          operator:'Jadrolinija', from:{name:'Split',code:'SPL',lat:43.5057,lng:16.4366}, to:{name:'Vis',code:'VIS',lat:43.0613,lng:16.1813}, duration_minutes:140, type:'car_ferry', booking_url:'https://www.jadrolinija.hr/en/ferry-croatia' },
+  { id:'split-rogac',        operator:'Jadrolinija', from:{name:'Split',code:'SPL',lat:43.5057,lng:16.4366}, to:{name:'Rogač (Šolta)',code:'ROG',lat:43.3863,lng:16.3083}, duration_minutes:60, type:'car_ferry', booking_url:'https://www.jadrolinija.hr/en/ferry-croatia' },
+  { id:'split-lastovo',      operator:'Jadrolinija', from:{name:'Split',code:'SPL',lat:43.5057,lng:16.4366}, to:{name:'Ubli (Lastovo)',code:'UBL',lat:42.7561,lng:16.8358}, duration_minutes:270, type:'car_ferry', booking_url:'https://www.jadrolinija.hr/en/ferry-croatia' },
+  // Jadrolinija — Kvarner car ferries
+  { id:'valbiska-merag',     operator:'Jadrolinija', from:{name:'Valbiska (Krk)',code:'VBK',lat:45.0436,lng:14.5267}, to:{name:'Merag (Cres)',code:'MRG',lat:45.0203,lng:14.4839}, duration_minutes:30, type:'car_ferry', booking_url:'https://www.jadrolinija.hr/en/ferry-croatia' },
+  { id:'brestova-porozina',  operator:'Jadrolinija', from:{name:'Brestova',code:'BRT',lat:45.1117,lng:14.2417}, to:{name:'Porozina (Cres)',code:'PRZ',lat:45.1283,lng:14.2783}, duration_minutes:25, type:'car_ferry', booking_url:'https://www.jadrolinija.hr/en/ferry-croatia' },
+  { id:'prizna-zigljen',     operator:'Jadrolinija', from:{name:'Prizna',code:'PRZ',lat:44.8839,lng:14.9700}, to:{name:'Žigljen (Pag)',code:'ZGL',lat:44.8758,lng:14.9569}, duration_minutes:15, type:'car_ferry', booking_url:'https://www.jadrolinija.hr/en/ferry-croatia' },
+  { id:'stinica-misnjak',    operator:'Jadrolinija', from:{name:'Stinica',code:'STN',lat:44.8639,lng:14.7919}, to:{name:'Mišnjak (Rab)',code:'MSN',lat:44.7617,lng:14.7878}, duration_minutes:15, type:'car_ferry', booking_url:'https://www.jadrolinija.hr/en/ferry-croatia' },
+  { id:'jablanac-misnjak',   operator:'Jadrolinija', from:{name:'Jablanac',code:'JBL',lat:44.7100,lng:14.9131}, to:{name:'Mišnjak (Rab)',code:'MSN',lat:44.7617,lng:14.7878}, duration_minutes:15, type:'car_ferry', booking_url:'https://www.jadrolinija.hr/en/ferry-croatia' },
+  // Jadrolinija — Pelješac/South
+  { id:'orebic-domince',     operator:'Jadrolinija', from:{name:'Orebić (Pelješac)',code:'ORB',lat:42.9789,lng:17.1786}, to:{name:'Dominče (Korčula)',code:'DMC',lat:42.9789,lng:17.1572}, duration_minutes:15, type:'car_ferry', booking_url:'https://www.jadrolinija.hr/en/ferry-croatia' },
+  { id:'prapratno-sobra',    operator:'Jadrolinija', from:{name:'Prapratno (Pelješac)',code:'PRP',lat:42.8531,lng:17.6644}, to:{name:'Sobra (Mljet)',code:'SBR',lat:42.7392,lng:17.6403}, duration_minutes:50, type:'car_ferry', booking_url:'https://www.jadrolinija.hr/en/ferry-croatia' },
+  // Jadrolinija — Zadar archipelago
+  { id:'zadar-preko',        operator:'Jadrolinija', from:{name:'Zadar',code:'ZAD',lat:44.1186,lng:15.2306}, to:{name:'Preko (Ugljan)',code:'PRK',lat:44.0853,lng:15.1953}, duration_minutes:25, type:'car_ferry', booking_url:'https://www.jadrolinija.hr/en/ferry-croatia' },
+  { id:'zadar-mali-losinj',  operator:'Jadrolinija', from:{name:'Zadar',code:'ZAD',lat:44.1186,lng:15.2306}, to:{name:'Mali Lošinj',code:'MLL',lat:44.5333,lng:14.4711}, duration_minutes:300, type:'car_ferry', booking_url:'https://www.jadrolinija.hr/en/ferry-croatia' },
+  { id:'zadar-zaglav',       operator:'Jadrolinija', from:{name:'Zadar',code:'ZAD',lat:44.1186,lng:15.2306}, to:{name:'Zaglav (Dugi Otok)',code:'ZGV',lat:43.9833,lng:15.0194}, duration_minutes:80, type:'car_ferry', booking_url:'https://www.jadrolinija.hr/en/ferry-croatia' },
+  { id:'zadar-brbinj',       operator:'Jadrolinija', from:{name:'Zadar',code:'ZAD',lat:44.1186,lng:15.2306}, to:{name:'Brbinj (Dugi Otok)',code:'BRB',lat:44.0833,lng:14.9528}, duration_minutes:90, type:'car_ferry', booking_url:'https://www.jadrolinija.hr/en/ferry-croatia' },
+  { id:'zadar-bozava',       operator:'Jadrolinija', from:{name:'Zadar',code:'ZAD',lat:44.1186,lng:15.2306}, to:{name:'Božava (Dugi Otok)',code:'BZV',lat:44.1372,lng:14.9156}, duration_minutes:90, type:'car_ferry', booking_url:'https://www.jadrolinija.hr/en/ferry-croatia' },
+  { id:'zadar-ist',          operator:'Jadrolinija', from:{name:'Zadar',code:'ZAD',lat:44.1186,lng:15.2306}, to:{name:'Ist',code:'IST',lat:44.2658,lng:14.7589}, duration_minutes:120, type:'car_ferry', booking_url:'https://www.jadrolinija.hr/en/ferry-croatia' },
+  // Kapetan Luka (Krilo) — passenger catamarans
+  { id:'split-hvar-cat',      operator:'Kapetan Luka (Krilo)', from:{name:'Split (catamaran terminal)',code:'SPL',lat:43.5077,lng:16.4419}, to:{name:'Hvar town',code:'HVA',lat:43.1726,lng:16.4422}, duration_minutes:60, type:'catamaran', booking_url:'https://www.krilo.hr/en/timetable' },
+  { id:'split-bol-jelsa',     operator:'Kapetan Luka (Krilo)', from:{name:'Split (catamaran terminal)',code:'SPL',lat:43.5077,lng:16.4419}, to:{name:'Bol (Brač) / Jelsa (Hvar)',code:'BOL',lat:43.2614,lng:16.6589}, duration_minutes:90, type:'catamaran', booking_url:'https://www.krilo.hr/en/timetable' },
+  { id:'split-korcula-cat',   operator:'Kapetan Luka (Krilo)', from:{name:'Split (catamaran terminal)',code:'SPL',lat:43.5077,lng:16.4419}, to:{name:'Korčula town',code:'KOR',lat:42.9586,lng:17.1364}, duration_minutes:180, type:'catamaran', booking_url:'https://www.krilo.hr/en/timetable' },
+  { id:'split-mljet-pomena',  operator:'Kapetan Luka (Krilo)', from:{name:'Split (catamaran terminal)',code:'SPL',lat:43.5077,lng:16.4419}, to:{name:'Pomena (Mljet)',code:'POM',lat:42.7858,lng:17.3392}, duration_minutes:200, type:'catamaran', booking_url:'https://www.krilo.hr/en/timetable' },
+  { id:'split-dubrovnik-cat', operator:'Kapetan Luka (Krilo)', from:{name:'Split (catamaran terminal)',code:'SPL',lat:43.5077,lng:16.4419}, to:{name:'Dubrovnik (Gruž)',code:'DBV',lat:42.6622,lng:18.0763}, duration_minutes:270, type:'catamaran', booking_url:'https://www.krilo.hr/en/timetable' },
+  // TP Line
+  { id:'trogir-drvenik-veli', operator:'TP Line', from:{name:'Trogir',code:'TRG',lat:43.5172,lng:16.2517}, to:{name:'Drvenik Veli',code:'DVL',lat:43.4475,lng:16.1789}, duration_minutes:30, type:'passenger_only', booking_url:'https://www.tp-line.hr/' },
+  // G&V Line — Dubrovnik archipelago
+  { id:'dubrovnik-sipan',    operator:'G&V Line', from:{name:'Dubrovnik (Gruž)',code:'DBV',lat:42.6622,lng:18.0763}, to:{name:'Suđurađ (Šipan)',code:'SDR',lat:42.7281,lng:17.8908}, duration_minutes:60, type:'passenger_only', booking_url:'https://gv-line.hr/' },
+  { id:'dubrovnik-lopud',    operator:'G&V Line', from:{name:'Dubrovnik (Gruž)',code:'DBV',lat:42.6622,lng:18.0763}, to:{name:'Lopud',code:'LPD',lat:42.6856,lng:17.9381}, duration_minutes:50, type:'passenger_only', booking_url:'https://gv-line.hr/' },
+  { id:'dubrovnik-kolocep',  operator:'G&V Line', from:{name:'Dubrovnik (Gruž)',code:'DBV',lat:42.6622,lng:18.0763}, to:{name:'Koločep (Donje Čelo)',code:'KLC',lat:42.6708,lng:17.9619}, duration_minutes:30, type:'passenger_only', booking_url:'https://gv-line.hr/' },
+  { id:'dubrovnik-sobra',    operator:'G&V Line / Jadrolinija', from:{name:'Dubrovnik (Gruž)',code:'DBV',lat:42.6622,lng:18.0763}, to:{name:'Sobra (Mljet)',code:'SBR',lat:42.7392,lng:17.6403}, duration_minutes:90, type:'passenger_only', booking_url:'https://gv-line.hr/' },
+  // International ferries
+  { id:'ancona-split',       operator:'Jadrolinija / SNAV', from:{name:'Ancona',code:'ANC',lat:43.6173,lng:13.5056}, to:{name:'Split',code:'SPL',lat:43.5057,lng:16.4366}, duration_minutes:660, type:'car_ferry', booking_url:'https://www.jadrolinija.hr/en/ferry-croatia/italy-croatia-line' },
+  { id:'bari-dubrovnik',     operator:'Jadrolinija', from:{name:'Bari',code:'BRI',lat:41.1278,lng:16.8704}, to:{name:'Dubrovnik (Gruž)',code:'DBV',lat:42.6622,lng:18.0763}, duration_minutes:540, type:'car_ferry', booking_url:'https://www.jadrolinija.hr/en/ferry-croatia/italy-croatia-line' },
+  // Bridges (toll fixed-link, detected via geometry proximity)
+  { id:'storebaelt',         operator:'Storebælt (Sund & Bælt)', from:{name:'Halsskov (Zealand)',code:'HLS',lat:55.3450,lng:11.0258}, to:{name:'Knudshoved (Funen)',code:'KND',lat:55.2972,lng:10.8770}, duration_minutes:0, type:'bridge_toll', booking_url:'https://www.storebaelt.dk/en/prices/' },
+  { id:'oresund',            operator:'Øresundsbron', from:{name:'Copenhagen (Kastrup)',code:'CPH',lat:55.6093,lng:12.6394}, to:{name:'Malmö (Lernacken)',code:'MMA',lat:55.5719,lng:12.6500}, duration_minutes:0, type:'bridge_toll', booking_url:'https://www.oresundsbron.com/en/prices' },
+  // Scandinavian car ferry
+  { id:'puttgarden-rodby',   operator:'Scandlines', from:{name:'Puttgarden',code:'PUT',lat:54.4972,lng:11.2364}, to:{name:'Rødby',code:'ROD',lat:54.6531,lng:11.3508}, duration_minutes:45, type:'car_ferry', booking_url:'https://www.scandlines.com/booking' },
 ];
 
 let FERRY_PRICES = {
   _updated: '2026-05-02',
   _source: 'inline fallback',
-  'split-supetar':    { adult:4.90, child_3_12:2.45, car_under_5m:18.50, car_over_5m:27.80, motorcycle:7.40, bicycle:3.20 },
-  'split-stari-grad': { adult:7.90, child_3_12:3.95, car_under_5m:30.40, car_over_5m:45.60, motorcycle:11.90, bicycle:5.40 },
-  'drvenik-sucuraj':  { adult:2.20, child_3_12:1.10, car_under_5m:10.40, car_over_5m:14.90, motorcycle:4.60, bicycle:2.10 },
-  'ploce-trpanj':     { adult:4.90, child_3_12:2.45, car_under_5m:18.50, car_over_5m:27.80, motorcycle:7.40, bicycle:3.20 },
-  'biograd-tkon':     { adult:2.20, child_3_12:1.10, car_under_5m:10.40, car_over_5m:14.90, motorcycle:4.60, bicycle:2.10 },
-  'storebaelt':       { car_under_6m:34.00, car_over_6m:51.00, motorcycle:18.00 },
-  'oresund':          { car_under_6m:67.00, car_over_6m:134.00, motorcycle:36.00 },
-  'puttgarden-rodby': { car_under_6m:89.00, car_over_6m:109.00, motorcycle:49.00, adult_included:true },
-  'ancona-split':     { adult:70.00, child_3_12:35.00, car_under_5m:110.00, car_over_5m:165.00, motorcycle:60.00 },
-  'bari-dubrovnik':   { adult:60.00, child_3_12:30.00, car_under_5m:90.00, car_over_5m:135.00, motorcycle:50.00 },
+  // Jadrolinija — confident May 2026 prices (from public tariff)
+  'split-supetar':       { adult:4.90, child_3_12:2.45, car_under_5m:18.50, car_over_5m:27.80, motorcycle:7.40, bicycle:3.20 },
+  'split-stari-grad':    { adult:7.90, child_3_12:3.95, car_under_5m:30.40, car_over_5m:45.60, motorcycle:11.90, bicycle:5.40 },
+  'drvenik-sucuraj':     { adult:2.20, child_3_12:1.10, car_under_5m:10.40, car_over_5m:14.90, motorcycle:4.60, bicycle:2.10 },
+  'ploce-trpanj':        { adult:4.90, child_3_12:2.45, car_under_5m:18.50, car_over_5m:27.80, motorcycle:7.40, bicycle:3.20 },
+  'biograd-tkon':        { adult:2.20, child_3_12:1.10, car_under_5m:10.40, car_over_5m:14.90, motorcycle:4.60, bicycle:2.10 },
+  'split-vela-luka':     { adult:11.20, child_3_12:5.60, car_under_5m:38.40, car_over_5m:57.60, motorcycle:13.90, bicycle:4.20 },
+  'split-vis':           { adult:7.90, child_3_12:3.95, car_under_5m:30.40, car_over_5m:45.60, motorcycle:11.90, bicycle:5.40 },
+  'split-rogac':         { adult:4.90, child_3_12:2.45, car_under_5m:18.50, car_over_5m:27.80, motorcycle:7.40, bicycle:3.20 },
+  'split-lastovo':       { adult:10.80, car_under_5m:54.00, motorcycle:21.60, bicycle:5.40, price_estimated:true },
+  'valbiska-merag':      { adult:2.20, child_3_12:1.10, car_under_5m:10.40, car_over_5m:14.90, motorcycle:4.60, bicycle:2.10 },
+  'brestova-porozina':   { adult:2.20, child_3_12:1.10, car_under_5m:10.40, car_over_5m:14.90, motorcycle:4.60, bicycle:2.10 },
+  'prizna-zigljen':      { adult:1.80, child_3_12:0.90, car_under_5m:8.30,  car_over_5m:12.50, motorcycle:3.90, bicycle:2.00 },
+  'stinica-misnjak':     { adult:1.80, child_3_12:0.90, car_under_5m:8.30,  car_over_5m:12.50, motorcycle:3.90, bicycle:2.00 },
+  'jablanac-misnjak':    { adult:1.80, child_3_12:0.90, car_under_5m:8.30,  car_over_5m:12.50, motorcycle:3.90, bicycle:2.00 },
+  'orebic-domince':      { adult:2.20, child_3_12:1.10, car_under_5m:10.40, car_over_5m:14.90, motorcycle:4.60, bicycle:2.10 },
+  'prapratno-sobra':     { adult:4.90, child_3_12:2.45, car_under_5m:18.50, car_over_5m:27.80, motorcycle:7.40, bicycle:3.20 },
+  'zadar-preko':         { adult:2.20, child_3_12:1.10, car_under_5m:10.40, car_over_5m:14.90, motorcycle:4.60, bicycle:2.10 },
+  'zadar-mali-losinj':   { adult:12.00, car_under_5m:60.00, motorcycle:24.00, bicycle:6.00, price_estimated:true },
+  'zadar-zaglav':        { adult:3.20,  car_under_5m:16.00, motorcycle:6.40,  bicycle:1.60, price_estimated:true },
+  'zadar-brbinj':        { adult:3.60,  car_under_5m:18.00, motorcycle:7.20,  bicycle:1.80, price_estimated:true },
+  'zadar-bozava':        { adult:3.60,  car_under_5m:18.00, motorcycle:7.20,  bicycle:1.80, price_estimated:true },
+  'zadar-ist':           { adult:4.80,  car_under_5m:24.00, motorcycle:9.60,  bicycle:2.40, price_estimated:true },
+  // Kapetan Luka — passenger catamarans (no cars)
+  'split-hvar-cat':      { adult:18.00, child_3_12:9.00,  bicycle:3.00 },
+  'split-bol-jelsa':     { adult:22.00, child_3_12:11.00, bicycle:3.00 },
+  'split-korcula-cat':   { adult:30.00, child_3_12:15.00, bicycle:4.00 },
+  'split-mljet-pomena':  { adult:33.00, child_3_12:16.50, bicycle:4.00 },
+  'split-dubrovnik-cat': { adult:40.00, child_3_12:20.00, bicycle:5.00 },
+  // TP Line, G&V Line — passenger
+  'trogir-drvenik-veli': { adult:2.20, bicycle:1.20, price_estimated:true },
+  'dubrovnik-sipan':     { adult:2.40, bicycle:1.20, price_estimated:true },
+  'dubrovnik-lopud':     { adult:2.00, bicycle:1.00, price_estimated:true },
+  'dubrovnik-kolocep':   { adult:1.20, bicycle:0.60, price_estimated:true },
+  'dubrovnik-sobra':     { adult:3.60, bicycle:1.80, price_estimated:true },
+  // International
+  'ancona-split':        { adult:70.00, child_3_12:35.00, car_under_5m:110.00, car_over_5m:165.00, motorcycle:60.00 },
+  'bari-dubrovnik':      { adult:60.00, child_3_12:30.00, car_under_5m:90.00,  car_over_5m:135.00, motorcycle:50.00 },
+  'storebaelt':          { car_under_6m:34.00, car_over_6m:51.00, motorcycle:18.00 },
+  'oresund':             { car_under_6m:67.00, car_over_6m:134.00, motorcycle:36.00 },
+  'puttgarden-rodby':    { car_under_6m:89.00, car_over_6m:109.00, motorcycle:49.00, adult_included:true },
 };
 
 // Async loader pre ferry-routes.json + ferry-prices.json (mirror loadLiveFuelPrices pattern)
@@ -2252,20 +2328,33 @@ function detectFerrySegments(googleLegs){
 }
 
 // Match detekovaný segment proti ferry-routes.json by GPS proximity (fwd alebo reverse).
-// Vracia { route, distKm, reversed } alebo null ak žiadny match do 30km.
+// PER-PORT cap (12km): obidva porty musia byť do 12km — neobzeráme combined sum.
+// Inak by jeden perfektný port mohol kompenzovať jeden zlý (napr. Vela Luka by sa
+// matchol na Stari Grad, lebo Split je perfect 0km a Stari Grad-VelaLuka je 27km).
+// Bridge_toll routes sa neberú — tie matchuje detectBridgeCrossings podľa geometrie.
 function matchFerryRoute(segment, ferryRoutes){
   const segFrom = segment.from, segTo = segment.to;
+  const PORT_TOLERANCE_KM = 12;
   let best = null;
   for(const r of ferryRoutes){
-    if(r.type !== 'car_ferry') continue;
-    const fwd = ferryHaversineKm(segFrom, r.from) + ferryHaversineKm(segTo, r.to);
-    const rev = ferryHaversineKm(segFrom, r.to)   + ferryHaversineKm(segTo, r.from);
-    const distKm = Math.min(fwd, rev);
-    const reversed = rev < fwd;
-    if(!best || distKm < best.distKm) best = { route: r, distKm, reversed };
+    if(r.type === 'bridge_toll') continue;
+    const fwdFrom = ferryHaversineKm(segFrom, r.from);
+    const fwdTo   = ferryHaversineKm(segTo, r.to);
+    const revFrom = ferryHaversineKm(segFrom, r.to);
+    const revTo   = ferryHaversineKm(segTo, r.from);
+
+    const fwdMax = Math.max(fwdFrom, fwdTo);
+    const revMax = Math.max(revFrom, revTo);
+
+    let candidate;
+    if(fwdMax <= revMax){
+      candidate = { route: r, distKm: fwdFrom + fwdTo, maxPortKm: fwdMax, reversed: false };
+    } else {
+      candidate = { route: r, distKm: revFrom + revTo, maxPortKm: revMax, reversed: true };
+    }
+    if(!best || candidate.maxPortKm < best.maxPortKm) best = candidate;
   }
-  // 30km combined budget = each port within ~15km tolerance (Google sometimes returns approximated dock locations)
-  if(best && best.distKm < 30) return best;
+  if(best && best.maxPortKm < PORT_TOLERANCE_KM) return best;
   return null;
 }
 
@@ -2293,11 +2382,11 @@ function detectBridgeCrossings(routeCoords, ferryRoutes, alreadyDetectedIds){
   return out;
 }
 
-// Vehicle-category-aware pricing — vracia { totalEur, breakdown:[{label,amount}] }
-// Default: I (passenger car) → adult + car_under_5m / car_under_6m
-// IA (motorcycle) → motorcycle + adult (kde nie je adult_included)
-// II (SUV/Van >1.9m) → adult + car_over_5m / car_over_6m
-// III (3-axle) → 2× adult + car_over_5m × 1.5 (rough fallback — Phase 2 lepšia kategorizácia)
+// Vehicle-category-aware pricing — vracia { totalEur, breakdown:[{label,amount}], isEstimated }
+// Cat I (passenger car) → car_under_5m + 1 adult; ak nie je car (catamaran/passenger only) → adult only
+// Cat IA (motorcycle) → motorcycle + 1 rider; ak nie je moto → adult only
+// Cat II (SUV/Van >1.9m) → car_over_5m + 1 adult
+// Cat III (3-axle) → car_over_5m × 1.5 + 2 adults (rough — Phase 2 lepšia kategorizácia)
 function getFerryPriceForVehicle(routeId, vehicleCat){
   const p = FERRY_PRICES[routeId];
   if(!p) return null;
@@ -2310,36 +2399,52 @@ function getFerryPriceForVehicle(routeId, vehicleCat){
   const adult = p.adult || 0;
   const moto  = p.motorcycle || 0;
   const passengerIncluded = !!p.adult_included; // Scandlines: vodič + pasažieri zdarma s autom
+  const isEstimated = !!p.price_estimated;
 
   let total = 0;
   const breakdown = [];
 
   if(cat === 'IA'){
-    // Motocykel
-    if(moto){ total += moto; breakdown.push({ label:'Motorcycle', amount: moto }); }
-    if(adult && !passengerIncluded){ total += adult; breakdown.push({ label:'1× rider (adult)', amount: adult }); }
-    if(!moto && !adult) return null;
+    // Motocykel — ak ferry nemá moto cenu, vodič ide ako pasažier (motocykel zostane v prístave)
+    if(moto){
+      total += moto;
+      breakdown.push({ label:'Motorcycle', amount: moto });
+      if(adult && !passengerIncluded){ total += adult; breakdown.push({ label:'1× rider (adult)', amount: adult }); }
+    } else if(adult){
+      total += adult;
+      breakdown.push({ label:'1× passenger (no moto)', amount: adult });
+    }
   } else if(cat === 'II' || cat === 'III'){
     // SUV/Van alebo 3-axle — over-size cena
     const car = carOver || carUnder;
     if(car){
       total += car;
       breakdown.push({ label: cat === 'III' ? 'Car >5m / 3-axle' : 'Car >5m', amount: car });
+      if(adult && !passengerIncluded){
+        const adults = cat === 'III' ? 2 : 1;
+        total += adult * adults;
+        breakdown.push({ label: `${adults}× adult`, amount: adult * adults });
+      }
+    } else if(adult){
+      // Catamaran/passenger-only — no oversize vehicle
+      total += adult;
+      breakdown.push({ label:'1× passenger (no vehicle)', amount: adult });
     }
-    if(adult && !passengerIncluded){
-      const adults = cat === 'III' ? 2 : 1;
-      total += adult * adults;
-      breakdown.push({ label: `${adults}× adult`, amount: adult * adults });
-    }
-    if(!car) return null;
   } else {
     // Cat I = passenger car
-    if(carUnder){ total += carUnder; breakdown.push({ label:'Car ≤5m', amount: carUnder }); }
-    if(adult && !passengerIncluded){ total += adult; breakdown.push({ label:'1× adult', amount: adult }); }
-    if(!carUnder) return null;
+    if(carUnder){
+      total += carUnder;
+      breakdown.push({ label:'Car ≤5m', amount: carUnder });
+      if(adult && !passengerIncluded){ total += adult; breakdown.push({ label:'1× adult', amount: adult }); }
+    } else if(adult){
+      // Catamaran/passenger-only — vodič nemôže prísť autom, cena za pasažiera
+      total += adult;
+      breakdown.push({ label:'1× passenger (no car)', amount: adult });
+    }
   }
 
-  return { totalEur: parseFloat(total.toFixed(2)), breakdown };
+  if(total === 0) return null;
+  return { totalEur: parseFloat(total.toFixed(2)), breakdown, isEstimated };
 }
 
 // Hlavná detekčná funkcia — kombinuje ferry steps + bridge crossings.
@@ -2389,6 +2494,25 @@ function detectAndPriceFerries(route, vehicleCat){
     console.log('[Ferry] Detected:', detected.map(d => `${d.route.id} (${d.kind}, €${d.price?.totalEur ?? '?'})`).join(', '));
   }
   return detected;
+}
+
+// Light helper: pre danú kombináciu leg indexov zostavíme virtuálnu route
+// (concat _googleLegs + geometry) a vrátime sumu detekovaných ferry/bridge cien.
+// Použité v combineLegRoutes aby Cheapest detection + _estimatedCost zahŕňali ferry.
+function estimateFerryCostForLegs(legResults, legIndices, vehicleCat){
+  let allGoogleLegs = [];
+  let coordinates = [];
+  legIndices.forEach((routeIdx, legI) => {
+    const route = legResults[legI].routes[routeIdx];
+    if(route._googleLegs) allGoogleLegs = allGoogleLegs.concat(route._googleLegs);
+    const legCoords = route.geometry?.coordinates || [];
+    if(legI === 0){ coordinates = [...legCoords]; }
+    else { coordinates = coordinates.concat(legCoords.slice(1)); }
+  });
+  if(!allGoogleLegs.length && !coordinates.length) return 0;
+  const fakeRoute = { _googleLegs: allGoogleLegs, geometry: { type: 'LineString', coordinates } };
+  const ferries = detectAndPriceFerries(fakeRoute, vehicleCat);
+  return ferries.reduce((sum, f) => sum + (f.price?.totalEur || 0), 0);
 }
 
 // Kreslí ferry/bridge segmenty na mape — bodkovaná fialová čiara s 🚢 markerom v strede.
@@ -3777,7 +3901,8 @@ async function recomputeResultsPanel(route, validPts, segments, stopInputs){
     const icon = isBridge ? '🌉' : '🚢';
     const ferryColor = '#C084FC'; // fialová ako --enc, matchuje dashed polyline na mape
     const priceEur = f.price?.totalEur || 0;
-    const priceStr = priceEur > 0 ? toEurStr(priceEur) : '~varies';
+    const isEstPrice = !!f.price?.isEstimated;
+    const priceStr = priceEur > 0 ? `${isEstPrice ? '~' : ''}${toEurStr(priceEur)}` : '~varies';
 
     // Duration label — Google step durationS prefer over static; bridges majú 0 (nie je crossing time relevantný)
     let durLabel = '';
@@ -3792,6 +3917,10 @@ async function recomputeResultsPanel(route, validPts, segments, stopInputs){
     const bookLabel = isBridge ? `prices on ${opName}` : `book on ${opName}`;
     const bookLink = r.booking_url
       ? ` · <a href="${r.booking_url}" target="_blank" rel="noopener noreferrer" style="color:${ferryColor};">${bookLabel} ↗</a>`
+      : '';
+    // Estimated-price badge (Phase 1 — pricing scaling formula, not from operator)
+    const estBadge = isEstPrice
+      ? ` <span style="font-size:.55rem;color:${ferryColor};background:rgba(192,132,252,.12);border-radius:4px;padding:.1rem .35rem;letter-spacing:.05em;">EST.</span>`
       : '';
 
     // Optional vehicle-category breakdown (Car ≤5m + 1 adult)
@@ -3813,7 +3942,7 @@ async function recomputeResultsPanel(route, validPts, segments, stopInputs){
         </div>
         <span class="mr-cprice" style="color:${ferryColor};">${priceStr}</span>
       </div>
-      <div class="mr-country-row2">${isBridge ? 'Bridge toll' : 'Ferry'}${bookLink}${detailRow ? ` · ${detailRow}` : ''}</div>
+      <div class="mr-country-row2">${isBridge ? 'Bridge toll' : (r.type === 'catamaran' || r.type === 'passenger_only' ? 'Catamaran' : 'Ferry')}${estBadge}${bookLink}${detailRow ? ` · ${detailRow}` : ''}</div>
     </div>`;
   }
 

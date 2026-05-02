@@ -1,83 +1,54 @@
 {
   "_updated": "2026-05-02",
-  "_source": "Manual May 2026 reference (Phase 1 MVP). Phase 2 will replace with weekly auto-scrape.",
-  "_notes": "Croatia (Jadrolinija) prices VAT 25% included, anchored to Biograd→Tkon reference (€2.20 adult, €10.40 car ≤5m). Storebælt/Øresund/Scandlines prices in EUR (DKK→EUR @ ~7.46). Ancona-Split and Bari-Dubrovnik are deck-passage with car (one-way, low season).",
+  "_source": "Manual May 2026 reference (Phase 1 expanded). Phase 2 will replace with live scraper.",
+  "_notes": "VAT 25% included. Confident prices come from public Jadrolinija / Kapetan Luka tariffs. price_estimated:true means scaling formula was used (€0.04/min adult, €0.20/min car≤5m, €0.08/min motorcycle, €0.02/min bicycle, rounded to €0.10) — these need manual verification before Phase 2. Storebælt/Øresund/Scandlines are EUR equivalents (DKK→EUR @ ~7.46). Ancona-Split / Bari-Dubrovnik are deck-passage with car (one-way, low season).",
   "currency": "EUR",
   "prices": {
-    "split-supetar": {
-      "adult": 4.90,
-      "child_3_12": 2.45,
-      "car_under_5m": 18.50,
-      "car_over_5m": 27.80,
-      "motorcycle": 7.40,
-      "bicycle": 3.20
-    },
-    "split-stari-grad": {
-      "adult": 7.90,
-      "child_3_12": 3.95,
-      "car_under_5m": 30.40,
-      "car_over_5m": 45.60,
-      "motorcycle": 11.90,
-      "bicycle": 5.40
-    },
-    "drvenik-sucuraj": {
-      "adult": 2.20,
-      "child_3_12": 1.10,
-      "car_under_5m": 10.40,
-      "car_over_5m": 14.90,
-      "motorcycle": 4.60,
-      "bicycle": 2.10
-    },
-    "ploce-trpanj": {
-      "adult": 4.90,
-      "child_3_12": 2.45,
-      "car_under_5m": 18.50,
-      "car_over_5m": 27.80,
-      "motorcycle": 7.40,
-      "bicycle": 3.20
-    },
-    "biograd-tkon": {
-      "adult": 2.20,
-      "child_3_12": 1.10,
-      "car_under_5m": 10.40,
-      "car_over_5m": 14.90,
-      "motorcycle": 4.60,
-      "bicycle": 2.10
-    },
-    "storebaelt": {
-      "car_under_6m": 34.00,
-      "car_over_6m": 51.00,
-      "motorcycle": 18.00,
-      "_note": "Bridge toll — single crossing, no passenger fees. Prepaid BroBizen ~25% cheaper."
-    },
-    "oresund": {
-      "car_under_6m": 67.00,
-      "car_over_6m": 134.00,
-      "motorcycle": 36.00,
-      "_note": "Bridge toll DK↔SE — single crossing, no passenger fees. BroPas subscribers ~50% cheaper."
-    },
-    "puttgarden-rodby": {
-      "car_under_6m": 89.00,
-      "car_over_6m": 109.00,
-      "motorcycle": 49.00,
-      "adult_included": true,
-      "_note": "Scandlines ferry. Driver and up to 9 passengers included in car ticket."
-    },
-    "ancona-split": {
-      "adult": 70.00,
-      "child_3_12": 35.00,
-      "car_under_5m": 110.00,
-      "car_over_5m": 165.00,
-      "motorcycle": 60.00,
-      "_note": "Deck passage (no cabin), low season. Cabin upgrade +€40-€120."
-    },
-    "bari-dubrovnik": {
-      "adult": 60.00,
-      "child_3_12": 30.00,
-      "car_under_5m": 90.00,
-      "car_over_5m": 135.00,
-      "motorcycle": 50.00,
-      "_note": "Deck passage (no cabin), low season. Cabin upgrade +€40-€120."
-    }
+    "split-supetar":      { "adult": 4.90, "child_3_12": 2.45, "car_under_5m": 18.50, "car_over_5m": 27.80, "motorcycle": 7.40, "bicycle": 3.20 },
+    "split-stari-grad":   { "adult": 7.90, "child_3_12": 3.95, "car_under_5m": 30.40, "car_over_5m": 45.60, "motorcycle": 11.90, "bicycle": 5.40 },
+    "drvenik-sucuraj":    { "adult": 2.20, "child_3_12": 1.10, "car_under_5m": 10.40, "car_over_5m": 14.90, "motorcycle": 4.60, "bicycle": 2.10 },
+    "ploce-trpanj":       { "adult": 4.90, "child_3_12": 2.45, "car_under_5m": 18.50, "car_over_5m": 27.80, "motorcycle": 7.40, "bicycle": 3.20 },
+    "biograd-tkon":       { "adult": 2.20, "child_3_12": 1.10, "car_under_5m": 10.40, "car_over_5m": 14.90, "motorcycle": 4.60, "bicycle": 2.10 },
+
+    "split-vela-luka":    { "adult": 11.20, "child_3_12": 5.60, "car_under_5m": 38.40, "car_over_5m": 57.60, "motorcycle": 13.90, "bicycle": 4.20 },
+    "split-vis":          { "adult": 7.90, "child_3_12": 3.95, "car_under_5m": 30.40, "car_over_5m": 45.60, "motorcycle": 11.90, "bicycle": 5.40 },
+    "split-rogac":        { "adult": 4.90, "child_3_12": 2.45, "car_under_5m": 18.50, "car_over_5m": 27.80, "motorcycle": 7.40, "bicycle": 3.20 },
+    "split-lastovo":      { "adult": 10.80, "car_under_5m": 54.00, "motorcycle": 21.60, "bicycle": 5.40, "price_estimated": true },
+
+    "valbiska-merag":     { "adult": 2.20, "child_3_12": 1.10, "car_under_5m": 10.40, "car_over_5m": 14.90, "motorcycle": 4.60, "bicycle": 2.10 },
+    "brestova-porozina":  { "adult": 2.20, "child_3_12": 1.10, "car_under_5m": 10.40, "car_over_5m": 14.90, "motorcycle": 4.60, "bicycle": 2.10 },
+    "prizna-zigljen":     { "adult": 1.80, "child_3_12": 0.90, "car_under_5m": 8.30,  "car_over_5m": 12.50, "motorcycle": 3.90, "bicycle": 2.00 },
+    "stinica-misnjak":    { "adult": 1.80, "child_3_12": 0.90, "car_under_5m": 8.30,  "car_over_5m": 12.50, "motorcycle": 3.90, "bicycle": 2.00 },
+    "jablanac-misnjak":   { "adult": 1.80, "child_3_12": 0.90, "car_under_5m": 8.30,  "car_over_5m": 12.50, "motorcycle": 3.90, "bicycle": 2.00 },
+
+    "orebic-domince":     { "adult": 2.20, "child_3_12": 1.10, "car_under_5m": 10.40, "car_over_5m": 14.90, "motorcycle": 4.60, "bicycle": 2.10 },
+    "prapratno-sobra":    { "adult": 4.90, "child_3_12": 2.45, "car_under_5m": 18.50, "car_over_5m": 27.80, "motorcycle": 7.40, "bicycle": 3.20 },
+
+    "zadar-preko":        { "adult": 2.20, "child_3_12": 1.10, "car_under_5m": 10.40, "car_over_5m": 14.90, "motorcycle": 4.60, "bicycle": 2.10 },
+    "zadar-mali-losinj":  { "adult": 12.00, "car_under_5m": 60.00, "motorcycle": 24.00, "bicycle": 6.00, "price_estimated": true },
+    "zadar-zaglav":       { "adult": 3.20,  "car_under_5m": 16.00, "motorcycle": 6.40,  "bicycle": 1.60, "price_estimated": true },
+    "zadar-brbinj":       { "adult": 3.60,  "car_under_5m": 18.00, "motorcycle": 7.20,  "bicycle": 1.80, "price_estimated": true },
+    "zadar-bozava":       { "adult": 3.60,  "car_under_5m": 18.00, "motorcycle": 7.20,  "bicycle": 1.80, "price_estimated": true },
+    "zadar-ist":          { "adult": 4.80,  "car_under_5m": 24.00, "motorcycle": 9.60,  "bicycle": 2.40, "price_estimated": true },
+
+    "split-hvar-cat":      { "adult": 18.00, "child_3_12": 9.00,  "bicycle": 3.00 },
+    "split-bol-jelsa":     { "adult": 22.00, "child_3_12": 11.00, "bicycle": 3.00 },
+    "split-korcula-cat":   { "adult": 30.00, "child_3_12": 15.00, "bicycle": 4.00 },
+    "split-mljet-pomena":  { "adult": 33.00, "child_3_12": 16.50, "bicycle": 4.00, "_note": "Summer season only (Jun-Sep)." },
+    "split-dubrovnik-cat": { "adult": 40.00, "child_3_12": 20.00, "bicycle": 5.00 },
+
+    "trogir-drvenik-veli": { "adult": 2.20,  "bicycle": 1.20, "price_estimated": true },
+
+    "dubrovnik-sipan":     { "adult": 2.40,  "bicycle": 1.20, "price_estimated": true },
+    "dubrovnik-lopud":     { "adult": 2.00,  "bicycle": 1.00, "price_estimated": true },
+    "dubrovnik-kolocep":   { "adult": 1.20,  "bicycle": 0.60, "price_estimated": true },
+    "dubrovnik-sobra":     { "adult": 3.60,  "bicycle": 1.80, "price_estimated": true },
+
+    "ancona-split":        { "adult": 70.00, "child_3_12": 35.00, "car_under_5m": 110.00, "car_over_5m": 165.00, "motorcycle": 60.00, "_note": "Deck passage (no cabin), low season. Cabin upgrade +€40-€120." },
+    "bari-dubrovnik":      { "adult": 60.00, "child_3_12": 30.00, "car_under_5m": 90.00,  "car_over_5m": 135.00, "motorcycle": 50.00, "_note": "Deck passage (no cabin), low season. Cabin upgrade +€40-€120." },
+
+    "storebaelt":          { "car_under_6m": 34.00, "car_over_6m": 51.00, "motorcycle": 18.00, "_note": "Bridge toll — single crossing, no passenger fees. Prepaid BroBizen ~25% cheaper." },
+    "oresund":             { "car_under_6m": 67.00, "car_over_6m": 134.00, "motorcycle": 36.00, "_note": "Bridge toll DK↔SE — single crossing, no passenger fees. BroPas subscribers ~50% cheaper." },
+    "puttgarden-rodby":    { "car_under_6m": 89.00, "car_over_6m": 109.00, "motorcycle": 49.00, "adult_included": true, "_note": "Scandlines ferry. Driver and up to 9 passengers included in car ticket." }
   }
 }
