@@ -371,6 +371,7 @@ main { padding:2rem; max-width:1300px; margin:0 auto; }
 .mrl-item { display: flex; align-items: center; gap: .55rem; font-size: .68rem; font-weight: 600; color: #E2E8F0; margin-bottom: .28rem; }
 .mrl-item:last-child { margin-bottom: 0; }
 .mrl-dot { width: 12px; height: 12px; border-radius: 3px; flex-shrink: 0; box-shadow: 0 0 6px rgba(0,0,0,.4); }
+.mrl-dash { width: 14px; height: 4px; flex-shrink: 0; background-image: linear-gradient(to right, currentColor 60%, transparent 60%); background-size: 5px 4px; background-repeat: repeat-x; box-shadow: 0 0 6px rgba(0,0,0,.4); }
 
 /* LEFT panel — Cost breakdown */
 .mr-total-hero { background: rgba(34,201,151,.08); border: 1px solid rgba(34,201,151,.3); border-radius: 8px; padding: .7rem .85rem; margin-bottom: .65rem; }
@@ -980,6 +981,7 @@ main { padding:2rem; max-width:1300px; margin:0 auto; }
             <div class="mrl-item"><span class="mrl-dot" style="background:#f4a45a;"></span> Toll motorway</div>
             <div class="mrl-item"><span class="mrl-dot" style="background:#6eb3f7;"></span> Free motorway</div>
             <div class="mrl-item"><span class="mrl-dot" style="background:#c084fc;"></span> Local road (free)</div>
+            <div class="mrl-item"><span class="mrl-dash" style="color:#00B4D8;"></span> Ferry route</div>
           </div>
           <!-- Map toolbar - Edit route mode -->
           <div id="mr-map-toolbar" style="position:absolute;top:1rem;right:1rem;z-index:12;display:none;">
@@ -1797,6 +1799,7 @@ function estimateCombinedRouteCost(legResults, legIndices, tripDays, fuelPrice, 
 
     // Klasifikuj typ cesty
     const roadType = classifyStep(step, currentCC);
+    if(roadType === 'ferry') continue; // ferry km nie je road km
     if(!kmByCountryRoadType[currentCC]) {
       kmByCountryRoadType[currentCC] = { toll:0, vignette:0, free:0, local:0 };
     }
@@ -2536,10 +2539,10 @@ function drawFerrySegments(detectedFerries){
         source: id,
         layout: { 'line-join':'round', 'line-cap':'round' },
         paint: {
-          'line-color': '#C084FC',          // fialová ako --enc
+          'line-color': '#00B4D8',          // Mediterranean cyan — odlíšenie od fialového local road
           'line-width': 4,
-          'line-opacity': 0.9,
-          'line-dasharray': [2, 2],
+          'line-opacity': 0.95,
+          'line-dasharray': [3, 2],
         }
       });
     } catch(e){
@@ -3356,6 +3359,18 @@ const FREE_MOTORWAY_NUM_REGEX = /\b(A\d+|E\d+|M\d+|Rv?\d+|Vt?\d+)\b/;
 
 function classifyStep(step, cc){
   const instr = (step.instructions || '').replace(/<[^>]+>/g, ' ');
+
+  // Ferry steps — neklasifikujeme ako road. drawFerrySegments ich kreslí
+  // ako dashed cyan; tu vrátime 'ferry' takže drawRouteByRoadClass + km
+  // accounting ich preskočia (nie je tam reálna cesta — Google polyline
+  // sleduje sailing path okolo poloostrovov).
+  // Pozn.: bridges (Storebælt, Øresund) nie sú ferry steps — sú DRIVING,
+  // takže táto vetva sa ich netýka a renderujú sa ako bežné toll cesty.
+  if(/\bferr(y|ies)\b|\bboat\b|trajekt|traghett|f[aä]hre|trans-?bordeur/i.test(instr) ||
+     /ferry/i.test(step.maneuver || '')){
+    return 'ferry';
+  }
+
   const isPaid = PAID_ROAD_REGEX.test(instr);
 
   // Exit ramps = odchod z diaľnice na local roads
@@ -3588,6 +3603,7 @@ function drawRouteByRoadClass(googleLegs, validPts, rc){
   const kmByCountryRoadType = {};
   for(const cs of classifiedSteps){
     if(!cs.cc || cs.coords.length < 2) continue;
+    if(cs.roadType === 'ferry') continue; // ferry km nie je road km — neráta sa do toll/fuel
     let stepKm = 0;
     for(let i = 1; i < cs.coords.length; i++){
       stepKm += haversineKm(cs.coords[i-1], cs.coords[i]);
@@ -3616,6 +3632,9 @@ function drawRouteByRoadClass(googleLegs, validPts, rc){
   // 4. Kresli každý merged segment
   mergedSegments.forEach((seg, i) => {
     if(seg.coords.length < 2) return;
+    // Ferry segmenty preskočíme — drawFerrySegments ich kreslí ako dashed cyan na vrch.
+    // Inak by sa Google sailing path zobrazila ako solid road, čo je vizuálne klamlivé.
+    if(seg.roadType === 'ferry') return;
 
     const id = `rseg-${i}`;
     mrPolylines.push(id);
@@ -3899,7 +3918,7 @@ async function recomputeResultsPanel(route, validPts, segments, stopInputs){
     const toName   = f.reversed ? r.from.name : r.to.name;
     const isBridge = f.kind === 'bridge';
     const icon = isBridge ? '🌉' : '🚢';
-    const ferryColor = '#C084FC'; // fialová ako --enc, matchuje dashed polyline na mape
+    const ferryColor = '#00B4D8'; // Mediterranean cyan — matchuje dashed cyan polyline + legend
     const priceEur = f.price?.totalEur || 0;
     const isEstPrice = !!f.price?.isEstimated;
     const priceStr = priceEur > 0 ? `${isEstPrice ? '~' : ''}${toEurStr(priceEur)}` : '~varies';
@@ -3920,7 +3939,7 @@ async function recomputeResultsPanel(route, validPts, segments, stopInputs){
       : '';
     // Estimated-price badge (Phase 1 — pricing scaling formula, not from operator)
     const estBadge = isEstPrice
-      ? ` <span style="font-size:.55rem;color:${ferryColor};background:rgba(192,132,252,.12);border-radius:4px;padding:.1rem .35rem;letter-spacing:.05em;">EST.</span>`
+      ? ` <span style="font-size:.55rem;color:${ferryColor};background:rgba(0,180,216,.12);border-radius:4px;padding:.1rem .35rem;letter-spacing:.05em;">EST.</span>`
       : '';
 
     // Optional vehicle-category breakdown (Car ≤5m + 1 adult)
@@ -3937,7 +3956,7 @@ async function recomputeResultsPanel(route, validPts, segments, stopInputs){
     html += `<div class="mr-country-item" style="border-left-color:${ferryColor};">
       <div class="mr-country-row1">
         <div>
-          <span class="mr-cc-tag" style="background:rgba(192,132,252,.15);border-color:rgba(192,132,252,.3);color:${ferryColor};">${icon}</span>
+          <span class="mr-cc-tag" style="background:rgba(0,180,216,.15);border-color:rgba(0,180,216,.35);color:${ferryColor};">${icon}</span>
           <span class="mr-cname">${fromName} → ${toName}</span>
         </div>
         <span class="mr-cprice" style="color:${ferryColor};">${priceStr}</span>
