@@ -1,0 +1,83 @@
+{
+  "_updated": "2026-05-02",
+  "_source": "Manual May 2026 reference (Phase 1 MVP). Phase 2 will replace with weekly auto-scrape.",
+  "_notes": "Croatia (Jadrolinija) prices VAT 25% included, anchored to Biograd→Tkon reference (€2.20 adult, €10.40 car ≤5m). Storebælt/Øresund/Scandlines prices in EUR (DKK→EUR @ ~7.46). Ancona-Split and Bari-Dubrovnik are deck-passage with car (one-way, low season).",
+  "currency": "EUR",
+  "prices": {
+    "split-supetar": {
+      "adult": 4.90,
+      "child_3_12": 2.45,
+      "car_under_5m": 18.50,
+      "car_over_5m": 27.80,
+      "motorcycle": 7.40,
+      "bicycle": 3.20
+    },
+    "split-stari-grad": {
+      "adult": 7.90,
+      "child_3_12": 3.95,
+      "car_under_5m": 30.40,
+      "car_over_5m": 45.60,
+      "motorcycle": 11.90,
+      "bicycle": 5.40
+    },
+    "drvenik-sucuraj": {
+      "adult": 2.20,
+      "child_3_12": 1.10,
+      "car_under_5m": 10.40,
+      "car_over_5m": 14.90,
+      "motorcycle": 4.60,
+      "bicycle": 2.10
+    },
+    "ploce-trpanj": {
+      "adult": 4.90,
+      "child_3_12": 2.45,
+      "car_under_5m": 18.50,
+      "car_over_5m": 27.80,
+      "motorcycle": 7.40,
+      "bicycle": 3.20
+    },
+    "biograd-tkon": {
+      "adult": 2.20,
+      "child_3_12": 1.10,
+      "car_under_5m": 10.40,
+      "car_over_5m": 14.90,
+      "motorcycle": 4.60,
+      "bicycle": 2.10
+    },
+    "storebaelt": {
+      "car_under_6m": 34.00,
+      "car_over_6m": 51.00,
+      "motorcycle": 18.00,
+      "_note": "Bridge toll — single crossing, no passenger fees. Prepaid BroBizen ~25% cheaper."
+    },
+    "oresund": {
+      "car_under_6m": 67.00,
+      "car_over_6m": 134.00,
+      "motorcycle": 36.00,
+      "_note": "Bridge toll DK↔SE — single crossing, no passenger fees. BroPas subscribers ~50% cheaper."
+    },
+    "puttgarden-rodby": {
+      "car_under_6m": 89.00,
+      "car_over_6m": 109.00,
+      "motorcycle": 49.00,
+      "adult_included": true,
+      "_note": "Scandlines ferry. Driver and up to 9 passengers included in car ticket."
+    },
+    "ancona-split": {
+      "adult": 70.00,
+      "child_3_12": 35.00,
+      "car_under_5m": 110.00,
+      "car_over_5m": 165.00,
+      "motorcycle": 60.00,
+      "_note": "Deck passage (no cabin), low season. Cabin upgrade +€40-€120."
+    },
+    "bari-dubrovnik": {
+      "adult": 60.00,
+      "child_3_12": 30.00,
+      "car_under_5m": 90.00,
+      "car_over_5m": 135.00,
+      "motorcycle": 50.00,
+      "_note": "Deck passage (no cabin), low season. Cabin upgrade +€40-€120."
+    }
+  }
+}

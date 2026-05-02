@@ -2141,6 +2141,289 @@ let FUEL_PRICES = {
   }
 })();
 
+// ══════════════════════════════════════════════════════════════
+// ── FERRY ROUTES & PRICES (Phase 1 MVP — top 10 routes) ──
+// Static dataset z ferry-routes.json + ferry-prices.json
+// Inline fallback aby UI fungoval aj keď fetch zlyhá (file:// alebo offline)
+// Detekcia: car_ferry → Google step instructions; bridge_toll → route geometry proximity
+// ══════════════════════════════════════════════════════════════
+let FERRY_ROUTES = [
+  { id:'split-supetar',     operator:'Jadrolinija',           from:{name:'Split',code:'SPL',lat:43.5057,lng:16.4366}, to:{name:'Supetar (Brač)',code:'SUP',lat:43.3851,lng:16.5505}, duration_minutes:50,  type:'car_ferry',   booking_url:'https://www.jadrolinija.hr/en/ferry-croatia' },
+  { id:'split-stari-grad',  operator:'Jadrolinija',           from:{name:'Split',code:'SPL',lat:43.5057,lng:16.4366}, to:{name:'Stari Grad (Hvar)',code:'STG',lat:43.1844,lng:16.5921}, duration_minutes:120, type:'car_ferry',   booking_url:'https://www.jadrolinija.hr/en/ferry-croatia' },
+  { id:'drvenik-sucuraj',   operator:'Jadrolinija',           from:{name:'Drvenik',code:'DRV',lat:43.1483,lng:17.2467}, to:{name:'Sućuraj (Hvar)',code:'SUC',lat:43.1280,lng:17.1900}, duration_minutes:35,  type:'car_ferry', booking_url:'https://www.jadrolinija.hr/en/ferry-croatia' },
+  { id:'ploce-trpanj',      operator:'Jadrolinija',           from:{name:'Ploče',code:'PLC',lat:43.0561,lng:17.4339}, to:{name:'Trpanj (Pelješac)',code:'TRP',lat:43.0080,lng:17.2641}, duration_minutes:60,  type:'car_ferry', booking_url:'https://www.jadrolinija.hr/en/ferry-croatia' },
+  { id:'biograd-tkon',      operator:'Jadrolinija',           from:{name:'Biograd na Moru',code:'BIO',lat:43.9433,lng:15.4434}, to:{name:'Tkon (Pašman)',code:'TKO',lat:43.9120,lng:15.3611}, duration_minutes:25, type:'car_ferry', booking_url:'https://www.jadrolinija.hr/en/ferry-croatia' },
+  { id:'storebaelt',        operator:'Storebælt (Sund & Bælt)', from:{name:'Halsskov (Zealand)',code:'HLS',lat:55.3450,lng:11.0258}, to:{name:'Knudshoved (Funen)',code:'KND',lat:55.2972,lng:10.8770}, duration_minutes:0, type:'bridge_toll', booking_url:'https://www.storebaelt.dk/en/prices/' },
+  { id:'oresund',           operator:'Øresundsbron',          from:{name:'Copenhagen (Kastrup)',code:'CPH',lat:55.6093,lng:12.6394}, to:{name:'Malmö (Lernacken)',code:'MMA',lat:55.5719,lng:12.6500}, duration_minutes:0, type:'bridge_toll', booking_url:'https://www.oresundsbron.com/en/prices' },
+  { id:'puttgarden-rodby',  operator:'Scandlines',            from:{name:'Puttgarden',code:'PUT',lat:54.4972,lng:11.2364}, to:{name:'Rødby',code:'ROD',lat:54.6531,lng:11.3508}, duration_minutes:45, type:'car_ferry', booking_url:'https://www.scandlines.com/booking' },
+  { id:'ancona-split',      operator:'Jadrolinija / SNAV',    from:{name:'Ancona',code:'ANC',lat:43.6173,lng:13.5056}, to:{name:'Split',code:'SPL',lat:43.5057,lng:16.4366}, duration_minutes:660, type:'car_ferry', booking_url:'https://www.jadrolinija.hr/en/ferry-croatia/italy-croatia-line' },
+  { id:'bari-dubrovnik',    operator:'Jadrolinija',           from:{name:'Bari',code:'BRI',lat:41.1278,lng:16.8704}, to:{name:'Dubrovnik (Gruž)',code:'DBV',lat:42.6622,lng:18.0763}, duration_minutes:540, type:'car_ferry', booking_url:'https://www.jadrolinija.hr/en/ferry-croatia/italy-croatia-line' },
+];
+
+let FERRY_PRICES = {
+  _updated: '2026-05-02',
+  _source: 'inline fallback',
+  'split-supetar':    { adult:4.90, child_3_12:2.45, car_under_5m:18.50, car_over_5m:27.80, motorcycle:7.40, bicycle:3.20 },
+  'split-stari-grad': { adult:7.90, child_3_12:3.95, car_under_5m:30.40, car_over_5m:45.60, motorcycle:11.90, bicycle:5.40 },
+  'drvenik-sucuraj':  { adult:2.20, child_3_12:1.10, car_under_5m:10.40, car_over_5m:14.90, motorcycle:4.60, bicycle:2.10 },
+  'ploce-trpanj':     { adult:4.90, child_3_12:2.45, car_under_5m:18.50, car_over_5m:27.80, motorcycle:7.40, bicycle:3.20 },
+  'biograd-tkon':     { adult:2.20, child_3_12:1.10, car_under_5m:10.40, car_over_5m:14.90, motorcycle:4.60, bicycle:2.10 },
+  'storebaelt':       { car_under_6m:34.00, car_over_6m:51.00, motorcycle:18.00 },
+  'oresund':          { car_under_6m:67.00, car_over_6m:134.00, motorcycle:36.00 },
+  'puttgarden-rodby': { car_under_6m:89.00, car_over_6m:109.00, motorcycle:49.00, adult_included:true },
+  'ancona-split':     { adult:70.00, child_3_12:35.00, car_under_5m:110.00, car_over_5m:165.00, motorcycle:60.00 },
+  'bari-dubrovnik':   { adult:60.00, child_3_12:30.00, car_under_5m:90.00, car_over_5m:135.00, motorcycle:50.00 },
+};
+
+// Async loader pre ferry-routes.json + ferry-prices.json (mirror loadLiveFuelPrices pattern)
+(async function loadFerryData(){
+  try {
+    const [routesResp, pricesResp] = await Promise.all([
+      fetch('./ferry-routes.json', { cache: 'no-cache' }),
+      fetch('./ferry-prices.json', { cache: 'no-cache' }),
+    ]);
+    if(routesResp.ok){
+      const data = await routesResp.json();
+      if(Array.isArray(data.routes) && data.routes.length){
+        FERRY_ROUTES = data.routes;
+        console.log(`[Ferry] Loaded ${FERRY_ROUTES.length} routes from ferry-routes.json (updated ${data._updated || 'n/a'})`);
+      }
+    }
+    if(pricesResp.ok){
+      const data = await pricesResp.json();
+      if(data.prices && typeof data.prices === 'object'){
+        FERRY_PRICES = { _updated: data._updated || FERRY_PRICES._updated, _source: 'live (ferry-prices.json)', ...data.prices };
+        console.log(`[Ferry] Loaded prices for ${Object.keys(data.prices).length} routes (updated ${data._updated || 'n/a'})`);
+      }
+    }
+  } catch(e) {
+    console.warn(`[Ferry] Live fetch failed: ${e.message}. Using inline fallback (${FERRY_ROUTES.length} routes).`);
+  }
+})();
+
+// Haversine v km medzi [lng,lat] alebo {lat,lng} bodmi
+function ferryHaversineKm(a, b){
+  const a1 = Array.isArray(a) ? { lng:a[0], lat:a[1] } : a;
+  const b1 = Array.isArray(b) ? { lng:b[0], lat:b[1] } : b;
+  const R = 6371;
+  const dLat = (b1.lat - a1.lat) * Math.PI/180;
+  const dLng = (b1.lng - a1.lng) * Math.PI/180;
+  const x = Math.sin(dLat/2)**2 +
+            Math.cos(a1.lat*Math.PI/180) * Math.cos(b1.lat*Math.PI/180) *
+            Math.sin(dLng/2)**2;
+  return R * 2 * Math.atan2(Math.sqrt(x), Math.sqrt(1-x));
+}
+
+// Detekuje ferry steps z Google Directions response.
+// Vracia surové segmenty { from:{lat,lng}, to:{lat,lng}, durationS, distanceM, instructions }
+function detectFerrySegments(googleLegs){
+  if(!googleLegs) return [];
+  const out = [];
+  for(const leg of googleLegs){
+    if(!leg.steps) continue;
+    for(const step of leg.steps){
+      const instr = (step.instructions || '').replace(/<[^>]+>/g, ' ').trim();
+      const maneuver = step.maneuver || '';
+      // Google uses travel_mode === 'TRANSIT' or maneuver hints; ferry instructions are reliable.
+      // Patterns: "Take the ferry", "Board the ferry", HR "trajekt", IT "traghetto", DE "Fähre"
+      const isFerry = /\bferr(y|ies)\b|\bboat\b|trajekt|traghett|f[aä]hre|trans-?bordeur/i.test(instr) ||
+                      /ferry/i.test(maneuver);
+      if(!isFerry) continue;
+      // Coordinates — google.maps.LatLng instances or plain objects
+      let fromLL = null, toLL = null;
+      if(step.start_location){
+        const sl = step.start_location, el = step.end_location;
+        fromLL = { lat: typeof sl.lat === 'function' ? sl.lat() : sl.lat,
+                   lng: typeof sl.lng === 'function' ? sl.lng() : sl.lng };
+        toLL =   { lat: typeof el.lat === 'function' ? el.lat() : el.lat,
+                   lng: typeof el.lng === 'function' ? el.lng() : el.lng };
+      }
+      if(!fromLL || !toLL) continue;
+      out.push({
+        from: fromLL,
+        to: toLL,
+        distanceM: step.distance?.value || 0,
+        durationS: step.duration?.value || 0,
+        instructions: instr,
+      });
+    }
+  }
+  return out;
+}
+
+// Match detekovaný segment proti ferry-routes.json by GPS proximity (fwd alebo reverse).
+// Vracia { route, distKm, reversed } alebo null ak žiadny match do 30km.
+function matchFerryRoute(segment, ferryRoutes){
+  const segFrom = segment.from, segTo = segment.to;
+  let best = null;
+  for(const r of ferryRoutes){
+    if(r.type !== 'car_ferry') continue;
+    const fwd = ferryHaversineKm(segFrom, r.from) + ferryHaversineKm(segTo, r.to);
+    const rev = ferryHaversineKm(segFrom, r.to)   + ferryHaversineKm(segTo, r.from);
+    const distKm = Math.min(fwd, rev);
+    const reversed = rev < fwd;
+    if(!best || distKm < best.distKm) best = { route: r, distKm, reversed };
+  }
+  // 30km combined budget = each port within ~15km tolerance (Google sometimes returns approximated dock locations)
+  if(best && best.distKm < 30) return best;
+  return null;
+}
+
+// Detekuje fixed-link bridge crossings (Storebælt, Øresund) tak že trasa prechádza cez obidva endpointy do ~8km.
+// Bridge nie je v Google steps ako ferry — je to drive segment, no je to "skrytá" platba ktorá patrí do breakdown.
+function detectBridgeCrossings(routeCoords, ferryRoutes, alreadyDetectedIds){
+  const out = [];
+  if(!routeCoords || !routeCoords.length) return out;
+  for(const r of ferryRoutes){
+    if(r.type !== 'bridge_toll') continue;
+    if(alreadyDetectedIds.has(r.id)) continue;
+    // Hľadaj najbližšiu vzdialenosť rc bodov k from a to (samostatne)
+    let bestFrom = Infinity, bestTo = Infinity;
+    for(const c of routeCoords){
+      const dF = ferryHaversineKm(c, r.from);
+      const dT = ferryHaversineKm(c, r.to);
+      if(dF < bestFrom) bestFrom = dF;
+      if(dT < bestTo)   bestTo = dT;
+      if(bestFrom < 0.5 && bestTo < 0.5) break; // skoré ukončenie
+    }
+    if(bestFrom < 8 && bestTo < 8){
+      out.push({ route: r, distKm: bestFrom + bestTo, reversed: false });
+    }
+  }
+  return out;
+}
+
+// Vehicle-category-aware pricing — vracia { totalEur, breakdown:[{label,amount}] }
+// Default: I (passenger car) → adult + car_under_5m / car_under_6m
+// IA (motorcycle) → motorcycle + adult (kde nie je adult_included)
+// II (SUV/Van >1.9m) → adult + car_over_5m / car_over_6m
+// III (3-axle) → 2× adult + car_over_5m × 1.5 (rough fallback — Phase 2 lepšia kategorizácia)
+function getFerryPriceForVehicle(routeId, vehicleCat){
+  const p = FERRY_PRICES[routeId];
+  if(!p) return null;
+  const cat = (vehicleCat || 'I').toUpperCase();
+
+  // Veľkosť kategórie — under_5m (Jadrolinija) vs under_6m (Storebælt/Øresund/Scandlines)
+  const carUnder = p.car_under_5m != null ? p.car_under_5m : p.car_under_6m;
+  const carOver  = p.car_over_5m  != null ? p.car_over_5m  : p.car_over_6m;
+
+  const adult = p.adult || 0;
+  const moto  = p.motorcycle || 0;
+  const passengerIncluded = !!p.adult_included; // Scandlines: vodič + pasažieri zdarma s autom
+
+  let total = 0;
+  const breakdown = [];
+
+  if(cat === 'IA'){
+    // Motocykel
+    if(moto){ total += moto; breakdown.push({ label:'Motorcycle', amount: moto }); }
+    if(adult && !passengerIncluded){ total += adult; breakdown.push({ label:'1× rider (adult)', amount: adult }); }
+    if(!moto && !adult) return null;
+  } else if(cat === 'II' || cat === 'III'){
+    // SUV/Van alebo 3-axle — over-size cena
+    const car = carOver || carUnder;
+    if(car){
+      total += car;
+      breakdown.push({ label: cat === 'III' ? 'Car >5m / 3-axle' : 'Car >5m', amount: car });
+    }
+    if(adult && !passengerIncluded){
+      const adults = cat === 'III' ? 2 : 1;
+      total += adult * adults;
+      breakdown.push({ label: `${adults}× adult`, amount: adult * adults });
+    }
+    if(!car) return null;
+  } else {
+    // Cat I = passenger car
+    if(carUnder){ total += carUnder; breakdown.push({ label:'Car ≤5m', amount: carUnder }); }
+    if(adult && !passengerIncluded){ total += adult; breakdown.push({ label:'1× adult', amount: adult }); }
+    if(!carUnder) return null;
+  }
+
+  return { totalEur: parseFloat(total.toFixed(2)), breakdown };
+}
+
+// Hlavná detekčná funkcia — kombinuje ferry steps + bridge crossings.
+// Vracia pole { route, reversed, distKm, durationS, kind, price, vehicleCat }
+function detectAndPriceFerries(route, vehicleCat){
+  if(!route) return [];
+  const detected = [];
+  const seenIds = new Set();
+
+  // 1. Explicitné ferry steps z Google
+  const segments = detectFerrySegments(route._googleLegs);
+  for(const seg of segments){
+    const m = matchFerryRoute(seg, FERRY_ROUTES);
+    if(m && !seenIds.has(m.route.id)){
+      seenIds.add(m.route.id);
+      const price = getFerryPriceForVehicle(m.route.id, vehicleCat);
+      detected.push({
+        route: m.route,
+        reversed: m.reversed,
+        distKm: m.distKm,
+        durationS: seg.durationS || (m.route.duration_minutes * 60),
+        kind: 'ferry',
+        price,
+      });
+    } else if(!m){
+      console.log(`[Ferry] Unmapped ferry segment: ${JSON.stringify(seg.from)} → ${JSON.stringify(seg.to)} (${seg.instructions.slice(0,80)})`);
+    }
+  }
+
+  // 2. Bridge crossings (storebaelt, oresund) podľa geometrie
+  const rc = route.geometry?.coordinates || [];
+  const bridges = detectBridgeCrossings(rc, FERRY_ROUTES, seenIds);
+  for(const b of bridges){
+    seenIds.add(b.route.id);
+    const price = getFerryPriceForVehicle(b.route.id, vehicleCat);
+    detected.push({
+      route: b.route,
+      reversed: false,
+      distKm: b.distKm,
+      durationS: 0,
+      kind: 'bridge',
+      price,
+    });
+  }
+
+  if(detected.length){
+    console.log('[Ferry] Detected:', detected.map(d => `${d.route.id} (${d.kind}, €${d.price?.totalEur ?? '?'})`).join(', '));
+  }
+  return detected;
+}
+
+// Kreslí ferry/bridge segmenty na mape — bodkovaná fialová čiara s 🚢 markerom v strede.
+// IDs sa pushnú do mrPolylines aby clearMapLayers ich vyčistil pri prepnutí trasy.
+function drawFerrySegments(detectedFerries){
+  if(!mrMap || !detectedFerries?.length) return;
+  detectedFerries.forEach((f, i) => {
+    const r = f.route;
+    const fromC = [r.from.lng, r.from.lat];
+    const toC   = [r.to.lng, r.to.lat];
+    const id = `mr-ferry-${i}`;
+    mrPolylines.push(id);
+    try {
+      mrMap.addSource(id, {
+        type: 'geojson',
+        data: { type:'Feature', geometry: { type:'LineString', coordinates: [fromC, toC] } }
+      });
+      mrMap.addLayer({
+        id,
+        type: 'line',
+        source: id,
+        layout: { 'line-join':'round', 'line-cap':'round' },
+        paint: {
+          'line-color': '#C084FC',          // fialová ako --enc
+          'line-width': 4,
+          'line-opacity': 0.9,
+          'line-dasharray': [2, 2],
+        }
+      });
+    } catch(e){
+      console.warn('[Ferry] Failed to draw segment', id, e.message);
+    }
+  });
+}
+
 // Helper: Z kmByCountry + fuel type vypočíta per-country breakdown
 // Vráti pole { cc, name, km, pricePerL, liters, cost }
 function computePerCountryFuel(kmByCountry, fuelCons, fuelType, ccList){
@@ -3259,6 +3542,11 @@ async function selectRoute(idx){
     drawRouteOnMap(rc, segments);
   }
 
+  // Ferry / bridge polylines (dashed purple) na vrch road segmentov
+  const vehicleCatForFerry = document.getElementById('mr-vehicle-cat')?.value || 'I';
+  const ferriesForMap = detectAndPriceFerries(route, vehicleCatForFerry);
+  drawFerrySegments(ferriesForMap);
+
   // Fit bounds na celú trasu
   const bounds = new mapboxgl.LngLatBounds();
   rc.forEach(p => bounds.extend(p));
@@ -3409,6 +3697,18 @@ async function recomputeResultsPanel(route, validPts, segments, stopInputs){
   }
 
   // ══════════════════════════════════════════════════════════
+  // ── FERRY / BRIDGE DETECTION ──
+  // Detekuje ferry steps + bridge crossings (storebaelt, oresund) a pripočíta
+  // do totalEur. Render ferry rows medzi country rows a fuel row (nižšie).
+  // ══════════════════════════════════════════════════════════
+  const detectedFerries = detectAndPriceFerries(route, vehicleCat);
+  let ferryTotal = 0;
+  for(const f of detectedFerries){
+    if(f.price?.totalEur){ ferryTotal += f.price.totalEur; }
+  }
+  totalEur += ferryTotal;
+
+  // ══════════════════════════════════════════════════════════
   // ── FUEL CALCULATION — per-country breakdown (Option D) ──
   // ── Ak user override: vypni per-country, použi jednotnú cenu ──
   // ══════════════════════════════════════════════════════════
@@ -3465,6 +3765,55 @@ async function recomputeResultsPanel(route, validPts, segments, stopInputs){
         <span class="mr-cprice" style="color:${priceColor};">${r.priceStr}</span>
       </div>
       <div class="mr-country-row2">${r.action}${buyLink}${r.note ? ` · ${r.note}` : ''}</div>
+    </div>`;
+  }
+
+  // ── Ferry / bridge rows (Phase 1 MVP) ──
+  for(const f of detectedFerries){
+    const r = f.route;
+    const fromName = f.reversed ? r.to.name   : r.from.name;
+    const toName   = f.reversed ? r.from.name : r.to.name;
+    const isBridge = f.kind === 'bridge';
+    const icon = isBridge ? '🌉' : '🚢';
+    const ferryColor = '#C084FC'; // fialová ako --enc, matchuje dashed polyline na mape
+    const priceEur = f.price?.totalEur || 0;
+    const priceStr = priceEur > 0 ? toEurStr(priceEur) : '~varies';
+
+    // Duration label — Google step durationS prefer over static; bridges majú 0 (nie je crossing time relevantný)
+    let durLabel = '';
+    if(!isBridge){
+      const minutes = f.durationS ? Math.round(f.durationS/60) : r.duration_minutes;
+      if(minutes >= 60){ durLabel = `${Math.floor(minutes/60)}h ${minutes%60 ? (minutes%60)+'m' : ''}`.trim(); }
+      else if(minutes > 0){ durLabel = `${minutes}min`; }
+    }
+
+    // Booking link (operator's prices/booking page)
+    const opName = r.operator || 'operator';
+    const bookLabel = isBridge ? `prices on ${opName}` : `book on ${opName}`;
+    const bookLink = r.booking_url
+      ? ` · <a href="${r.booking_url}" target="_blank" rel="noopener noreferrer" style="color:${ferryColor};">${bookLabel} ↗</a>`
+      : '';
+
+    // Optional vehicle-category breakdown (Car ≤5m + 1 adult)
+    let breakdownStr = '';
+    if(f.price?.breakdown?.length){
+      breakdownStr = f.price.breakdown.map(b => `${b.label} €${b.amount.toFixed(2)}`).join(' + ');
+    }
+
+    const detailParts = [];
+    if(durLabel) detailParts.push(`⏱️ ${durLabel}`);
+    if(breakdownStr) detailParts.push(breakdownStr);
+    const detailRow = detailParts.join(' · ');
+
+    html += `<div class="mr-country-item" style="border-left-color:${ferryColor};">
+      <div class="mr-country-row1">
+        <div>
+          <span class="mr-cc-tag" style="background:rgba(192,132,252,.15);border-color:rgba(192,132,252,.3);color:${ferryColor};">${icon}</span>
+          <span class="mr-cname">${fromName} → ${toName}</span>
+        </div>
+        <span class="mr-cprice" style="color:${ferryColor};">${priceStr}</span>
+      </div>
+      <div class="mr-country-row2">${isBridge ? 'Bridge toll' : 'Ferry'}${bookLink}${detailRow ? ` · ${detailRow}` : ''}</div>
     </div>`;
   }
 
@@ -4126,6 +4475,11 @@ async function calcMapRoute(){
     } else {
       drawRouteOnMap(rc, segments);
     }
+
+    // 6b. Ferry / bridge polylines (Phase 1 MVP)
+    const vehicleCatForFerryMain = document.getElementById('mr-vehicle-cat')?.value || 'I';
+    const ferriesForMapMain = detectAndPriceFerries(route, vehicleCatForFerryMain);
+    drawFerrySegments(ferriesForMapMain);
 
     // 7. Fit bounds
     const bounds = new mapboxgl.LngLatBounds();

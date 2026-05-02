@@ -1,0 +1,97 @@
+{
+  "_updated": "2026-05-02",
+  "_description": "Static ferry/bridge route definitions for EuroRoads ferry detection. Top 10 routes for Phase 1 MVP. Each route has port GPS coordinates used for proximity matching against Google Directions ferry steps (or, for fixed-link bridges, against the route geometry).",
+  "_notes": "type=car_ferry → detect via Google step travel_mode/instructions. type=bridge_toll → detect via route geometry passing within ~8km of from AND to coordinates.",
+  "routes": [
+    {
+      "id": "split-supetar",
+      "operator": "Jadrolinija",
+      "from": { "name": "Split", "code": "SPL", "lat": 43.5057, "lng": 16.4366 },
+      "to":   { "name": "Supetar (Brač)", "code": "SUP", "lat": 43.3851, "lng": 16.5505 },
+      "duration_minutes": 50,
+      "type": "car_ferry",
+      "booking_url": "https://www.jadrolinija.hr/en/ferry-croatia"
+    },
+    {
+      "id": "split-stari-grad",
+      "operator": "Jadrolinija",
+      "from": { "name": "Split", "code": "SPL", "lat": 43.5057, "lng": 16.4366 },
+      "to":   { "name": "Stari Grad (Hvar)", "code": "STG", "lat": 43.1844, "lng": 16.5921 },
+      "duration_minutes": 120,
+      "type": "car_ferry",
+      "booking_url": "https://www.jadrolinija.hr/en/ferry-croatia"
+    },
+    {
+      "id": "drvenik-sucuraj",
+      "operator": "Jadrolinija",
+      "from": { "name": "Drvenik", "code": "DRV", "lat": 43.1483, "lng": 17.2467 },
+      "to":   { "name": "Sućuraj (Hvar)", "code": "SUC", "lat": 43.1280, "lng": 17.1900 },
+      "duration_minutes": 35,
+      "type": "car_ferry",
+      "booking_url": "https://www.jadrolinija.hr/en/ferry-croatia"
+    },
+    {
+      "id": "ploce-trpanj",
+      "operator": "Jadrolinija",
+      "from": { "name": "Ploče", "code": "PLC", "lat": 43.0561, "lng": 17.4339 },
+      "to":   { "name": "Trpanj (Pelješac)", "code": "TRP", "lat": 43.0080, "lng": 17.2641 },
+      "duration_minutes": 60,
+      "type": "car_ferry",
+      "booking_url": "https://www.jadrolinija.hr/en/ferry-croatia"
+    },
+    {
+      "id": "biograd-tkon",
+      "operator": "Jadrolinija",
+      "from": { "name": "Biograd na Moru", "code": "BIO", "lat": 43.9433, "lng": 15.4434 },
+      "to":   { "name": "Tkon (Pašman)", "code": "TKO", "lat": 43.9120, "lng": 15.3611 },
+      "duration_minutes": 25,
+      "type": "car_ferry",
+      "booking_url": "https://www.jadrolinija.hr/en/ferry-croatia"
+    },
+    {
+      "id": "storebaelt",
+      "operator": "Storebælt (Sund & Bælt)",
+      "from": { "name": "Halsskov (Zealand)", "code": "HLS", "lat": 55.3450, "lng": 11.0258 },
+      "to":   { "name": "Knudshoved (Funen)", "code": "KND", "lat": 55.2972, "lng": 10.8770 },
+      "duration_minutes": 0,
+      "type": "bridge_toll",
+      "booking_url": "https://www.storebaelt.dk/en/prices/"
+    },
+    {
+      "id": "oresund",
+      "operator": "Øresundsbron",
+      "from": { "name": "Copenhagen (Kastrup)", "code": "CPH", "lat": 55.6093, "lng": 12.6394 },
+      "to":   { "name": "Malmö (Lernacken)", "code": "MMA", "lat": 55.5719, "lng": 12.6500 },
+      "duration_minutes": 0,
+      "type": "bridge_toll",
+      "booking_url": "https://www.oresundsbron.com/en/prices"
+    },
+    {
+      "id": "puttgarden-rodby",
+      "operator": "Scandlines",
+      "from": { "name": "Puttgarden", "code": "PUT", "lat": 54.4972, "lng": 11.2364 },
+      "to":   { "name": "Rødby", "code": "ROD", "lat": 54.6531, "lng": 11.3508 },
+      "duration_minutes": 45,
+      "type": "car_ferry",
+      "booking_url": "https://www.scandlines.com/booking"
+    },
+    {
+      "id": "ancona-split",
+      "operator": "Jadrolinija / SNAV",
+      "from": { "name": "Ancona", "code": "ANC", "lat": 43.6173, "lng": 13.5056 },
+      "to":   { "name": "Split", "code": "SPL", "lat": 43.5057, "lng": 16.4366 },
+      "duration_minutes": 660,
+      "type": "car_ferry",
+      "booking_url": "https://www.jadrolinija.hr/en/ferry-croatia/italy-croatia-line"
+    },
+    {
+      "id": "bari-dubrovnik",
+      "operator": "Jadrolinija",
+      "from": { "name": "Bari", "code": "BRI", "lat": 41.1278, "lng": 16.8704 },
+      "to":   { "name": "Dubrovnik (Gruž)", "code": "DBV", "lat": 42.6622, "lng": 18.0763 },
+      "duration_minutes": 540,
+      "type": "car_ferry",
+      "booking_url": "https://www.jadrolinija.hr/en/ferry-croatia/italy-croatia-line"
+    }
+  ]
+}
