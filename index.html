@@ -3356,7 +3356,21 @@ async function recomputeResultsPanel(route, validPts, segments, stopInputs){
         const icon = hacRes.live ? (hacRes.precise ? '🟢 Live HAC' : '🟡 Live HAC est.') : '🟠 Distance est.';
         action = `${icon}`;
         if(hacRes.segments?.length){
-          note = hacRes.segments.map(s => `${s.entry}→${s.exit}: €${s.amount.toFixed(2)}`).join(' + ');
+          // Open toll system on A3 (Bregana, Lipovac) charges fixed entry fee
+          // → segment vyzerá ako "Bregana → Bregana" čo je technicky správne ale zmätočné.
+          // Tu to prezentujeme priateľnejšie + pridáme krátke vysvetlenie.
+          let hasOpenToll = false;
+          const segLabels = hacRes.segments.map(s => {
+            if(s.entry === s.exit){
+              hasOpenToll = true;
+              return `${s.entry} entry fee: €${s.amount.toFixed(2)}`;
+            }
+            return `${s.entry}→${s.exit}: €${s.amount.toFixed(2)}`;
+          });
+          note = segLabels.join(' + ');
+          if(hasOpenToll){
+            note += ` <span style="opacity:.7;">(A3 has open toll system — fixed entry fee)</span>`;
+          }
         } else if(hacRes.entry && hacRes.exit){
           note = `${hacRes.entry} → ${hacRes.exit}`;
         }
