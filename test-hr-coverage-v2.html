@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>EuroRoads — HR Coverage Test v2 (Rapid)</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #0d1117; color: #e2e8f0; padding: 2rem; line-height: 1.5; }
+h1 { font-size: 1.5rem; margin-bottom: 0.3rem; }
+.sub { color: rgba(255,255,255,.5); font-size: 0.85rem; margin-bottom: 1.5rem; }
+.sub strong { color: #22c997; }
+.controls { display: flex; gap: 0.75rem; align-items: center; margin-bottom: 1.5rem; flex-wrap: wrap; }
+button { padding: 0.6rem 1.2rem; background: #22c997; color: #0a0e1a; border: none; border-radius: 6px; font-weight: 600; cursor: pointer; font-size: 0.85rem; }
+button:hover { background: #1ab184; }
+button:disabled { background: #444; color: #888; cursor: not-allowed; }
+.export-btn { background: rgba(255,255,255,.06); color: #fff; border: 1px solid rgba(255,255,255,.12); }
+.export-btn:hover { background: rgba(255,255,255,.1); }
+.cancel-btn { background: #f87171; color: #fff; }
+.cancel-btn:hover { background: #ef5454; }
+.stats { display: flex; gap: 1rem; margin-bottom: 1rem; font-size: 0.8rem; flex-wrap: wrap; }
+.stat { padding: 0.5rem 0.85rem; background: rgba(255,255,255,.04); border-radius: 6px; min-width: 90px; }
+.stat strong { color: #fff; font-size: 1.1rem; display: block; }
+.progress { height: 4px; background: rgba(255,255,255,.06); border-radius: 2px; margin-bottom: 1rem; overflow: hidden; }
+.progress-bar { height: 100%; background: #22c997; width: 0%; transition: width 0.3s; }
+table { width: 100%; border-collapse: collapse; font-size: 0.78rem; background: #141922; border-radius: 8px; overflow: hidden; }
+th { background: #1a2030; text-align: left; padding: 0.6rem 0.7rem; font-weight: 600; color: rgba(255,255,255,.7); font-size: 0.65rem; letter-spacing: 0.05em; text-transform: uppercase; }
+td { padding: 0.5rem 0.7rem; border-top: 1px solid rgba(255,255,255,.05); vertical-align: top; }
+tr:hover td { background: rgba(255,255,255,.02); }
+.status-ok { color: #22c997; font-weight: 600; }
+.status-warn { color: #f4a45a; font-weight: 600; }
+.status-fail { color: #f87171; font-weight: 600; }
+.status-pending { color: rgba(255,255,255,.3); }
+.kbd { font-family: 'SF Mono', Menlo, monospace; background: rgba(255,255,255,.08); padding: 1px 5px; border-radius: 3px; font-size: 0.72rem; }
+.muted { color: rgba(255,255,255,.4); font-size: 0.7rem; }
+.summary { padding: 1rem; background: rgba(34,201,151,.06); border: 1px solid rgba(34,201,151,.2); border-radius: 8px; margin-top: 1rem; font-size: 0.85rem; display: none; }
+.summary.has-issues { background: rgba(244,164,90,.06); border-color: rgba(244,164,90,.3); }
+.summary h3 { font-size: 0.95rem; margin-bottom: 0.5rem; }
+.summary .group { margin: 0.4rem 0; padding: 0.3rem 0.6rem; background: rgba(255,255,255,.03); border-radius: 4px; font-size: 0.78rem; }
+</style>
+</head>
+<body>
+
+<h1>🇭🇷 EuroRoads — HR Coverage Test <span style="color:#22c997;">v2 (Rapid)</span></h1>
+<p class="sub">5 origins × 10 HR destinations = <strong>50 routes</strong>. Parallel execution with 5s timeouts. Should complete in <strong>~2 minutes</strong>.</p>
+
+<div class="controls">
+  <button id="runBtn" onclick="runAllTests()">▶ Run all 50 tests</button>
+  <button id="cancelBtn" class="cancel-btn" onclick="cancelTests()" style="display:none;">✕ Cancel</button>
+  <button class="export-btn" onclick="exportCsv()" id="exportBtn" disabled>📥 Export CSV</button>
+  <span class="muted" id="status">Click "Run" to start</span>
+</div>
+
+<div class="progress"><div class="progress-bar" id="progressBar"></div></div>
+
+<div class="stats">
+  <div class="stat"><strong id="statTotal">0</strong> Total</div>
+  <div class="stat"><strong id="statLive" style="color:#22c997;">0</strong> Live HAC ✅</div>
+  <div class="stat"><strong id="statFallback" style="color:#f4a45a;">0</strong> Fallback ⚠️</div>
+  <div class="stat"><strong id="statFailed" style="color:#f87171;">0</strong> Failed ❌</div>
+  <div class="stat"><strong id="statTime" style="color:#6eb3f7;">0s</strong> Elapsed</div>
+</div>
+
+<table id="resultsTable">
+  <thead>
+    <tr>
+      <th>#</th>
+      <th>Route</th>
+      <th>km</th>
+      <th>Border</th>
+      <th>HAC Entry</th>
+      <th>HAC Exit</th>
+      <th>Toll €</th>
+      <th>Status</th>
+      <th>Notes</th>
+    </tr>
+  </thead>
+  <tbody id="resultsBody"></tbody>
+</table>
+
+<div class="summary" id="summary"></div>
+
+<script>
+// ── API KEYS ──
+const _ga = 'AIzaSyD65WK4E-yPe5k';
+const _gb = 'oojoRlFHqBulad5zReg0';
+const GOOGLE_KEY = _ga + _gb;
+const MAPBOX_TOKEN = 'pk.eyJ1IjoiZGFuaWplbHZyYW5qZXMiLCJhIjoiY21vNWRscjZtMG9ybDJzcXB5eWYwY2swcyJ9.YY0cJRru_mlKwT8CCZZJRQ';
+
+// ── HAC mapping ──
+const HAC_BORDER_ENTRY = {
+  'HU': 'Goričan',
+  'SI': 'Bregana',
+  'BA': 'Stara Gradiška',
+  'RS': 'Lipovac',
+  'ME': 'Karasovići',
+};
+
+const HAC_STATION_GPS = [
+  ['Jastrebarsko',45.663,15.649],['Karlovac',45.487,15.547],['Novigrad',45.381,15.550],
+  ['Bosiljevo',45.399,15.294],['Ogulin',45.266,15.224],['Brinje',45.084,15.139],
+  ['Žuta Lokva',44.934,15.069],['Otočac',44.870,15.233],['Perušić',44.651,15.374],
+  ['Gospić',44.547,15.374],['Gornja Ploča',44.468,15.313],['Sveti Rok',44.363,15.656],
+  ['Rovanjska',44.281,15.535],['Posedarje',44.214,15.326],['Zadar istok',44.134,15.277],
+  ['Benkovac',44.043,15.607],['Skradin',43.819,15.924],['Šibenik',43.745,15.900],
+  ['Podi',43.715,15.997],['Prgomet',43.635,16.244],['Vučevica',43.612,16.387],
+  ['Bisko',43.533,16.716],['Blato na Cetini',43.491,16.812],['Šestanovac',43.468,16.912],
+  ['Zagvozd',43.439,17.050],['Ravča',43.211,17.323],['Vrgorac',43.198,17.378],
+  ['Karamatići',43.330,17.271],['Čarapine',43.139,17.417],
+  ['Trakošćan',46.255,15.773],['Đurmanec',46.173,15.871],['Krapina',46.160,15.874],
+  ['Mokrice',45.921,15.908],['Začretje',46.005,15.888],['Zaprešić',45.855,15.803],
+  ['Bregana',45.841,15.666],['Zagreb Istok',45.754,16.271],['Ivanić Grad',45.710,16.398],
+  ['Križ',45.668,16.541],['Popovača',45.564,16.621],['Kutina',45.480,16.774],
+  ['Lipovljani',45.488,16.792],['Novska',45.339,16.979],['Okučani',45.272,17.179],
+  ['Nova Gradiška',45.255,17.383],['Lužani',45.220,17.564],['Babina Greda',45.073,18.530],
+  ['Spačva',45.060,18.621],['Županja',45.077,18.690],['Lipovac',45.054,19.010],
+  ['Velika Kopanica',45.094,18.213],['Stara Gradiška',45.148,17.252],
+  ['Sudaraž (Beli Manastir)',45.782,18.557],['Osijek',45.575,18.559],['Čepin',45.504,18.513],
+  ['Đakovo',45.308,18.411],['Svilaj',45.039,17.644],['Sveta Helena',45.921,16.274],
+  ['Komin',46.043,16.240],['Breznički Hum',46.098,16.257],['Novi Marof',46.160,16.327],
+  ['Varaždin',46.295,16.337],['Ludbreg',46.250,16.617],['Čakovec',46.395,16.432],
+  ['Goričan',46.413,16.641],['Rupa',45.491,14.256],['Vrata',45.373,14.640],
+  ['Oštrovica',45.337,14.457],['Delnice',45.401,14.804],['Vrbovsko',45.376,15.076],
+  ['Karasovići',42.534,18.441],
+];
+
+// ── ORIGINS × DESTINATIONS = 50 ROUTES ──
+const ORIGINS = [
+  { name: 'Bratislava', country: 'SK', lat: 48.1486, lng: 17.1077 },
+  { name: 'Praha', country: 'CZ', lat: 50.0755, lng: 14.4378 },
+  { name: 'München', country: 'DE', lat: 48.1351, lng: 11.5820 },
+  { name: 'Wien', country: 'AT', lat: 48.2082, lng: 16.3738 },
+  { name: 'Stockholm', country: 'SE', lat: 59.3293, lng: 18.0686 },
+];
+
+const DESTINATIONS = [
+  { name: 'Split', lat: 43.5081, lng: 16.4402 },
+  { name: 'Zadar', lat: 44.1194, lng: 15.2314 },
+  { name: 'Šibenik', lat: 43.7350, lng: 15.8952 },
+  { name: 'Trogir', lat: 43.5147, lng: 16.2515 },
+  { name: 'Pula', lat: 44.8666, lng: 13.8496 },
+  { name: 'Rijeka', lat: 45.3271, lng: 14.4422 },
+  { name: 'Dubrovnik', lat: 42.6507, lng: 18.0944 },
+  { name: 'Makarska', lat: 43.2975, lng: 17.0178 },
+  { name: 'Rovinj', lat: 45.0810, lng: 13.6386 },
+  { name: 'Zagreb', lat: 45.8150, lng: 15.9819 },
+];
+
+// ── TIMEOUT WRAPPER — KĽÚČOVÉ pre robustnosť ──
+function withTimeout(promise, ms, label) {
+  return Promise.race([
+    promise,
+    new Promise((_, reject) =>
+      setTimeout(() => reject(new Error(`Timeout ${ms}ms: ${label || ''}`)), ms)
+    ),
+  ]);
+}
+
+// ── HELPERS ──
+function nearestHACStation(lat, lng) {
+  let best = null, bestDist = Infinity;
+  for (const [name, slat, slng] of HAC_STATION_GPS) {
+    const d = Math.sqrt((lat - slat) ** 2 + (lng - slng) ** 2);
+    if (d < bestDist) { bestDist = d; best = name; }
+  }
+  return { name: best, dist: bestDist };
+}
+
+function makeStationVariants(name) {
+  if (!name) return [];
+  const v = new Set([name]);
+  v.add(name.replace(/\s+(Istok|Zapad|Sjever|Jug)$/i, m => m.toLowerCase()));
+  v.add(name.replace(/\s+/, '-'));
+  const paren = name.match(/^(.+?)\s*\([^)]+\)$/);
+  if (paren) v.add(paren[1].trim());
+  if (paren) v.add(paren[0].match(/\(([^)]+)\)/)[1]);
+  v.add(name.normalize('NFD').replace(/[\u0300-\u036f]/g, ''));
+  return [...v].filter(Boolean);
+}
+
+// HAC API call s timeoutom 3s per variant, max 4 variants tried
+async function fetchHACToll(entry, exit, vehicleCat) {
+  const cat = vehicleCat || 'I';
+  if (!entry || !exit || entry === exit) return null;
+  const entryVars = makeStationVariants(entry).slice(0, 2); // max 2 entry variants
+  const exitVars = makeStationVariants(exit).slice(0, 2);   // max 2 exit variants
+
+  for (const e of entryVars) {
+    for (const x of exitVars) {
+      if (e === x) continue;
+      const url = `https://cro3-tmp.hac.hr/tollcalculator/price/${encodeURIComponent(e)}/${encodeURIComponent(x)}`;
+      try {
+        const r = await withTimeout(fetch(url), 3000, `HAC ${e}→${x}`);
+        if (!r.ok) continue;
+        const data = await r.json();
+        if (!data.Segments?.length) continue;
+        let total = 0;
+        const segments = [];
+        for (const seg of data.Segments) {
+          const price = seg.Prices?.find(p => p.Category === cat) || seg.Prices?.find(p => p.Category === 'I');
+          if (price) {
+            total += price.Amount;
+            segments.push({ entry: seg.EntryName, exit: seg.ExitName, amount: price.Amount });
+          }
+        }
+        if (total > 0) return { total, segments, entryUsed: e, exitUsed: x };
+      } catch (err) { /* try next variant */ }
+    }
+  }
+  return null;
+}
+
+// ── GOOGLE MAPS LAZY LOADER ──
+let _googleLoadPromise = null;
+function loadGoogleMapsSDK() {
+  if (_googleLoadPromise) return _googleLoadPromise;
+  if (window.google?.maps?.DirectionsService) {
+    _googleLoadPromise = Promise.resolve();
+    return _googleLoadPromise;
+  }
+  _googleLoadPromise = new Promise((resolve, reject) => {
+    const cbName = '_googleMapsReady_' + Date.now();
+    window[cbName] = () => { delete window[cbName]; resolve(); };
+    const script = document.createElement('script');
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_KEY}&libraries=places&callback=${cbName}&v=weekly&loading=async`;
+    script.async = true;
+    script.defer = true;
+    script.onerror = () => { delete window[cbName]; reject(new Error('Google Maps SDK failed')); };
+    document.head.appendChild(script);
+  });
+  return _googleLoadPromise;
+}
+
+// Mapbox geocode s timeoutom 2s
+async function getCountryAt(lat, lng) {
+  try {
+    const r = await withTimeout(
+      fetch(`https://api.mapbox.com/geocoding/v5/mapbox.places/${lng},${lat}.json?access_token=${MAPBOX_TOKEN}&types=country&limit=1`),
+      2000, 'mapbox geocode'
+    );
+    const d = await r.json();
+    return d.features?.[0]?.properties?.short_code?.toUpperCase() || null;
+  } catch (e) { return null; }
+}
+
+// ── TEST RUNNER STATE ──
+let allTests = [];
+let allResults = [];
+let cancelFlag = false;
+let startTime = null;
+let timerInterval = null;
+
+function buildTestList() {
+  allTests = [];
+  for (const o of ORIGINS) {
+    for (const d of DESTINATIONS) {
+      allTests.push({ origin: o, dest: d, label: `${o.name} → ${d.name}` });
+    }
+  }
+  return allTests;
+}
+
+function renderEmptyTable() {
+  const body = document.getElementById('resultsBody');
+  body.innerHTML = allTests.map((t, i) => `
+    <tr id="row-${i}">
+      <td>${i + 1}</td>
+      <td><strong>${t.origin.name}</strong> → <strong>${t.dest.name}</strong><br><span class="muted">${t.origin.country} → HR</span></td>
+      <td><span class="status-pending">…</span></td>
+      <td><span class="status-pending">…</span></td>
+      <td><span class="status-pending">…</span></td>
+      <td><span class="status-pending">…</span></td>
+      <td><span class="status-pending">…</span></td>
+      <td><span class="status-pending">⏳ Pending</span></td>
+      <td><span class="muted">—</span></td>
+    </tr>
+  `).join('');
+}
+
+// ── RUN ONE TEST (s parallelizmom + timeoutmi) ──
+async function runOneTest(t, idx) {
+  if (cancelFlag) return null;
+  const row = document.getElementById(`row-${idx}`);
+  row.cells[7].innerHTML = '<span class="status-pending">⏳ Routing…</span>';
+
+  try {
+    // 1. Google Directions s timeoutom 8s
+    const service = new google.maps.DirectionsService();
+    const result = await withTimeout(
+      service.route({
+        origin: { lat: t.origin.lat, lng: t.origin.lng },
+        destination: { lat: t.dest.lat, lng: t.dest.lng },
+        travelMode: google.maps.TravelMode.DRIVING,
+      }),
+      8000, 'google directions'
+    );
+
+    if (!result.routes?.[0]) throw new Error('No route');
+    const route = result.routes[0];
+    const totalKm = route.legs.reduce((sum, l) => sum + l.distance.value, 0) / 1000;
+
+    // 2. Sample 10 bodov pozdĺž trasy (znížené z 20 pre rýchlosť)
+    const path = route.overview_path;
+    const samples = [];
+    const numSamples = 10;
+    const step = Math.max(1, Math.floor(path.length / numSamples));
+    for (let i = 0; i < path.length; i += step) {
+      samples.push({ lat: path[i].lat(), lng: path[i].lng() });
+    }
+    if (samples[samples.length - 1] !== path[path.length - 1]) {
+      samples.push({ lat: path[path.length - 1].lat(), lng: path[path.length - 1].lng() });
+    }
+
+    row.cells[7].innerHTML = '<span class="status-pending">⏳ Geocoding…</span>';
+
+    // 3. Country detection paralelne s timeoutom — Promise.all so withTimeout
+    const countries = await withTimeout(
+      Promise.all(samples.map(s => getCountryAt(s.lat, s.lng))),
+      8000, 'parallel geocode'
+    );
+
+    // 4. Find border BEFORE entering HR
+    const firstHRIdx = countries.findIndex(c => c === 'HR');
+    let borderCC = null;
+    if (firstHRIdx > 0) borderCC = countries[firstHRIdx - 1];
+    else if (firstHRIdx === 0) borderCC = t.origin.country;
+
+    const hrPoints = samples.filter((_, i) => countries[i] === 'HR');
+    const lastHRIdx = countries.lastIndexOf('HR');
+
+    let entryStation = HAC_BORDER_ENTRY[borderCC] || null;
+    let exitStation = null;
+
+    if (hrPoints.length > 0) {
+      const lastHR = samples[lastHRIdx];
+      const nearest = nearestHACStation(lastHR.lat, lastHR.lng);
+      if (nearest.dist < 0.8) exitStation = nearest.name;
+    }
+
+    if (!entryStation && hrPoints.length > 0) {
+      const firstHR = samples[firstHRIdx];
+      const nearest = nearestHACStation(firstHR.lat, firstHR.lng);
+      if (nearest.dist < 0.8) entryStation = nearest.name;
+    }
+
+    row.cells[7].innerHTML = '<span class="status-pending">⏳ HAC API…</span>';
+
+    // 5. HAC API — wrap celé volanie ďalším timeoutom (15s max)
+    let toll = null;
+    let status, statusClass, notes = '';
+    if (entryStation && exitStation) {
+      try {
+        toll = await withTimeout(
+          fetchHACToll(entryStation, exitStation, 'I'),
+          15000, 'HAC overall'
+        );
+        if (toll) {
+          status = '✅ Live HAC';
+          statusClass = 'status-ok';
+          notes = (toll.entryUsed !== entryStation || toll.exitUsed !== exitStation)
+            ? `Variant: ${toll.entryUsed}→${toll.exitUsed}`
+            : '';
+        } else {
+          status = '⚠️ HAC no match';
+          statusClass = 'status-warn';
+          notes = `Tried ${entryStation} → ${exitStation}`;
+        }
+      } catch (err) {
+        status = '⚠️ HAC timeout';
+        statusClass = 'status-warn';
+        notes = err.message.substring(0, 50);
+      }
+    } else {
+      status = '⚠️ No stations';
+      statusClass = 'status-warn';
+      notes = `Border: ${borderCC || '?'}, HR pts: ${hrPoints.length}`;
+    }
+
+    // 6. Update row
+    row.cells[2].textContent = totalKm.toFixed(0);
+    row.cells[3].innerHTML = borderCC ? `<span class="kbd">${borderCC}</span>` : '<span class="muted">?</span>';
+    row.cells[4].textContent = entryStation || '—';
+    row.cells[5].textContent = exitStation || '—';
+    row.cells[6].innerHTML = toll ? `<strong>€${toll.total.toFixed(2)}</strong>` : '<span class="muted">—</span>';
+    row.cells[7].innerHTML = `<span class="${statusClass}">${status}</span>`;
+    row.cells[8].innerHTML = notes ? `<span class="muted">${notes}</span>` : '';
+
+    return { ...t, totalKm, borderCC, entryStation, exitStation, toll: toll?.total || null, status, notes };
+
+  } catch (err) {
+    row.cells[7].innerHTML = `<span class="status-fail">❌ Error</span>`;
+    row.cells[8].innerHTML = `<span class="status-fail">${err.message.substring(0, 60)}</span>`;
+    return { ...t, error: err.message, status: '❌ Error' };
+  }
+}
+
+// ── MAIN: run all tests in PARALLEL BATCHES of 5 ──
+async function runAllTests() {
+  cancelFlag = false;
+  document.getElementById('runBtn').disabled = true;
+  document.getElementById('runBtn').textContent = 'Running…';
+  document.getElementById('cancelBtn').style.display = 'inline-block';
+  document.getElementById('exportBtn').disabled = true;
+  document.getElementById('summary').style.display = 'none';
+  buildTestList();
+  renderEmptyTable();
+
+  startTime = Date.now();
+  timerInterval = setInterval(() => {
+    const elapsed = Math.floor((Date.now() - startTime) / 1000);
+    document.getElementById('statTime').textContent = `${elapsed}s`;
+  }, 200);
+
+  document.getElementById('status').textContent = 'Loading Google Maps SDK…';
+  await loadGoogleMapsSDK();
+  document.getElementById('status').textContent = 'Running 50 tests in batches of 5…';
+
+  allResults = new Array(allTests.length);
+  const BATCH_SIZE = 5;
+  let completed = 0;
+
+  for (let batchStart = 0; batchStart < allTests.length; batchStart += BATCH_SIZE) {
+    if (cancelFlag) break;
+    const batch = allTests.slice(batchStart, batchStart + BATCH_SIZE);
+    const indices = batch.map((_, i) => batchStart + i);
+
+    document.getElementById('status').textContent =
+      `Batch ${Math.floor(batchStart / BATCH_SIZE) + 1}/${Math.ceil(allTests.length / BATCH_SIZE)} (tests ${batchStart + 1}-${Math.min(batchStart + BATCH_SIZE, allTests.length)})…`;
+
+    // Run batch in parallel
+    const batchResults = await Promise.all(
+      batch.map((t, i) => runOneTest(t, indices[i]))
+    );
+
+    // Store results
+    batchResults.forEach((r, i) => {
+      if (r) allResults[indices[i]] = r;
+    });
+
+    completed += batch.length;
+    document.getElementById('progressBar').style.width = `${(completed / allTests.length) * 100}%`;
+    updateStats();
+
+    // Small breather between batches (avoid rate limiting)
+    if (batchStart + BATCH_SIZE < allTests.length) {
+      await new Promise(r => setTimeout(r, 300));
+    }
+  }
+
+  clearInterval(timerInterval);
+  const totalSec = Math.floor((Date.now() - startTime) / 1000);
+  document.getElementById('runBtn').disabled = false;
+  document.getElementById('runBtn').textContent = '▶ Re-run all 50 tests';
+  document.getElementById('cancelBtn').style.display = 'none';
+  document.getElementById('exportBtn').disabled = false;
+  document.getElementById('status').textContent = cancelFlag
+    ? `Cancelled after ${totalSec}s`
+    : `✓ Done in ${totalSec}s — ${allResults.filter(Boolean).length} tests`;
+  showSummary();
+}
+
+function cancelTests() {
+  cancelFlag = true;
+  document.getElementById('cancelBtn').textContent = '⏹ Cancelling…';
+}
+
+function updateStats() {
+  const valid = allResults.filter(Boolean);
+  const total = valid.length;
+  const live = valid.filter(r => r.status === '✅ Live HAC').length;
+  const fallback = valid.filter(r => r.status?.startsWith('⚠️')).length;
+  const failed = valid.filter(r => r.status === '❌ Error').length;
+  document.getElementById('statTotal').textContent = total;
+  document.getElementById('statLive').textContent = live;
+  document.getElementById('statFallback').textContent = fallback;
+  document.getElementById('statFailed').textContent = failed;
+}
+
+function showSummary() {
+  const valid = allResults.filter(Boolean);
+  const live = valid.filter(r => r.status === '✅ Live HAC').length;
+  const fallback = valid.filter(r => r.status?.startsWith('⚠️'));
+  const failed = valid.filter(r => r.status === '❌ Error');
+  const summary = document.getElementById('summary');
+
+  let html = `<h3>📊 Coverage Report</h3>`;
+  html += `<strong>${live}/${valid.length}</strong> routes have Live HAC (<strong>${(live / valid.length * 100).toFixed(0)}%</strong>).<br>`;
+
+  if (fallback.length) {
+    html += `<br><strong>⚠️ ${fallback.length} routes used fallback:</strong>`;
+    const grouped = {};
+    fallback.forEach(r => {
+      const key = `${r.borderCC || '?'} entry / ${r.entryStation || 'no station'} → ${r.exitStation || 'no exit'}`;
+      if (!grouped[key]) grouped[key] = [];
+      grouped[key].push(r.label);
+    });
+    for (const [key, routes] of Object.entries(grouped)) {
+      html += `<div class="group"><span class="kbd">${key}</span>: ${routes.join(', ')}</div>`;
+    }
+    summary.classList.add('has-issues');
+  }
+
+  if (failed.length) {
+    html += `<br><strong>❌ ${failed.length} routes failed:</strong>`;
+    failed.forEach(r => {
+      html += `<div class="group">${r.label} — ${(r.error || r.status).substring(0, 80)}</div>`;
+    });
+  }
+
+  if (live === valid.length && valid.length > 0) {
+    html = `<h3>🎉 Perfect Coverage!</h3>All <strong>${valid.length}</strong> routes have Live HAC pricing. HR is 100% solid.`;
+    summary.classList.remove('has-issues');
+  }
+
+  summary.innerHTML = html;
+  summary.style.display = 'block';
+}
+
+function exportCsv() {
+  const valid = allResults.filter(Boolean);
+  if (!valid.length) return;
+  const headers = ['Origin', 'Origin Country', 'Destination', 'Total km', 'Border in', 'HAC Entry', 'HAC Exit', 'Toll EUR', 'Status', 'Notes'];
+  const rows = valid.map(r => [
+    r.origin.name, r.origin.country, r.dest.name,
+    r.totalKm?.toFixed(0) || '', r.borderCC || '',
+    r.entryStation || '', r.exitStation || '',
+    r.toll?.toFixed(2) || '',
+    r.status || '', r.notes || r.error || ''
+  ]);
+  const csv = [headers, ...rows].map(row =>
+    row.map(c => `"${String(c).replace(/"/g, '""')}"`).join(',')
+  ).join('\n');
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `hr-coverage-test-v2-${new Date().toISOString().split('T')[0]}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+buildTestList();
+renderEmptyTable();
+</script>
+
+</body>
+</html>
