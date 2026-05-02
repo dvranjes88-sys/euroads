@@ -209,6 +209,45 @@ async function fetchHACToll(entry, exit, vehicleCat) {
   return null;
 }
 
+// ── PRODUCTION-LIKE calcHRToll (same logic as index.html after fixes) ──
+async function calcHRToll(entryStation, exitStation, lastHRLat) {
+  const cat = 'I';
+
+  // Build entry candidates
+  const entryCandidates = entryStation ? [entryStation] : [];
+
+  // Build exit candidates with Dubrovnik fix
+  const exitCandidates = exitStation ? [exitStation] : [];
+
+  if (lastHRLat !== null && lastHRLat < 43.5) {
+    // Southern destinations — add A1 southern endpoints
+    const southernEndpoints = ['Karamatići', 'Ravča', 'Vrgorac', 'Zagvozd', 'Šestanovac'];
+    for (const ep of southernEndpoints) {
+      if (!exitCandidates.includes(ep)) exitCandidates.push(ep);
+    }
+    // For Dubrovnik area, deprioritize Karasovići
+    if (lastHRLat < 43.0) {
+      const idx = exitCandidates.indexOf('Karasovići');
+      if (idx >= 0) {
+        exitCandidates.splice(idx, 1);
+        exitCandidates.push('Karasovići');
+      }
+    }
+  }
+
+  // Try all combinations
+  for (const entry of entryCandidates) {
+    for (const exit of exitCandidates) {
+      if (entry === exit) continue;
+      const result = await fetchHACToll(entry, exit, cat);
+      if (result?.total > 0) {
+        return { ...result, entryUsed: entry, exitUsed: exit, finalEntry: entry, finalExit: exit };
+      }
+    }
+  }
+  return null;
+}
+
 // ── GOOGLE MAPS LAZY LOADER ──
 let _googleLoadPromise = null;
 function loadGoogleMapsSDK() {
@@ -348,21 +387,23 @@ async function runOneTest(t, idx) {
     let toll = null;
     let status, statusClass, notes = '';
     if (entryStation && exitStation) {
+      const lastHRLat = hrPoints.length > 0 ? samples[lastHRIdx].lat : null;
       try {
         toll = await withTimeout(
-          fetchHACToll(entryStation, exitStation, 'I'),
+          calcHRToll(entryStation, exitStation, lastHRLat),
           15000, 'HAC overall'
         );
         if (toll) {
           status = '✅ Live HAC';
           statusClass = 'status-ok';
-          notes = (toll.entryUsed !== entryStation || toll.exitUsed !== exitStation)
-            ? `Variant: ${toll.entryUsed}→${toll.exitUsed}`
+          const usedDifferent = toll.finalEntry !== entryStation || toll.finalExit !== exitStation;
+          notes = usedDifferent
+            ? `Resolved: ${toll.finalEntry} → ${toll.finalExit}`
             : '';
         } else {
           status = '⚠️ HAC no match';
           statusClass = 'status-warn';
-          notes = `Tried ${entryStation} → ${exitStation}`;
+          notes = `Tried ${entryStation} → ${exitStation} + fallbacks`;
         }
       } catch (err) {
         status = '⚠️ HAC timeout';
