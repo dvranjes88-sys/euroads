@@ -25,7 +25,7 @@ header { background:#18160F; color:#fff; height:58px; display:flex; align-items:
 .logo span { color:var(--accent); }
 .hm { font-size:.7rem; color:rgba(255,255,255,.4); letter-spacing:.1em; text-transform:uppercase; }
 
-#heroCanvas { position:absolute; inset:0; width:100%; height:100%; pointer-events:none; z-index:0; opacity:.6; }
+#heroCanvas { position:absolute; inset:0; width:100%; height:100%; pointer-events:none; z-index:0; opacity:.5; mask-image: linear-gradient(to right, rgba(0,0,0,1) 30%, rgba(0,0,0,0) 75%); -webkit-mask-image: linear-gradient(to right, rgba(0,0,0,1) 30%, rgba(0,0,0,0) 75%); }
 .hero { background:#18160F; position:relative; overflow:hidden; color:#fff; padding:2.5rem 2rem 2rem; position:relative; overflow:hidden; }
 .hero h1 { position:relative; z-index:1; font-family:'Geist',sans-serif; font-weight:800; font-size:clamp(1.6rem,4vw,2.8rem); letter-spacing:-0.03em; line-height:1.05; margin-bottom:.6rem; }
 .hero h1 em { color:var(--accent); font-style:normal; }
@@ -862,7 +862,7 @@ main { padding:2rem; max-width:1300px; margin:0 auto; }
       <!-- 2-COLUMN LAYOUT: Stops vľavo, Trip details vpravo -->
       <div class="mr-form-2col">
 
-        <!-- ĽAVÁ STRANA: STOPS sekcia -->
+        <!-- ĽAVÁ STRANA: STOPS sekcia + Calculate -->
         <div class="mr-form-col-stops">
           <div class="mr-stops-label">Stops</div>
           <div id="mr-stops-wrap"></div>
@@ -870,6 +870,14 @@ main { padding:2rem; max-width:1300px; margin:0 auto; }
             <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
             Add stop
           </button>
+
+          <!-- CALCULATE BUTTON: pod Stops, vyplna whitespace -->
+          <div class="mr-toolbar-calc">
+            <button class="bcalc pulse" onclick="calcMapRoute()">
+              Calculate
+              <svg style="width:13px;height:13px;stroke:currentColor;fill:none;stroke-width:2.5;stroke-linecap:round;" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+            </button>
+          </div>
         </div>
 
         <!-- PRAVÁ STRANA: TRIP DETAILS (dates, vehicle, fuel) -->
@@ -938,12 +946,6 @@ main { padding:2rem; max-width:1300px; margin:0 auto; }
 
       </div>
 
-      <!-- CALCULATE BUTTON: full-width row, button vpravo dole -->
-      <div class="mr-toolbar-calc">
-        <button class="bcalc pulse" onclick="calcMapRoute()">
-          Calculate
-          <svg style="width:13px;height:13px;stroke:currentColor;fill:none;stroke-width:2.5;stroke-linecap:round;" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
-        </button>
       </div>
     </div>
 
@@ -2319,30 +2321,73 @@ async function calcHRToll(hrEntryCC, hrExitCC, hrDistKm, validPts, vehicleCat){
     return { amount: parseFloat((5*mult).toFixed(2)), segments: [], entry: '?', exit: '?', live: false, precise: false };
   }
 
-  // Kandidáti pre entry station
+  // ═══════════════════════════════════════════════════════════════
+  // ── ENTRY CANDIDATES (FIX: Bratislava issue) ──
+  // Pridáme až 5 entry kandidátov — z border mappingu + 3 najbližšie HAC stations
+  // k prvému HR sample bodu. Toto rieši situáciu keď Google route vedie cez
+  // iný border ako mappping očakáva (napr. Bratislava → Split ide cez HU
+  // namiesto SI, alebo cez Macelj namiesto Bregana).
+  // ═══════════════════════════════════════════════════════════════
   const entryCandidates = [];
   if(HAC_BORDER_ENTRY[hrEntryCC]) entryCandidates.push(HAC_BORDER_ENTRY[hrEntryCC]);
-  const firstHR = hrPts[0];
-  if(firstHR){
-    const n = nearestHACStation(firstHR.lat, firstHR.lng);
-    if(n.dist < 0.8 && !entryCandidates.includes(n.name)) entryCandidates.push(n.name);
+
+  // Skúsi prvé 3 HR pointy — niekedy je entry až o pár samplov hlbšie
+  const firstHRPoints = hrPts.slice(0, 3);
+  for(const pt of firstHRPoints){
+    const n = nearestHACStation(pt.lat, pt.lng);
+    if(n.dist < 1.0 && !entryCandidates.includes(n.name)){
+      entryCandidates.push(n.name);
+    }
   }
 
-  // Kandidáti pre exit station — skúsi viac HR pointov od konca
+  // ═══════════════════════════════════════════════════════════════
+  // ── EXIT CANDIDATES (FIX: Dubrovnik issue) ──
+  // Pre destinácie južne od Ploče (Dubrovnik area) HAC API zlyhá s Karasovići
+  // lebo to je MNE border crossing 200+ km od reálneho cieľa.
+  // Riešenie: filtruj nezmyselné kombinácie + pridaj southern A1 endpoints
+  // ako fallback.
+  // ═══════════════════════════════════════════════════════════════
   const exitCandidates = [];
   if(HAC_BORDER_ENTRY[hrExitCC]) exitCandidates.push(HAC_BORDER_ENTRY[hrExitCC]);
-  // Skúsi posledné 3 HR pointy
-  const lastHRPoints = hrPts.slice(-3).reverse();
+
+  // Skúsi posledné 5 HR pointov (zvýšené z 3) — viac flexibility
+  const lastHRPoints = hrPts.slice(-5).reverse();
   for(const pt of lastHRPoints){
     const n = nearestHACStation(pt.lat, pt.lng);
-    if(n.dist < 0.8 && !exitCandidates.includes(n.name)){
+    if(n.dist < 1.0 && !exitCandidates.includes(n.name)){
       exitCandidates.push(n.name);
+    }
+  }
+
+  // ── DUBROVNIK FIX ──
+  // Ak je destination južne od Splitu (lat < 43.3) a posledný HR sample bod
+  // je tiež južne, znamená to že cesta ide na Dubrovnik cez Bosnia Neum corridor.
+  // V tom prípade pridáme ako endpoint stations południové konce HR motorway
+  // (Karamatići, Ravča, Vrgorac), ktoré HAC API pozná ako platný exit.
+  // ZÁROVEŇ odstránime Karasovići ak je v zozname (to je MNE border, NIE Dubrovnik exit).
+  const lastHR = hrPts[hrPts.length - 1];
+  if(lastHR && lastHR.lat < 43.5){
+    // Trasa končí na južnom konci HR — pridaj južné A1 endpoints
+    const southernEndpoints = ['Karamatići', 'Ravča', 'Vrgorac', 'Zagvozd', 'Šestanovac'];
+    for(const endpoint of southernEndpoints){
+      if(!exitCandidates.includes(endpoint)) exitCandidates.push(endpoint);
+    }
+    // Ak destinácia je veľmi južne (Dubrovnik area, lat < 43.0), Karasovići
+    // nebude fungovať lebo je úplne na MNE hranici. Necháme ho ako last resort
+    // ale southern endpoints budú prvé v poradí.
+    if(lastHR.lat < 43.0){
+      const idxKaras = exitCandidates.indexOf('Karasovići');
+      if(idxKaras >= 0){
+        exitCandidates.splice(idxKaras, 1);
+        exitCandidates.push('Karasovići'); // posledný v poradí
+      }
     }
   }
 
   console.log('[HAC] Entry candidates:', entryCandidates, '| Exit candidates:', exitCandidates);
 
   // Skús všetky kombinácie — prvá úspešná vyhráva
+  // (max 5 × 5 = 25 kombinácií, real fetchHACToll robí 4 variant retries each = 100 max)
   for(const entry of entryCandidates){
     for(const exit of exitCandidates){
       if(entry === exit) continue;
@@ -2809,7 +2854,29 @@ function clearMapLayers(){
 // Slovinsko už nebude v zozname keď cez neho cesta reálne neide
 // ══════════════════════════════════════════════════════════
 async function detectCountriesOnRoute(rc){
-  const NUM_SAMPLES = 50;
+  // ── DYNAMIC SAMPLE DENSITY ──
+  // Krátke trasy (<500km): 50 samplov stačí, ~10km medzi samplami
+  // Stredné (500-1500km): 60 samplov, ~15km medzi samplami
+  // Dlhé (1500-2500km): 80 samplov, ~25km medzi samplami
+  // Veľmi dlhé (>2500km, napr. Stockholm→Split): 100 samplov, ~25km
+  // Toto rieši "Stockholm self-loop" issue kde 50 samplov bolo príliš riedkych
+  // a HR sample body sa zhlukli v krátkom úseku → entry == exit station.
+
+  // Estimate approx route length z prvého a posledného GPS bodu (rough heuristic)
+  let approxKm = 0;
+  if(rc.length >= 2){
+    const start = rc[0], end = rc[rc.length-1];
+    const dLat = (end[1]-start[1]) * Math.PI/180;
+    const dLng = (end[0]-start[0]) * Math.PI/180;
+    const a = Math.sin(dLat/2)**2 + Math.cos(start[1]*Math.PI/180)*Math.cos(end[1]*Math.PI/180)*Math.sin(dLng/2)**2;
+    approxKm = 6371 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)) * 1.3; // 1.3x lebo road != crow flight
+  }
+
+  let NUM_SAMPLES = 50;
+  if(approxKm > 2500) NUM_SAMPLES = 100;
+  else if(approxKm > 1500) NUM_SAMPLES = 80;
+  else if(approxKm > 500) NUM_SAMPLES = 60;
+
   const sampleStep = Math.max(1, Math.floor(rc.length / NUM_SAMPLES));
   // VŽDY zahrň index 0 (štartovacia krajina - fixne chýbajúcu SK)
   const samples = [0];
@@ -4243,9 +4310,9 @@ renderCC(); renderSpeed(); renderCalcChecks(); renderENC();
     grad.addColorStop(0.25,'rgba(8,7,15,0.5)');
     grad.addColorStop(1, 'rgba(5,5,12,0.85)');
     ctx.beginPath(); ctx.moveTo(vx, vy);
-    ctx.lineTo(W * 0.30, H); ctx.lineTo(W * 1.06, H);
+    ctx.lineTo(W * 0.30, H); ctx.lineTo(W * 1.00, H);
     ctx.closePath(); ctx.fillStyle = grad; ctx.fill();
-    [[0.30,0.13],[1.06,0.09]].forEach(([ex,alpha])=>{
+    [[0.30,0.13],[1.00,0.09]].forEach(([ex,alpha])=>{
       ctx.beginPath(); ctx.moveTo(vx,vy); ctx.lineTo(W*ex,H);
       ctx.strokeStyle=`rgba(255,255,255,${alpha})`; ctx.lineWidth=1; ctx.stroke();
     });
@@ -4265,7 +4332,6 @@ renderCC(); renderSpeed(); renderCalcChecks(); renderENC();
     };
     lane(0.68,'212,130,10',0.95);
     lane(0.53,'255,255,255',0.2);
-    lane(0.85,'255,255,255',0.2);
     dashOffset=(dashOffset+0.004)%1;
     requestAnimationFrame(draw);
   }
