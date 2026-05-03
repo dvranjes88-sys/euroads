@@ -1,53 +1,709 @@
 {
-  "_updated": "2026-05-02",
-  "_description": "EuroRoads ferry/bridge route definitions. Phase 1 expanded coverage: full Croatia (Jadrolinija + Kapetan Luka + TP Line + G&V Line) + key international routes. Used for proximity matching against Google Directions ferry steps and route-geometry-based bridge detection.",
-  "_notes": "type=car_ferry → detected via Google ferry-step instructions, matched per-port within 12km. type=catamaran|passenger_only → same detection but pricing is passenger-only (no car). type=bridge_toll → detected via route geometry passing within 8km of from AND to coordinates. Catamaran from-port/to-port coordinates are the actual ferry pier, which sometimes differs from the town center.",
+  "_updated": "2026-05-03",
+  "_source": "verified per-route deeplinks (Jadrolinija + Rapska Plovidba + G&V Line)",
   "routes": [
-    { "id": "split-supetar", "operator": "Jadrolinija", "from": { "name": "Split", "code": "SPL", "lat": 43.5057, "lng": 16.4366 }, "to": { "name": "Supetar (Brač)", "code": "SUP", "lat": 43.3851, "lng": 16.5505 }, "duration_minutes": 50, "type": "car_ferry", "booking_url": "https://www.jadrolinija.hr/en/ferry-croatia" },
-    { "id": "split-stari-grad", "operator": "Jadrolinija", "from": { "name": "Split", "code": "SPL", "lat": 43.5057, "lng": 16.4366 }, "to": { "name": "Stari Grad (Hvar)", "code": "STG", "lat": 43.1844, "lng": 16.5921 }, "duration_minutes": 120, "type": "car_ferry", "booking_url": "https://www.jadrolinija.hr/en/ferry-croatia" },
-    { "id": "drvenik-sucuraj", "operator": "Jadrolinija", "from": { "name": "Drvenik", "code": "DRV", "lat": 43.1483, "lng": 17.2467 }, "to": { "name": "Sućuraj (Hvar)", "code": "SUC", "lat": 43.1280, "lng": 17.1900 }, "duration_minutes": 35, "type": "car_ferry", "booking_url": "https://www.jadrolinija.hr/en/ferry-croatia" },
-    { "id": "ploce-trpanj", "operator": "Jadrolinija", "from": { "name": "Ploče", "code": "PLC", "lat": 43.0561, "lng": 17.4339 }, "to": { "name": "Trpanj (Pelješac)", "code": "TRP", "lat": 43.0080, "lng": 17.2641 }, "duration_minutes": 60, "type": "car_ferry", "booking_url": "https://www.jadrolinija.hr/en/ferry-croatia" },
-    { "id": "biograd-tkon", "operator": "Jadrolinija", "from": { "name": "Biograd na Moru", "code": "BIO", "lat": 43.9433, "lng": 15.4434 }, "to": { "name": "Tkon (Pašman)", "code": "TKO", "lat": 43.9120, "lng": 15.3611 }, "duration_minutes": 25, "type": "car_ferry", "booking_url": "https://www.jadrolinija.hr/en/ferry-croatia" },
-
-    { "id": "split-vela-luka", "operator": "Jadrolinija", "from": { "name": "Split", "code": "SPL", "lat": 43.5057, "lng": 16.4366 }, "to": { "name": "Vela Luka (Korčula)", "code": "VLK", "lat": 42.9622, "lng": 16.7160 }, "duration_minutes": 180, "type": "car_ferry", "booking_url": "https://www.jadrolinija.hr/en/ferry-croatia" },
-    { "id": "split-vis", "operator": "Jadrolinija", "from": { "name": "Split", "code": "SPL", "lat": 43.5057, "lng": 16.4366 }, "to": { "name": "Vis", "code": "VIS", "lat": 43.0613, "lng": 16.1813 }, "duration_minutes": 140, "type": "car_ferry", "booking_url": "https://www.jadrolinija.hr/en/ferry-croatia" },
-    { "id": "split-rogac", "operator": "Jadrolinija", "from": { "name": "Split", "code": "SPL", "lat": 43.5057, "lng": 16.4366 }, "to": { "name": "Rogač (Šolta)", "code": "ROG", "lat": 43.3863, "lng": 16.3083 }, "duration_minutes": 60, "type": "car_ferry", "booking_url": "https://www.jadrolinija.hr/en/ferry-croatia" },
-    { "id": "split-lastovo", "operator": "Jadrolinija", "from": { "name": "Split", "code": "SPL", "lat": 43.5057, "lng": 16.4366 }, "to": { "name": "Ubli (Lastovo)", "code": "UBL", "lat": 42.7561, "lng": 16.8358 }, "duration_minutes": 270, "type": "car_ferry", "booking_url": "https://www.jadrolinija.hr/en/ferry-croatia" },
-
-    { "id": "valbiska-merag", "operator": "Jadrolinija", "from": { "name": "Valbiska (Krk)", "code": "VBK", "lat": 45.0436, "lng": 14.5267 }, "to": { "name": "Merag (Cres)", "code": "MRG", "lat": 45.0203, "lng": 14.4839 }, "duration_minutes": 30, "type": "car_ferry", "booking_url": "https://www.jadrolinija.hr/en/ferry-croatia" },
-    { "id": "brestova-porozina", "operator": "Jadrolinija", "from": { "name": "Brestova", "code": "BRT", "lat": 45.1117, "lng": 14.2417 }, "to": { "name": "Porozina (Cres)", "code": "PRZ", "lat": 45.1283, "lng": 14.2783 }, "duration_minutes": 25, "type": "car_ferry", "booking_url": "https://www.jadrolinija.hr/en/ferry-croatia" },
-    { "id": "prizna-zigljen", "operator": "Jadrolinija", "from": { "name": "Prizna", "code": "PRZ", "lat": 44.8839, "lng": 14.9700 }, "to": { "name": "Žigljen (Pag)", "code": "ZGL", "lat": 44.8758, "lng": 14.9569 }, "duration_minutes": 15, "type": "car_ferry", "booking_url": "https://www.jadrolinija.hr/en/ferry-croatia" },
-    { "id": "stinica-misnjak", "operator": "Jadrolinija", "from": { "name": "Stinica", "code": "STN", "lat": 44.8639, "lng": 14.7919 }, "to": { "name": "Mišnjak (Rab)", "code": "MSN", "lat": 44.7617, "lng": 14.7878 }, "duration_minutes": 15, "type": "car_ferry", "booking_url": "https://www.jadrolinija.hr/en/ferry-croatia" },
-    { "id": "jablanac-misnjak", "operator": "Jadrolinija", "from": { "name": "Jablanac", "code": "JBL", "lat": 44.7100, "lng": 14.9131 }, "to": { "name": "Mišnjak (Rab)", "code": "MSN", "lat": 44.7617, "lng": 14.7878 }, "duration_minutes": 15, "type": "car_ferry", "booking_url": "https://www.jadrolinija.hr/en/ferry-croatia" },
-
-    { "id": "orebic-domince", "operator": "Jadrolinija", "from": { "name": "Orebić (Pelješac)", "code": "ORB", "lat": 42.9789, "lng": 17.1786 }, "to": { "name": "Dominče (Korčula)", "code": "DMC", "lat": 42.9789, "lng": 17.1572 }, "duration_minutes": 15, "type": "car_ferry", "booking_url": "https://www.jadrolinija.hr/en/ferry-croatia" },
-    { "id": "prapratno-sobra", "operator": "Jadrolinija", "from": { "name": "Prapratno (Pelješac)", "code": "PRP", "lat": 42.8531, "lng": 17.6644 }, "to": { "name": "Sobra (Mljet)", "code": "SBR", "lat": 42.7392, "lng": 17.6403 }, "duration_minutes": 50, "type": "car_ferry", "booking_url": "https://www.jadrolinija.hr/en/ferry-croatia" },
-
-    { "id": "zadar-preko", "operator": "Jadrolinija", "from": { "name": "Zadar", "code": "ZAD", "lat": 44.1186, "lng": 15.2306 }, "to": { "name": "Preko (Ugljan)", "code": "PRK", "lat": 44.0853, "lng": 15.1953 }, "duration_minutes": 25, "type": "car_ferry", "booking_url": "https://www.jadrolinija.hr/en/ferry-croatia" },
-    { "id": "zadar-mali-losinj", "operator": "Jadrolinija", "from": { "name": "Zadar", "code": "ZAD", "lat": 44.1186, "lng": 15.2306 }, "to": { "name": "Mali Lošinj", "code": "MLL", "lat": 44.5333, "lng": 14.4711 }, "duration_minutes": 300, "type": "car_ferry", "booking_url": "https://www.jadrolinija.hr/en/ferry-croatia" },
-    { "id": "zadar-zaglav", "operator": "Jadrolinija", "from": { "name": "Zadar", "code": "ZAD", "lat": 44.1186, "lng": 15.2306 }, "to": { "name": "Zaglav (Dugi Otok)", "code": "ZGV", "lat": 43.9833, "lng": 15.0194 }, "duration_minutes": 80, "type": "car_ferry", "booking_url": "https://www.jadrolinija.hr/en/ferry-croatia" },
-    { "id": "zadar-brbinj", "operator": "Jadrolinija", "from": { "name": "Zadar", "code": "ZAD", "lat": 44.1186, "lng": 15.2306 }, "to": { "name": "Brbinj (Dugi Otok)", "code": "BRB", "lat": 44.0833, "lng": 14.9528 }, "duration_minutes": 90, "type": "car_ferry", "booking_url": "https://www.jadrolinija.hr/en/ferry-croatia" },
-    { "id": "zadar-bozava", "operator": "Jadrolinija", "from": { "name": "Zadar", "code": "ZAD", "lat": 44.1186, "lng": 15.2306 }, "to": { "name": "Božava (Dugi Otok)", "code": "BZV", "lat": 44.1372, "lng": 14.9156 }, "duration_minutes": 90, "type": "car_ferry", "booking_url": "https://www.jadrolinija.hr/en/ferry-croatia" },
-    { "id": "zadar-ist", "operator": "Jadrolinija", "from": { "name": "Zadar", "code": "ZAD", "lat": 44.1186, "lng": 15.2306 }, "to": { "name": "Ist", "code": "IST", "lat": 44.2658, "lng": 14.7589 }, "duration_minutes": 120, "type": "car_ferry", "booking_url": "https://www.jadrolinija.hr/en/ferry-croatia" },
-
-    { "id": "split-hvar-cat", "operator": "Kapetan Luka (Krilo)", "from": { "name": "Split (catamaran terminal)", "code": "SPL", "lat": 43.5077, "lng": 16.4419 }, "to": { "name": "Hvar town", "code": "HVA", "lat": 43.1726, "lng": 16.4422 }, "duration_minutes": 60, "type": "catamaran", "booking_url": "https://www.krilo.hr/en/timetable" },
-    { "id": "split-bol-jelsa", "operator": "Kapetan Luka (Krilo)", "from": { "name": "Split (catamaran terminal)", "code": "SPL", "lat": 43.5077, "lng": 16.4419 }, "to": { "name": "Bol (Brač) / Jelsa (Hvar)", "code": "BOL", "lat": 43.2614, "lng": 16.6589 }, "duration_minutes": 90, "type": "catamaran", "booking_url": "https://www.krilo.hr/en/timetable" },
-    { "id": "split-korcula-cat", "operator": "Kapetan Luka (Krilo)", "from": { "name": "Split (catamaran terminal)", "code": "SPL", "lat": 43.5077, "lng": 16.4419 }, "to": { "name": "Korčula town", "code": "KOR", "lat": 42.9586, "lng": 17.1364 }, "duration_minutes": 180, "type": "catamaran", "booking_url": "https://www.krilo.hr/en/timetable" },
-    { "id": "split-mljet-pomena", "operator": "Kapetan Luka (Krilo)", "from": { "name": "Split (catamaran terminal)", "code": "SPL", "lat": 43.5077, "lng": 16.4419 }, "to": { "name": "Pomena (Mljet)", "code": "POM", "lat": 42.7858, "lng": 17.3392 }, "duration_minutes": 200, "type": "catamaran", "booking_url": "https://www.krilo.hr/en/timetable" },
-    { "id": "split-dubrovnik-cat", "operator": "Kapetan Luka (Krilo)", "from": { "name": "Split (catamaran terminal)", "code": "SPL", "lat": 43.5077, "lng": 16.4419 }, "to": { "name": "Dubrovnik (Gruž)", "code": "DBV", "lat": 42.6622, "lng": 18.0763 }, "duration_minutes": 270, "type": "catamaran", "booking_url": "https://www.krilo.hr/en/timetable" },
-
-    { "id": "trogir-drvenik-veli", "operator": "TP Line", "from": { "name": "Trogir", "code": "TRG", "lat": 43.5172, "lng": 16.2517 }, "to": { "name": "Drvenik Veli", "code": "DVL", "lat": 43.4475, "lng": 16.1789 }, "duration_minutes": 30, "type": "passenger_only", "booking_url": "https://www.tp-line.hr/" },
-
-    { "id": "dubrovnik-sipan", "operator": "G&V Line", "from": { "name": "Dubrovnik (Gruž)", "code": "DBV", "lat": 42.6622, "lng": 18.0763 }, "to": { "name": "Suđurađ (Šipan)", "code": "SDR", "lat": 42.7281, "lng": 17.8908 }, "duration_minutes": 60, "type": "passenger_only", "booking_url": "https://gv-line.hr/" },
-    { "id": "dubrovnik-lopud", "operator": "G&V Line", "from": { "name": "Dubrovnik (Gruž)", "code": "DBV", "lat": 42.6622, "lng": 18.0763 }, "to": { "name": "Lopud", "code": "LPD", "lat": 42.6856, "lng": 17.9381 }, "duration_minutes": 50, "type": "passenger_only", "booking_url": "https://gv-line.hr/" },
-    { "id": "dubrovnik-kolocep", "operator": "G&V Line", "from": { "name": "Dubrovnik (Gruž)", "code": "DBV", "lat": 42.6622, "lng": 18.0763 }, "to": { "name": "Koločep (Donje Čelo)", "code": "KLC", "lat": 42.6708, "lng": 17.9619 }, "duration_minutes": 30, "type": "passenger_only", "booking_url": "https://gv-line.hr/" },
-    { "id": "dubrovnik-sobra", "operator": "G&V Line / Jadrolinija", "from": { "name": "Dubrovnik (Gruž)", "code": "DBV", "lat": 42.6622, "lng": 18.0763 }, "to": { "name": "Sobra (Mljet)", "code": "SBR", "lat": 42.7392, "lng": 17.6403 }, "duration_minutes": 90, "type": "passenger_only", "booking_url": "https://gv-line.hr/" },
-
-    { "id": "ancona-split", "operator": "Jadrolinija / SNAV", "from": { "name": "Ancona", "code": "ANC", "lat": 43.6173, "lng": 13.5056 }, "to": { "name": "Split", "code": "SPL", "lat": 43.5057, "lng": 16.4366 }, "duration_minutes": 660, "type": "car_ferry", "booking_url": "https://www.jadrolinija.hr/en/ferry-croatia/italy-croatia-line" },
-    { "id": "bari-dubrovnik", "operator": "Jadrolinija", "from": { "name": "Bari", "code": "BRI", "lat": 41.1278, "lng": 16.8704 }, "to": { "name": "Dubrovnik (Gruž)", "code": "DBV", "lat": 42.6622, "lng": 18.0763 }, "duration_minutes": 540, "type": "car_ferry", "booking_url": "https://www.jadrolinija.hr/en/ferry-croatia/italy-croatia-line" },
-
-    { "id": "storebaelt", "operator": "Storebælt (Sund & Bælt)", "from": { "name": "Halsskov (Zealand)", "code": "HLS", "lat": 55.3450, "lng": 11.0258 }, "to": { "name": "Knudshoved (Funen)", "code": "KND", "lat": 55.2972, "lng": 10.8770 }, "duration_minutes": 0, "type": "bridge_toll", "booking_url": "https://www.storebaelt.dk/en/prices/" },
-    { "id": "oresund", "operator": "Øresundsbron", "from": { "name": "Copenhagen (Kastrup)", "code": "CPH", "lat": 55.6093, "lng": 12.6394 }, "to": { "name": "Malmö (Lernacken)", "code": "MMA", "lat": 55.5719, "lng": 12.6500 }, "duration_minutes": 0, "type": "bridge_toll", "booking_url": "https://www.oresundsbron.com/en/prices" },
-    { "id": "puttgarden-rodby", "operator": "Scandlines", "from": { "name": "Puttgarden", "code": "PUT", "lat": 54.4972, "lng": 11.2364 }, "to": { "name": "Rødby", "code": "ROD", "lat": 54.6531, "lng": 11.3508 }, "duration_minutes": 45, "type": "car_ferry", "booking_url": "https://www.scandlines.com/booking" }
+    {
+      "id": "split-supetar",
+      "operator": "Jadrolinija",
+      "from": {
+        "name": "Split",
+        "code": "SPL",
+        "lat": 43.5057,
+        "lng": 16.4366
+      },
+      "to": {
+        "name": "Supetar (Brač)",
+        "code": "SUP",
+        "lat": 43.3851,
+        "lng": 16.5505
+      },
+      "duration_minutes": 50,
+      "type": "car_ferry",
+      "booking_url": "https://www.jadrolinija.hr/en/travel/split_-_supetar_brac"
+    },
+    {
+      "id": "split-stari-grad",
+      "operator": "Jadrolinija",
+      "from": {
+        "name": "Split",
+        "code": "SPL",
+        "lat": 43.5057,
+        "lng": 16.4366
+      },
+      "to": {
+        "name": "Stari Grad (Hvar)",
+        "code": "STG",
+        "lat": 43.1844,
+        "lng": 16.5921
+      },
+      "duration_minutes": 120,
+      "type": "car_ferry",
+      "booking_url": "https://www.jadrolinija.hr/en/travel/split_-_stari_grad_hvar"
+    },
+    {
+      "id": "drvenik-sucuraj",
+      "operator": "Jadrolinija",
+      "from": {
+        "name": "Drvenik",
+        "code": "DRV",
+        "lat": 43.1483,
+        "lng": 17.2467
+      },
+      "to": {
+        "name": "Sućuraj (Hvar)",
+        "code": "SUC",
+        "lat": 43.128,
+        "lng": 17.19
+      },
+      "duration_minutes": 35,
+      "type": "car_ferry",
+      "booking_url": "https://www.jadrolinija.hr/en/travel/drvenik_-_sucuraj_hvar"
+    },
+    {
+      "id": "ploce-trpanj",
+      "operator": "Jadrolinija",
+      "from": {
+        "name": "Ploče",
+        "code": "PLC",
+        "lat": 43.0561,
+        "lng": 17.4339
+      },
+      "to": {
+        "name": "Trpanj (Pelješac)",
+        "code": "TRP",
+        "lat": 43.008,
+        "lng": 17.2641
+      },
+      "duration_minutes": 60,
+      "type": "car_ferry",
+      "booking_url": "https://www.jadrolinija.hr/en/travel/ploce_–_trpanj__peljesac"
+    },
+    {
+      "id": "biograd-tkon",
+      "operator": "Jadrolinija",
+      "from": {
+        "name": "Biograd na Moru",
+        "code": "BIO",
+        "lat": 43.9433,
+        "lng": 15.4434
+      },
+      "to": {
+        "name": "Tkon (Pašman)",
+        "code": "TKO",
+        "lat": 43.912,
+        "lng": 15.3611
+      },
+      "duration_minutes": 25,
+      "type": "car_ferry",
+      "booking_url": "https://www.jadrolinija.hr/en/travel/biograd_-_tkon_pasman"
+    },
+    {
+      "id": "split-vela-luka",
+      "operator": "Jadrolinija",
+      "from": {
+        "name": "Split",
+        "code": "SPL",
+        "lat": 43.5057,
+        "lng": 16.4366
+      },
+      "to": {
+        "name": "Vela Luka (Korčula)",
+        "code": "VLK",
+        "lat": 42.9622,
+        "lng": 16.716
+      },
+      "duration_minutes": 180,
+      "type": "car_ferry",
+      "booking_url": "https://www.jadrolinija.hr/en/travel/split_-vela_luka_korcula_-_ubli_lastovo"
+    },
+    {
+      "id": "split-vis",
+      "operator": "Jadrolinija",
+      "from": {
+        "name": "Split",
+        "code": "SPL",
+        "lat": 43.5057,
+        "lng": 16.4366
+      },
+      "to": {
+        "name": "Vis",
+        "code": "VIS",
+        "lat": 43.0613,
+        "lng": 16.1813
+      },
+      "duration_minutes": 140,
+      "type": "car_ferry",
+      "booking_url": "https://www.jadrolinija.hr/en/travel/split_–_vis"
+    },
+    {
+      "id": "split-rogac",
+      "operator": "Jadrolinija",
+      "from": {
+        "name": "Split",
+        "code": "SPL",
+        "lat": 43.5057,
+        "lng": 16.4366
+      },
+      "to": {
+        "name": "Rogač (Šolta)",
+        "code": "ROG",
+        "lat": 43.3863,
+        "lng": 16.3083
+      },
+      "duration_minutes": 60,
+      "type": "car_ferry",
+      "booking_url": "https://www.jadrolinija.hr/en/travel/split_-_rogac_solta"
+    },
+    {
+      "id": "split-lastovo",
+      "operator": "Jadrolinija",
+      "from": {
+        "name": "Split",
+        "code": "SPL",
+        "lat": 43.5057,
+        "lng": 16.4366
+      },
+      "to": {
+        "name": "Ubli (Lastovo)",
+        "code": "UBL",
+        "lat": 42.7561,
+        "lng": 16.8358
+      },
+      "duration_minutes": 270,
+      "type": "car_ferry",
+      "booking_url": "https://www.jadrolinija.hr/en/travel/split_-vela_luka_korcula_-_ubli_lastovo"
+    },
+    {
+      "id": "valbiska-merag",
+      "operator": "Jadrolinija",
+      "from": {
+        "name": "Valbiska (Krk)",
+        "code": "VBK",
+        "lat": 45.0436,
+        "lng": 14.5267
+      },
+      "to": {
+        "name": "Merag (Cres)",
+        "code": "MRG",
+        "lat": 45.0203,
+        "lng": 14.4839
+      },
+      "duration_minutes": 30,
+      "type": "car_ferry",
+      "booking_url": "https://www.jadrolinija.hr/en/travel/valbiska_krk_-_merag_cres"
+    },
+    {
+      "id": "brestova-porozina",
+      "operator": "Jadrolinija",
+      "from": {
+        "name": "Brestova",
+        "code": "BRT",
+        "lat": 45.1117,
+        "lng": 14.2417
+      },
+      "to": {
+        "name": "Porozina (Cres)",
+        "code": "PRZ",
+        "lat": 45.1283,
+        "lng": 14.2783
+      },
+      "duration_minutes": 25,
+      "type": "car_ferry",
+      "booking_url": "https://www.jadrolinija.hr/en/travel/brestova_-_porozina_cres"
+    },
+    {
+      "id": "prizna-zigljen",
+      "operator": "Jadrolinija",
+      "from": {
+        "name": "Prizna",
+        "code": "PRZ",
+        "lat": 44.8839,
+        "lng": 14.97
+      },
+      "to": {
+        "name": "Žigljen (Pag)",
+        "code": "ZGL",
+        "lat": 44.8758,
+        "lng": 14.9569
+      },
+      "duration_minutes": 15,
+      "type": "car_ferry",
+      "booking_url": "https://www.jadrolinija.hr/en/travel/prizna_-_zigljen_pag"
+    },
+    {
+      "id": "stinica-misnjak",
+      "operator": "Jadrolinija",
+      "from": {
+        "name": "Stinica",
+        "code": "STN",
+        "lat": 44.8639,
+        "lng": 14.7919
+      },
+      "to": {
+        "name": "Mišnjak (Rab)",
+        "code": "MSN",
+        "lat": 44.7617,
+        "lng": 14.7878
+      },
+      "duration_minutes": 15,
+      "type": "car_ferry",
+      "booking_url": "http://www.rapska-plovidba.hr/plovni_en.html"
+    },
+    {
+      "id": "jablanac-misnjak",
+      "operator": "Jadrolinija",
+      "from": {
+        "name": "Jablanac",
+        "code": "JBL",
+        "lat": 44.71,
+        "lng": 14.9131
+      },
+      "to": {
+        "name": "Mišnjak (Rab)",
+        "code": "MSN",
+        "lat": 44.7617,
+        "lng": 14.7878
+      },
+      "duration_minutes": 15,
+      "type": "car_ferry",
+      "booking_url": "http://www.rapska-plovidba.hr/plovni_en.html"
+    },
+    {
+      "id": "orebic-domince",
+      "operator": "Jadrolinija",
+      "from": {
+        "name": "Orebić (Pelješac)",
+        "code": "ORB",
+        "lat": 42.9789,
+        "lng": 17.1786
+      },
+      "to": {
+        "name": "Dominče (Korčula)",
+        "code": "DMC",
+        "lat": 42.9789,
+        "lng": 17.1572
+      },
+      "duration_minutes": 15,
+      "type": "car_ferry",
+      "booking_url": "https://www.jadrolinija.hr/en/travel/orebic_-_domince_korcula"
+    },
+    {
+      "id": "prapratno-sobra",
+      "operator": "Jadrolinija",
+      "from": {
+        "name": "Prapratno (Pelješac)",
+        "code": "PRP",
+        "lat": 42.8531,
+        "lng": 17.6644
+      },
+      "to": {
+        "name": "Sobra (Mljet)",
+        "code": "SBR",
+        "lat": 42.7392,
+        "lng": 17.6403
+      },
+      "duration_minutes": 50,
+      "type": "car_ferry",
+      "booking_url": "https://www.jadrolinija.hr/en/travel/prapratno_peljesac_-_sobra_mljet"
+    },
+    {
+      "id": "zadar-preko",
+      "operator": "Jadrolinija",
+      "from": {
+        "name": "Zadar",
+        "code": "ZAD",
+        "lat": 44.1186,
+        "lng": 15.2306
+      },
+      "to": {
+        "name": "Preko (Ugljan)",
+        "code": "PRK",
+        "lat": 44.0853,
+        "lng": 15.1953
+      },
+      "duration_minutes": 25,
+      "type": "car_ferry",
+      "booking_url": "https://www.jadrolinija.hr/en/travel/zadar_-_preko"
+    },
+    {
+      "id": "zadar-mali-losinj",
+      "operator": "Jadrolinija",
+      "from": {
+        "name": "Zadar",
+        "code": "ZAD",
+        "lat": 44.1186,
+        "lng": 15.2306
+      },
+      "to": {
+        "name": "Mali Lošinj",
+        "code": "MLL",
+        "lat": 44.5333,
+        "lng": 14.4711
+      },
+      "duration_minutes": 300,
+      "type": "car_ferry",
+      "booking_url": "https://www.jadrolinija.hr/en/travel/zadar_gazenica_-_ist_-_olib_-_silba_-_premuda_-_mali_losinj"
+    },
+    {
+      "id": "zadar-zaglav",
+      "operator": "Jadrolinija",
+      "from": {
+        "name": "Zadar",
+        "code": "ZAD",
+        "lat": 44.1186,
+        "lng": 15.2306
+      },
+      "to": {
+        "name": "Zaglav (Dugi Otok)",
+        "code": "ZGV",
+        "lat": 43.9833,
+        "lng": 15.0194
+      },
+      "duration_minutes": 80,
+      "type": "car_ferry",
+      "booking_url": "https://www.gv-zadar.com/linija/drzavna-brodska-linija-br-406-zadar-sali-dugi-otok-zaglav-dugi-otok-i-obratno/"
+    },
+    {
+      "id": "zadar-brbinj",
+      "operator": "Jadrolinija",
+      "from": {
+        "name": "Zadar",
+        "code": "ZAD",
+        "lat": 44.1186,
+        "lng": 15.2306
+      },
+      "to": {
+        "name": "Brbinj (Dugi Otok)",
+        "code": "BRB",
+        "lat": 44.0833,
+        "lng": 14.9528
+      },
+      "duration_minutes": 90,
+      "type": "car_ferry",
+      "booking_url": "https://www.jadrolinija.hr/en/travel/zadar_gazenica_-_brbinj_dugi_otok"
+    },
+    {
+      "id": "zadar-bozava",
+      "operator": "Jadrolinija",
+      "from": {
+        "name": "Zadar",
+        "code": "ZAD",
+        "lat": 44.1186,
+        "lng": 15.2306
+      },
+      "to": {
+        "name": "Božava (Dugi Otok)",
+        "code": "BZV",
+        "lat": 44.1372,
+        "lng": 14.9156
+      },
+      "duration_minutes": 90,
+      "type": "car_ferry",
+      "booking_url": "https://www.jadrolinija.hr/en/travel/zadar_-_rivanj_-_sestrunj_-_zverinac_-_bozava_-_brbinj"
+    },
+    {
+      "id": "zadar-ist",
+      "operator": "Jadrolinija",
+      "from": {
+        "name": "Zadar",
+        "code": "ZAD",
+        "lat": 44.1186,
+        "lng": 15.2306
+      },
+      "to": {
+        "name": "Ist",
+        "code": "IST",
+        "lat": 44.2658,
+        "lng": 14.7589
+      },
+      "duration_minutes": 120,
+      "type": "car_ferry",
+      "booking_url": "https://www.jadrolinija.hr/en/travel/zadar_gazenica_-_ist_-_olib_-_silba_-_premuda_-_mali_losinj"
+    },
+    {
+      "id": "split-hvar-cat",
+      "operator": "Kapetan Luka (Krilo)",
+      "from": {
+        "name": "Split (catamaran terminal)",
+        "code": "SPL",
+        "lat": 43.5077,
+        "lng": 16.4419
+      },
+      "to": {
+        "name": "Hvar town",
+        "code": "HVA",
+        "lat": 43.1726,
+        "lng": 16.4422
+      },
+      "duration_minutes": 60,
+      "type": "catamaran",
+      "booking_url": "https://www.krilo.hr/en/timetable"
+    },
+    {
+      "id": "split-bol-jelsa",
+      "operator": "Kapetan Luka (Krilo)",
+      "from": {
+        "name": "Split (catamaran terminal)",
+        "code": "SPL",
+        "lat": 43.5077,
+        "lng": 16.4419
+      },
+      "to": {
+        "name": "Bol (Brač) / Jelsa (Hvar)",
+        "code": "BOL",
+        "lat": 43.2614,
+        "lng": 16.6589
+      },
+      "duration_minutes": 90,
+      "type": "catamaran",
+      "booking_url": "https://www.krilo.hr/en/timetable"
+    },
+    {
+      "id": "split-korcula-cat",
+      "operator": "Kapetan Luka (Krilo)",
+      "from": {
+        "name": "Split (catamaran terminal)",
+        "code": "SPL",
+        "lat": 43.5077,
+        "lng": 16.4419
+      },
+      "to": {
+        "name": "Korčula town",
+        "code": "KOR",
+        "lat": 42.9586,
+        "lng": 17.1364
+      },
+      "duration_minutes": 180,
+      "type": "catamaran",
+      "booking_url": "https://www.krilo.hr/en/timetable"
+    },
+    {
+      "id": "split-mljet-pomena",
+      "operator": "Kapetan Luka (Krilo)",
+      "from": {
+        "name": "Split (catamaran terminal)",
+        "code": "SPL",
+        "lat": 43.5077,
+        "lng": 16.4419
+      },
+      "to": {
+        "name": "Pomena (Mljet)",
+        "code": "POM",
+        "lat": 42.7858,
+        "lng": 17.3392
+      },
+      "duration_minutes": 200,
+      "type": "catamaran",
+      "booking_url": "https://www.krilo.hr/en/timetable"
+    },
+    {
+      "id": "split-dubrovnik-cat",
+      "operator": "Kapetan Luka (Krilo)",
+      "from": {
+        "name": "Split (catamaran terminal)",
+        "code": "SPL",
+        "lat": 43.5077,
+        "lng": 16.4419
+      },
+      "to": {
+        "name": "Dubrovnik (Gruž)",
+        "code": "DBV",
+        "lat": 42.6622,
+        "lng": 18.0763
+      },
+      "duration_minutes": 270,
+      "type": "catamaran",
+      "booking_url": "https://www.krilo.hr/en/timetable"
+    },
+    {
+      "id": "trogir-drvenik-veli",
+      "operator": "TP Line",
+      "from": {
+        "name": "Trogir",
+        "code": "TRG",
+        "lat": 43.5172,
+        "lng": 16.2517
+      },
+      "to": {
+        "name": "Drvenik Veli",
+        "code": "DVL",
+        "lat": 43.4475,
+        "lng": 16.1789
+      },
+      "duration_minutes": 30,
+      "type": "passenger_only",
+      "booking_url": "https://www.tp-line.hr/"
+    },
+    {
+      "id": "dubrovnik-sipan",
+      "operator": "G&V Line",
+      "from": {
+        "name": "Dubrovnik (Gruž)",
+        "code": "DBV",
+        "lat": 42.6622,
+        "lng": 18.0763
+      },
+      "to": {
+        "name": "Suđurađ (Šipan)",
+        "code": "SDR",
+        "lat": 42.7281,
+        "lng": 17.8908
+      },
+      "duration_minutes": 60,
+      "type": "passenger_only",
+      "booking_url": "https://gv-line.hr/"
+    },
+    {
+      "id": "dubrovnik-lopud",
+      "operator": "G&V Line",
+      "from": {
+        "name": "Dubrovnik (Gruž)",
+        "code": "DBV",
+        "lat": 42.6622,
+        "lng": 18.0763
+      },
+      "to": {
+        "name": "Lopud",
+        "code": "LPD",
+        "lat": 42.6856,
+        "lng": 17.9381
+      },
+      "duration_minutes": 50,
+      "type": "passenger_only",
+      "booking_url": "https://gv-line.hr/"
+    },
+    {
+      "id": "dubrovnik-kolocep",
+      "operator": "G&V Line",
+      "from": {
+        "name": "Dubrovnik (Gruž)",
+        "code": "DBV",
+        "lat": 42.6622,
+        "lng": 18.0763
+      },
+      "to": {
+        "name": "Koločep (Donje Čelo)",
+        "code": "KLC",
+        "lat": 42.6708,
+        "lng": 17.9619
+      },
+      "duration_minutes": 30,
+      "type": "passenger_only",
+      "booking_url": "https://gv-line.hr/"
+    },
+    {
+      "id": "dubrovnik-sobra",
+      "operator": "G&V Line / Jadrolinija",
+      "from": {
+        "name": "Dubrovnik (Gruž)",
+        "code": "DBV",
+        "lat": 42.6622,
+        "lng": 18.0763
+      },
+      "to": {
+        "name": "Sobra (Mljet)",
+        "code": "SBR",
+        "lat": 42.7392,
+        "lng": 17.6403
+      },
+      "duration_minutes": 90,
+      "type": "passenger_only",
+      "booking_url": "https://gv-line.hr/"
+    },
+    {
+      "id": "ancona-split",
+      "operator": "Jadrolinija / SNAV",
+      "from": {
+        "name": "Ancona",
+        "code": "ANC",
+        "lat": 43.6173,
+        "lng": 13.5056
+      },
+      "to": {
+        "name": "Split",
+        "code": "SPL",
+        "lat": 43.5057,
+        "lng": 16.4366
+      },
+      "duration_minutes": 660,
+      "type": "car_ferry",
+      "booking_url": "https://www.jadrolinija.hr/en/ferry-croatia/italy-croatia-line"
+    },
+    {
+      "id": "bari-dubrovnik",
+      "operator": "Jadrolinija",
+      "from": {
+        "name": "Bari",
+        "code": "BRI",
+        "lat": 41.1278,
+        "lng": 16.8704
+      },
+      "to": {
+        "name": "Dubrovnik (Gruž)",
+        "code": "DBV",
+        "lat": 42.6622,
+        "lng": 18.0763
+      },
+      "duration_minutes": 540,
+      "type": "car_ferry",
+      "booking_url": "https://www.jadrolinija.hr/en/ferry-croatia/italy-croatia-line"
+    },
+    {
+      "id": "storebaelt",
+      "operator": "Storebælt (Sund & Bælt)",
+      "from": {
+        "name": "Halsskov (Zealand)",
+        "code": "HLS",
+        "lat": 55.345,
+        "lng": 11.0258
+      },
+      "to": {
+        "name": "Knudshoved (Funen)",
+        "code": "KND",
+        "lat": 55.2972,
+        "lng": 10.877
+      },
+      "duration_minutes": 0,
+      "type": "bridge_toll",
+      "booking_url": "https://www.storebaelt.dk/en/prices/"
+    },
+    {
+      "id": "oresund",
+      "operator": "Øresundsbron",
+      "from": {
+        "name": "Copenhagen (Kastrup)",
+        "code": "CPH",
+        "lat": 55.6093,
+        "lng": 12.6394
+      },
+      "to": {
+        "name": "Malmö (Lernacken)",
+        "code": "MMA",
+        "lat": 55.5719,
+        "lng": 12.65
+      },
+      "duration_minutes": 0,
+      "type": "bridge_toll",
+      "booking_url": "https://www.oresundsbron.com/en/prices"
+    },
+    {
+      "id": "puttgarden-rodby",
+      "operator": "Scandlines",
+      "from": {
+        "name": "Puttgarden",
+        "code": "PUT",
+        "lat": 54.4972,
+        "lng": 11.2364
+      },
+      "to": {
+        "name": "Rødby",
+        "code": "ROD",
+        "lat": 54.6531,
+        "lng": 11.3508
+      },
+      "duration_minutes": 45,
+      "type": "car_ferry",
+      "booking_url": "https://www.scandlines.com/booking"
+    }
   ]
 }
