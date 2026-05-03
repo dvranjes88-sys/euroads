@@ -3585,9 +3585,30 @@ function drawRouteByRoadClass(googleLegs, validPts, rc){
   }
 
   // 2. Filter out ferry coordinates from the road backdrop (avoids ghost line under cyan ferry)
-  const rcFiltered = ferryCoordKeys.size
-    ? rc.filter(c => !ferryCoordKeys.has(`${c[0].toFixed(4)},${c[1].toFixed(4)}`))
-    : rc;
+  // Proximity-based filter: any rc point within ~500m of ANY ferry coord is dropped.
+  // (Hash-based exact match failed because Google returns simplified `rc` polyline
+  // with different coord precision than per-step polylines.)
+  let rcFiltered = rc;
+  if(ferryCoordKeys.size){
+    // Build flat array of [lng,lat] from the keys for proximity check
+    const ferryPts = [];
+    for(const key of ferryCoordKeys){
+      const [lng, lat] = key.split(',').map(parseFloat);
+      ferryPts.push([lng, lat]);
+    }
+    // ~0.005° ≈ 500m at Croatia latitude — generous enough to catch simplified rc points
+    const TOL = 0.005;
+    const TOL2 = TOL * TOL;
+    rcFiltered = rc.filter(c => {
+      for(const fp of ferryPts){
+        const dlng = c[0] - fp[0];
+        const dlat = c[1] - fp[1];
+        if(dlng*dlng + dlat*dlat < TOL2) return false; // too close to ferry
+      }
+      return true;
+    });
+    console.log('[GhostFix] Filtered', rc.length - rcFiltered.length, 'rc points near', ferryPts.length, 'ferry pts');
+  }
 
   // 3. Podklad — plná trasa tmavou sivou (bez ferry portion)
   if(rcFiltered.length >= 2){
