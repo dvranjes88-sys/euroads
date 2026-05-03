@@ -3496,20 +3496,53 @@ function drawRouteOnMap(rc, segments){
 // Zoskupuje susedné steps rovnakej triedy pre výkonnosť (menej layers)
 // ══════════════════════════════════════════════════════════
 function drawRouteByRoadClass(googleLegs, validPts, rc){
-  // 1. Podklad — plná trasa tmavou sivou (aby bolo vidno celú cestu keby niečo zlyhalo)
-  const fullId = 'rseg-full';
-  mrPolylines.push(fullId);
-  mrMap.addSource(fullId, {
-    type: 'geojson',
-    data: { type: 'Feature', geometry: { type: 'LineString', coordinates: rc } }
-  });
-  mrMap.addLayer({
-    id: fullId,
-    type: 'line',
-    source: fullId,
-    layout: { 'line-join': 'round', 'line-cap': 'round' },
-    paint: { 'line-color': '#334155', 'line-width': 8, 'line-opacity': 0.55 }
-  });
+  // 1. Detect ferry segments first — to exclude their coords from the road backdrop
+  // (Without this, the dark gray backdrop polyline shows through under the cyan
+  // dashed ferry line as a "ghost line". This filter removes ferry GPS points
+  // from the backdrop so only the cyan ferry curve is visible on water.)
+  const allStepsForFerry = googleLegs.flatMap(l => l.steps || []);
+  const ferryCoordKeys = new Set();
+  for(const step of allStepsForFerry){
+    const instr = (step.instructions || '').replace(/<[^>]+>/g, ' ');
+    const isFerry = /\bferr(y|ies)\b|\bboat\b|trajekt|traghett|f[aä]hre|trans-?bordeur/i.test(instr) ||
+                    /ferry/i.test(step.maneuver || '');
+    if(!isFerry || !step.polyline?.points) continue;
+    let stepCoords;
+    try {
+      if(window.google?.maps?.geometry?.encoding){
+        stepCoords = google.maps.geometry.encoding.decodePath(step.polyline.points)
+          .map(ll => [ll.lng(), ll.lat()]);
+      } else {
+        stepCoords = decodePolyline(step.polyline.points);
+      }
+    } catch(e){ continue; }
+    if(!stepCoords) continue;
+    for(const c of stepCoords){
+      ferryCoordKeys.add(`${c[0].toFixed(4)},${c[1].toFixed(4)}`);
+    }
+  }
+
+  // 2. Filter out ferry coordinates from the road backdrop (avoids ghost line under cyan ferry)
+  const rcFiltered = ferryCoordKeys.size
+    ? rc.filter(c => !ferryCoordKeys.has(`${c[0].toFixed(4)},${c[1].toFixed(4)}`))
+    : rc;
+
+  // 3. Podklad — plná trasa tmavou sivou (bez ferry portion)
+  if(rcFiltered.length >= 2){
+    const fullId = 'rseg-full';
+    mrPolylines.push(fullId);
+    mrMap.addSource(fullId, {
+      type: 'geojson',
+      data: { type: 'Feature', geometry: { type: 'LineString', coordinates: rcFiltered } }
+    });
+    mrMap.addLayer({
+      id: fullId,
+      type: 'line',
+      source: fullId,
+      layout: { 'line-join': 'round', 'line-cap': 'round' },
+      paint: { 'line-color': '#334155', 'line-width': 8, 'line-opacity': 0.55 }
+    });
+  }
 
   // 2. Extract all steps and classify them
   const allSteps = googleLegs.flatMap(l => l.steps);
