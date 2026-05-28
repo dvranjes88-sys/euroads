@@ -1,11 +1,11 @@
 {
-  "_updated": "2026-05-21",
+  "_updated": "2026-05-28",
   "_sources": {
     "eu_27": "EU Oil Bulletin via fuel-prices.eu (CC BY 4.0)",
     "hr": "Government of Croatia via cijenegoriva.info (updated every 14 days)",
     "balkan": "Manual via balkan-manual.json (last edit 2026-04-21)"
   },
-  "_auto_updated": "2026-05-21T17:54:07.439Z",
+  "_auto_updated": "2026-05-28T18:33:54.640Z",
   "_notes": "Prices are national weekly averages including all taxes. Highway stations may charge 10-25% more.",
   "prices": {
     "MT": {
@@ -13,104 +13,104 @@
       "diesel": 1.21
     },
     "PL": {
-      "petrol": 1.49,
-      "diesel": 1.576
+      "petrol": 1.512,
+      "diesel": 1.586
     },
     "BG": {
-      "petrol": 1.506,
-      "diesel": 1.728
+      "petrol": 1.53,
+      "diesel": 1.706
     },
     "ES": {
-      "petrol": 1.548,
-      "diesel": 1.685
+      "petrol": 1.568,
+      "diesel": 1.686
     },
     "CY": {
-      "petrol": 1.564,
-      "diesel": 1.818
+      "petrol": 1.591,
+      "diesel": 1.803
     },
     "HU": {
-      "petrol": 1.659,
-      "diesel": 1.727
+      "petrol": 1.685,
+      "diesel": 1.754
     },
     "SI": {
-      "petrol": 1.69,
-      "diesel": 1.744
+      "petrol": 1.699,
+      "diesel": 1.751
     },
     "HR": {
       "petrol": 1.64,
       "diesel": 1.66
     },
     "SE": {
-      "petrol": 1.716,
-      "diesel": 1.896
+      "petrol": 1.741,
+      "diesel": 1.942
     },
     "CZ": {
-      "petrol": 1.743,
-      "diesel": 1.673
+      "petrol": 1.782,
+      "diesel": 1.678
     },
     "RO": {
-      "petrol": 1.761,
-      "diesel": 1.832
+      "petrol": 1.785,
+      "diesel": 1.82
     },
     "SK": {
-      "petrol": 1.776,
-      "diesel": 1.71
-    },
-    "EE": {
-      "petrol": 1.788,
-      "diesel": 1.818
-    },
-    "LT": {
-      "petrol": 1.808,
-      "diesel": 1.932
+      "petrol": 1.801,
+      "diesel": 1.718
     },
     "AT": {
-      "petrol": 1.813,
-      "diesel": 1.914
+      "petrol": 1.809,
+      "diesel": 1.906
+    },
+    "EE": {
+      "petrol": 1.812,
+      "diesel": 1.802
     },
     "LU": {
+      "petrol": 1.814,
+      "diesel": 1.84
+    },
+    "LT": {
       "petrol": 1.824,
-      "diesel": 1.815
+      "diesel": 1.926
     },
     "IE": {
-      "petrol": 1.826,
-      "diesel": 1.95
+      "petrol": 1.827,
+      "diesel": 1.933
     },
     "LV": {
-      "petrol": 1.86,
-      "diesel": 1.902
+      "petrol": 1.879,
+      "diesel": 1.892
     },
     "BE": {
-      "petrol": 1.889,
-      "diesel": 2.112
+      "petrol": 1.939,
+      "diesel": 2.129
     },
     "IT": {
-      "petrol": 1.937,
-      "diesel": 1.983
+      "petrol": 1.964,
+      "diesel": 1.989
     },
     "PT": {
-      "petrol": 2.009,
-      "diesel": 1.954
-    },
-    "FI": {
-      "petrol": 2.025,
-      "diesel": 2.14
+      "petrol": 2.023,
+      "diesel": 1.958
     },
     "DE": {
-      "petrol": 2.043,
-      "diesel": 1.972
+      "petrol": 2.025,
+      "diesel": 1.936
     },
     "FR": {
-      "petrol": 2.083,
-      "diesel": 2.118
+      "petrol": 2.109,
+      "diesel": 2.125
     },
-    "DK": {
-      "petrol": 2.339,
-      "diesel": 2.181
+    "FI": {
+      "petrol": 2.187,
+      "diesel": 2.319
     },
     "NL": {
-      "petrol": 2.388,
-      "diesel": 2.285
+      "petrol": 2.387,
+      "diesel": 2.263
+    },
+    "DK": {
+      "petrol": 2.5,
+      "diesel": 2.222
     },
     "BA": {
       "petrol": 1.38,
@@ -166,7 +166,7 @@
     }
   },
   "hr_live": {
-    "validFrom": "21.5.2026",
+    "validFrom": "28.5.2026",
     "companies": {
       "petrol": [
         {
@@ -270,6 +270,6 @@
       ]
     },
     "source": "cijenegoriva.info",
-    "updatedAt": "2026-05-21T17:54:07.439Z"
+    "updatedAt": "2026-05-28T18:33:54.640Z"
   }
 }
