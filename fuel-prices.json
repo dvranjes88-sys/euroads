@@ -1,11 +1,11 @@
 {
-  "_updated": "2026-06-11",
+  "_updated": "2026-06-18",
   "_sources": {
     "eu_27": "EU Oil Bulletin via fuel-prices.eu (CC BY 4.0)",
     "hr": "Government of Croatia via cijenegoriva.info (updated every 14 days)",
     "balkan": "Manual via balkan-manual.json (last edit 2026-04-21)"
   },
-  "_auto_updated": "2026-06-11T18:44:11.088Z",
+  "_auto_updated": "2026-06-18T18:24:17.253Z",
   "_notes": "Prices are national weekly averages including all taxes. Highway stations may charge 10-25% more.",
   "prices": {
     "AT": {
@@ -21,8 +21,8 @@
       "diesel": 1.706
     },
     "HR": {
-      "petrol": 1.61,
-      "diesel": 1.61
+      "petrol": 1.57,
+      "diesel": 1.59
     },
     "CY": {
       "petrol": 1.591,
@@ -166,54 +166,54 @@
     }
   },
   "hr_live": {
-    "validFrom": "11.6.2026",
+    "validFrom": "18.06.2026",
     "companies": {
       "petrol": [
         {
           "name": "AdriaOil",
-          "price": 1.61,
-          "min": 1.61,
+          "price": 1.57,
+          "min": 1.57,
           "max": 1.64,
           "top": true,
           "variant": "EUROSUPER 95"
         },
         {
           "name": "INA",
-          "price": 1.61,
-          "min": 1.61,
-          "max": 1.63,
+          "price": 1.57,
+          "min": 1.57,
+          "max": 1.59,
           "top": true,
           "variant": "EUROSUPER 95 CLASS PLUS"
         },
         {
           "name": "Lukoil",
-          "price": 1.61,
-          "min": 1.61,
-          "max": 1.62,
+          "price": 1.57,
+          "min": 1.57,
+          "max": 1.64,
           "top": true,
           "variant": "Eurosuper BS 95"
         },
         {
           "name": "Petrol",
-          "price": 1.61,
-          "min": 1.61,
-          "max": 1.64,
+          "price": 1.57,
+          "min": 1.57,
+          "max": 1.6,
           "top": true,
           "variant": "Q MAX EUROSUPER 95"
         },
         {
           "name": "Shell",
-          "price": 1.61,
+          "price": 1.57,
           "min": 1.42,
-          "max": 1.61,
+          "max": 1.57,
           "top": true,
           "variant": "Shell Fuelsave EuroSuper 95"
         },
         {
           "name": "Tifon",
-          "price": 1.61,
+          "price": 1.57,
           "min": 0,
-          "max": 1.63,
+          "max": 1.59,
           "top": true,
           "variant": "EVO Eurosuper 95 BS"
         }
@@ -221,55 +221,55 @@
       "diesel": [
         {
           "name": "AdriaOil",
-          "price": 1.61,
-          "min": 1.61,
+          "price": 1.59,
+          "min": 1.59,
           "max": 1.72,
           "top": true,
           "variant": "EURODIESEL"
         },
         {
           "name": "INA",
-          "price": 1.61,
-          "min": 1.61,
-          "max": 1.69,
+          "price": 1.59,
+          "min": 1.59,
+          "max": 1.67,
           "top": true,
           "variant": "EURODIZEL CLASS PLUS"
         },
         {
           "name": "Lukoil",
-          "price": 1.61,
-          "min": 1.61,
-          "max": 1.69,
+          "price": 1.59,
+          "min": 1.59,
+          "max": 1.67,
           "top": true,
           "variant": "Eurodiesel BS"
         },
         {
           "name": "Petrol",
-          "price": 1.61,
-          "min": 1.61,
-          "max": 1.7,
+          "price": 1.59,
+          "min": 1.59,
+          "max": 1.68,
           "top": true,
           "variant": "EURODIZEL AD B7"
         },
         {
           "name": "Shell",
-          "price": 1.61,
+          "price": 1.59,
           "min": 1.43,
-          "max": 1.61,
+          "max": 1.59,
           "top": true,
           "variant": "Shell Fuelsave EuroDiesel"
         },
         {
           "name": "Tifon",
-          "price": 1.61,
-          "min": 1.61,
-          "max": 1.69,
+          "price": 1.59,
+          "min": 1.59,
+          "max": 1.67,
           "top": true,
           "variant": "EVO Eurodiesel BS"
         }
       ]
     },
     "source": "cijenegoriva.info",
-    "updatedAt": "2026-06-11T18:44:11.088Z"
+    "updatedAt": "2026-06-18T18:24:17.253Z"
   }
 }
