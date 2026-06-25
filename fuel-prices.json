@@ -1,11 +1,11 @@
 {
-  "_updated": "2026-06-18",
+  "_updated": "2026-06-25",
   "_sources": {
     "eu_27": "EU Oil Bulletin via fuel-prices.eu (CC BY 4.0)",
     "hr": "Government of Croatia via cijenegoriva.info (updated every 14 days)",
     "balkan": "Manual via balkan-manual.json (last edit 2026-04-21)"
   },
-  "_auto_updated": "2026-06-18T18:24:17.253Z",
+  "_auto_updated": "2026-06-25T18:06:44.178Z",
   "_notes": "Prices are national weekly averages including all taxes. Highway stations may charge 10-25% more.",
   "prices": {
     "AT": {
@@ -166,7 +166,7 @@
     }
   },
   "hr_live": {
-    "validFrom": "18.06.2026",
+    "validFrom": "25.6.2026",
     "companies": {
       "petrol": [
         {
@@ -189,7 +189,7 @@
           "name": "Lukoil",
           "price": 1.57,
           "min": 1.57,
-          "max": 1.64,
+          "max": 1.59,
           "top": true,
           "variant": "Eurosuper BS 95"
         },
@@ -197,7 +197,7 @@
           "name": "Petrol",
           "price": 1.57,
           "min": 1.57,
-          "max": 1.6,
+          "max": 1.66,
           "top": true,
           "variant": "Q MAX EUROSUPER 95"
         },
@@ -231,7 +231,7 @@
           "name": "INA",
           "price": 1.59,
           "min": 1.59,
-          "max": 1.67,
+          "max": 1.61,
           "top": true,
           "variant": "EURODIZEL CLASS PLUS"
         },
@@ -239,7 +239,7 @@
           "name": "Lukoil",
           "price": 1.59,
           "min": 1.59,
-          "max": 1.67,
+          "max": 1.61,
           "top": true,
           "variant": "Eurodiesel BS"
         },
@@ -247,7 +247,7 @@
           "name": "Petrol",
           "price": 1.59,
           "min": 1.59,
-          "max": 1.68,
+          "max": 1.69,
           "top": true,
           "variant": "EURODIZEL AD B7"
         },
@@ -263,13 +263,13 @@
           "name": "Tifon",
           "price": 1.59,
           "min": 1.59,
-          "max": 1.67,
+          "max": 1.61,
           "top": true,
           "variant": "EVO Eurodiesel BS"
         }
       ]
     },
     "source": "cijenegoriva.info",
-    "updatedAt": "2026-06-18T18:24:17.253Z"
+    "updatedAt": "2026-06-25T18:06:44.177Z"
   }
 }
