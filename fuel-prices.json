@@ -1,11 +1,11 @@
 {
-  "_updated": "2026-10-08",
+  "_updated": "2026-10-15",
   "_sources": {
     "eu_27": "EU Oil Bulletin via fuel-prices.eu (CC BY 4.0)",
     "hr": "Government of Croatia via cijenegoriva.info (updated every 14 days)",
     "balkan": "Manual via balkan-manual.json (last edit 2026-04-21)"
   },
-  "_auto_updated": "2026-10-08T20:59:52.670Z",
+  "_auto_updated": "2026-10-15T19:39:42.661Z",
   "_notes": "Prices are national weekly averages including all taxes. Highway stations may charge 10-25% more.",
   "prices": {
     "MT": {
@@ -13,104 +13,104 @@
       "diesel": 1.21
     },
     "PL": {
-      "petrol": 1.52,
-      "diesel": 1.764
-    },
-    "SE": {
-      "petrol": 1.589,
-      "diesel": 2.118
+      "petrol": 1.57,
+      "diesel": 1.795
     },
     "BG": {
-      "petrol": 1.663,
-      "diesel": 1.893
+      "petrol": 1.649,
+      "diesel": 1.874
+    },
+    "SE": {
+      "petrol": 1.692,
+      "diesel": 2.05
     },
     "HU": {
-      "petrol": 1.726,
-      "diesel": 1.928
+      "petrol": 1.754,
+      "diesel": 1.942
     },
     "CY": {
-      "petrol": 1.744,
-      "diesel": 2.03
+      "petrol": 1.76,
+      "diesel": 2.021
     },
     "SI": {
-      "petrol": 1.763,
-      "diesel": 1.981
+      "petrol": 1.761,
+      "diesel": 1.918
+    },
+    "ES": {
+      "petrol": 1.79,
+      "diesel": 1.889
     },
     "HR": {
       "petrol": 1.74,
-      "diesel": 1.84
-    },
-    "AT": {
-      "petrol": 1.837,
-      "diesel": 2.138
-    },
-    "LU": {
-      "petrol": 1.837,
-      "diesel": 2.057
+      "diesel": 1.83
     },
     "SK": {
-      "petrol": 1.845,
-      "diesel": 1.972
+      "petrol": 1.846,
+      "diesel": 1.919
     },
     "CZ": {
-      "petrol": 1.847,
-      "diesel": 1.952
+      "petrol": 1.859,
+      "diesel": 1.921
     },
-    "ES": {
-      "petrol": 1.849,
-      "diesel": 1.918
+    "AT": {
+      "petrol": 1.865,
+      "diesel": 2.162
+    },
+    "LU": {
+      "petrol": 1.876,
+      "diesel": 2.045
     },
     "RO": {
-      "petrol": 1.886,
-      "diesel": 2.05
-    },
-    "LT": {
-      "petrol": 1.938,
-      "diesel": 2.241
+      "petrol": 1.898,
+      "diesel": 2.041
     },
     "EE": {
-      "petrol": 1.945,
-      "diesel": 2.096
+      "petrol": 1.92,
+      "diesel": 2.013
     },
-    "BE": {
-      "petrol": 1.959,
-      "diesel": 2.349
+    "LT": {
+      "petrol": 1.925,
+      "diesel": 2.205
     },
     "LV": {
-      "petrol": 1.962,
-      "diesel": 2.12
+      "petrol": 1.943,
+      "diesel": 2.072
+    },
+    "BE": {
+      "petrol": 1.977,
+      "diesel": 2.335
     },
     "IE": {
       "petrol": 1.983,
       "diesel": 2.164
     },
     "IT": {
-      "petrol": 2.073,
-      "diesel": 2.273
+      "petrol": 2.021,
+      "diesel": 2.241
     },
     "PT": {
-      "petrol": 2.081,
-      "diesel": 2.155
-    },
-    "DE": {
-      "petrol": 2.196,
-      "diesel": 2.254
+      "petrol": 2.11,
+      "diesel": 2.148
     },
     "FR": {
       "petrol": 2.212,
-      "diesel": 2.355
+      "diesel": 2.328
+    },
+    "DE": {
+      "petrol": 2.214,
+      "diesel": 2.27
     },
     "FI": {
-      "petrol": 2.37,
-      "diesel": 2.553
+      "petrol": 2.319,
+      "diesel": 2.536
     },
     "NL": {
-      "petrol": 2.432,
-      "diesel": 2.506
+      "petrol": 2.462,
+      "diesel": 2.482
     },
     "DK": {
-      "petrol": 2.605,
-      "diesel": 2.488
+      "petrol": 2.658,
+      "diesel": 2.502
     },
     "BA": {
       "petrol": 1.38,
@@ -166,7 +166,7 @@
     }
   },
   "hr_live": {
-    "validFrom": "8.10.2026",
+    "validFrom": "15.10.2026",
     "companies": {
       "petrol": [
         {
@@ -221,7 +221,7 @@
       "diesel": [
         {
           "name": "AdriaOil",
-          "price": 1.84,
+          "price": 1.83,
           "min": 1.72,
           "max": 1.86,
           "top": true,
@@ -229,31 +229,31 @@
         },
         {
           "name": "INA",
-          "price": 1.84,
-          "min": 1.84,
+          "price": 1.83,
+          "min": 1.83,
           "max": 1.97,
           "top": true,
           "variant": "EURODIZEL CLASS PLUS"
         },
         {
           "name": "Lukoil",
-          "price": 1.84,
-          "min": 1.84,
-          "max": 2,
+          "price": 1.83,
+          "min": 1.83,
+          "max": 1.97,
           "top": true,
           "variant": "Eurodiesel BS"
         },
         {
           "name": "Petrol",
-          "price": 1.84,
-          "min": 1.84,
-          "max": 2,
+          "price": 1.83,
+          "min": 1.83,
+          "max": 1.99,
           "top": true,
           "variant": "EURODIZEL AD B7"
         },
         {
           "name": "Shell",
-          "price": 1.84,
+          "price": 1.83,
           "min": 1.43,
           "max": 1.86,
           "top": true,
@@ -261,8 +261,8 @@
         },
         {
           "name": "Tifon",
-          "price": 1.84,
-          "min": 1.84,
+          "price": 1.83,
+          "min": 1.83,
           "max": 1.99,
           "top": true,
           "variant": "EVO Eurodiesel BS"
@@ -270,6 +270,6 @@
       ]
     },
     "source": "cijenegoriva.info",
-    "updatedAt": "2026-10-08T20:59:52.670Z"
+    "updatedAt": "2026-10-15T19:39:42.660Z"
   }
 }
